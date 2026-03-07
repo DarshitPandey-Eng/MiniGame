@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048 — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-c);}
+#board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:var(--bg2);border-radius:10px;padding:10px;border:1px solid var(--line2);touch-action:none;user-select:none;width:min(380px,96vw);}
+.cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.55rem;letter-spacing:.04em;background:var(--bg1);color:transparent;transition:background .12s,transform .1s;}
+.cell.pop{animation:cpop .18s ease-out;}
+@keyframes cpop{0%{transform:scale(1)}50%{transform:scale(1.13)}100%{transform:scale(1)}}
+.cell[data-v="2"]   {background:#1a2a1a;color:#a5d6a7;}
+.cell[data-v="4"]   {background:#1a2e1a;color:#81c784;}
+.cell[data-v="8"]   {background:#0d3320;color:#66bb6a;}
+.cell[data-v="16"]  {background:#0d3a12;color:#4caf50;}
+.cell[data-v="32"]  {background:#3a2000;color:#ffca28;font-size:1.4rem;}
+.cell[data-v="64"]  {background:#3a2800;color:#ffa726;font-size:1.3rem;}
+.cell[data-v="128"] {background:#3a1800;color:#ff7043;font-size:1.2rem;}
+.cell[data-v="256"] {background:#3a0f0f;color:#ef5350;font-size:1.1rem;}
+.cell[data-v="512"] {background:#2a003a;color:#ce93d8;font-size:1rem;}
+.cell[data-v="1024"]{background:#20003a;color:#ba68c8;font-size:.85rem;}
+.cell[data-v="2048"]{background:linear-gradient(135deg,#3a0020,#200020,#00203a);color:#ff2d78;font-size:.8rem;animation:glow2 1s infinite;}
+@keyframes glow2{0%,100%{box-shadow:0 0 18px rgba(255,45,120,.3)}50%{box-shadow:0 0 36px rgba(255,45,120,.7)}}
+.fover{position:fixed;inset:0;background:rgba(7,7,15,.93);backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:500;text-align:center;padding:28px;}
+.fover.hidden{display:none;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+<div class="page" style="gap:14px;">
+  <div id="board"></div>
+  <div class="btn-row">
+    <button class="btn filled" style="--c:var(--neon-c)" onclick="newGame()">NEW GAME</button>
+    <a class="btn" href="index.html">HUB</a>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);text-align:center;line-height:2;">
+    Arrow keys or swipe · Reach <span style="color:var(--neon-c)">2048</span> to win!<br>
+    Cost: <b style="color:var(--neon-c)">🪙 10</b> · earn coins for progress
+  </div>
+  <div class="fover hidden" id="ov-win">
+    <div class="ov-title" style="color:var(--neon-d)">YOU WIN! 🎉</div>
+    <div class="ov-sub">You reached <b>2048!</b><br>Earned: <b id="w-earned">0</b> 🪙</div>
+    <div class="btn-row">
+      <button class="btn filled" style="--c:var(--neon-c)" onclick="keepGoing()">KEEP GOING</button>
+      <button class="btn" style="--c:var(--neon-d)" onclick="newGame()">NEW GAME</button>
+    </div>
+  </div>
+  <div class="fover hidden" id="ov-over">
+    <div class="ov-title" style="color:var(--neon-b)">GAME OVER</div>
+    <div class="ov-score" id="ov-score">0</div>
+    <div class="ov-sub">Earned: <b id="o-earned">0</b> 🪙</div>
+    <div class="btn-row">
+      <button class="btn filled" style="--c:var(--neon-c)" onclick="newGame()">▶ RETRY (🪙 10)</button>
+      <a class="btn" href="index.html">HUB</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>2048</div>'+
+    '<div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>'+
+    '<div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var SZ=4;
+var grid,score,hi=0,won=false,kg=false;
+var cellEls=[];
+var tx,ty;
+
+function newGame(){
+  if(!CoinEngine.spend(10)){CoinEngine.toast('Not enough coins!','warn');return;}
+  CoinEngine.addHistory('🔢','2048 — started',-10);
+  ['ov-win','ov-over'].forEach(function(id){document.getElementById(id).classList.add('hidden');});
+  grid=[];
+  for(var r=0;r<SZ;r++){var row=[];for(var c=0;c<SZ;c++)row.push(0);grid.push(row);}
+  score=0;won=false;kg=false;
+  setScore(0);
+  addTile();addTile();render();
+}
+
+function keepGoing(){kg=true;document.getElementById('ov-win').classList.add('hidden');}
+
+function addTile(){
+  var empty=[];
+  for(var r=0;r<SZ;r++)for(var c=0;c<SZ;c++)if(!grid[r][c])empty.push([r,c]);
+  if(!empty.length)return false;
+  var pos=empty[Math.floor(Math.random()*empty.length)];
+  grid[pos[0]][pos[1]]=Math.random()<0.9?2:4;
+  return true;
+}
+
+function slideRow(row){
+  var a=row.filter(function(v){return v>0;});
+  var pts=0;
+  for(var i=0;i<a.length-1;i++){
+    if(a[i]===a[i+1]){a[i]*=2;pts+=a[i];a[i+1]=0;}
+  }
+  a=a.filter(function(v){return v>0;});
+  while(a.length<SZ)a.push(0);
+  return{row:a,pts:pts};
+}
+
+function move(dir){
+  var moved=false,pts=0;
+  function processLine(coords){
+    var line=coords.map(function(p){return grid[p[0]][p[1]];});
+    var res=slideRow(line);
+    pts+=res.pts;
+    res.row.forEach(function(v,i){
+      if(grid[coords[i][0]][coords[i][1]]!==v)moved=true;
+      grid[coords[i][0]][coords[i][1]]=v;
+    });
+  }
+  if(dir==='left') for(var r=0;r<SZ;r++){var c2=[];for(var c=0;c<SZ;c++)c2.push([r,c]);processLine(c2);}
+  if(dir==='right')for(var r=0;r<SZ;r++){var c2=[];for(var c=SZ-1;c>=0;c--)c2.push([r,c]);processLine(c2);}
+  if(dir==='up')   for(var c=0;c<SZ;c++){var c2=[];for(var r=0;r<SZ;r++)c2.push([r,c]);processLine(c2);}
+  if(dir==='down') for(var c=0;c<SZ;c++){var c2=[];for(var r=SZ-1;r>=0;r--)c2.push([r,c]);processLine(c2);}
+  if(moved){score+=pts;setScore(score);addTile();render();checkWin();if(!canMove())endGame();}
+}
+
+function canMove(){
+  for(var r=0;r<SZ;r++)for(var c=0;c<SZ;c++){
+    if(!grid[r][c])return true;
+    if(c<SZ-1&&grid[r][c]===grid[r][c+1])return true;
+    if(r<SZ-1&&grid[r][c]===grid[r+1][c])return true;
+  }
+  return false;
+}
+
+function checkWin(){
+  if(won||kg)return;
+  for(var r=0;r<SZ;r++)for(var c=0;c<SZ;c++){
+    if(grid[r][c]>=2048){
+      won=true;
+      var earned=CoinEngine.REWARDS['2048'](score,true);
+      earned+=200; /* win bonus */
+      CoinEngine.add(earned,'2048 — WIN!','🔢');
+      CoinEngine.recordGame('2048',score,true,{earned:earned});
+      document.getElementById('w-earned').textContent=earned;
+      document.getElementById('ov-win').classList.remove('hidden');
+      return;
+    }
+  }
+}
+
+function endGame(){
+  var earned=CoinEngine.REWARDS['2048'](score,false);
+  if(earned>0){CoinEngine.add(earned,'2048 — score '+score,'🔢');}
+  CoinEngine.recordGame('2048',score,false,{earned:earned});
+  document.getElementById('ov-score').textContent=score+' pts';
+  document.getElementById('o-earned').textContent=earned;
+  document.getElementById('ov-over').classList.remove('hidden');
+}
+
+function setScore(v){
+  document.getElementById('sc').textContent=v;
+  if(v>hi){hi=v;document.getElementById('hi').textContent=hi;}
+}
+
+/* render */
+var board=document.getElementById('board');
+(function(){
+  board.innerHTML='';cellEls=[];
+  for(var i=0;i<SZ*SZ;i++){var el=document.createElement('div');el.className='cell';board.appendChild(el);cellEls.push(el);}
+})();
+
+function render(){
+  grid.flat().forEach(function(v,i){
+    var el=cellEls[i];
+    var old=el.dataset.v;
+    el.dataset.v=v||'';
+    el.textContent=v||'';
+    if(v&&String(v)!==old){el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
+  });
+}
+
+/* input */
+document.addEventListener('keydown',function(e){
+  var m={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+  if(m[e.key]){e.preventDefault();move(m[e.key]);}
+});
+board.addEventListener('touchstart',function(e){tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+board.addEventListener('touchend',function(e){
+  var dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
+  if(Math.abs(dx)>Math.abs(dy))move(dx>0?'right':'left');else move(dy>0?'down':'up');
+});
+
+/* Start right away (spend coins on first move/game) — actually prompt */
+(function(){
+  /* Show board but empty until game starts */
+  for(var r=0;r<SZ;r++){var row=[];for(var c=0;c<SZ;c++)row.push(0);(grid=grid||[]).push(row);}
+  grid=[]; for(var r=0;r<SZ;r++){var row=[];for(var c=0;c<SZ;c++)row.push(0);grid.push(row);}
+  render();
+  newGame();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Challenges — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+.ch-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; width:100%; max-width:900px; }
+.ch-card {
+  background:var(--card-bg); border:1px solid var(--line2);
+  border-radius:var(--radius); padding:18px;
+  display:flex; flex-direction:column; gap:10px;
+  transition:background .25s, border-color .2s;
+}
+.ch-card.met:not(.claimed) { border-color:var(--neon-c); box-shadow:0 0 18px color-mix(in srgb,var(--neon-c) 20%,transparent); }
+.ch-card.claimed { opacity:.55; }
+.ch-top { display:flex; align-items:center; gap:10px; }
+.ch-icon { font-size:1.8rem; }
+.ch-label { font-family:var(--font-ui); font-weight:700; font-size:.9rem; flex:1; }
+.ch-reward {
+  font-family:var(--font-mono); font-size:.65rem; font-weight:700;
+  color:var(--neon-c);
+}
+.ch-status {
+  font-family:var(--font-mono); font-size:.65rem;
+  padding:3px 9px; border-radius:4px;
+}
+.ch-status.pending { color:var(--muted); background:var(--bg2); }
+.ch-status.ready   { color:#000; background:var(--neon-c); }
+.ch-status.done    { color:var(--neon-d); background:color-mix(in srgb,var(--neon-d) 12%,transparent); }
+
+.summary-row { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; }
+.sum-stat { text-align:center; }
+.sum-stat .v { font-family:var(--font-display); font-size:2.5rem; color:var(--neon-c); }
+.sum-stat .l { font-family:var(--font-mono); font-size:.55rem; color:var(--muted); letter-spacing:.1em; }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-d);box-shadow:0 0 8px var(--neon-d)"></span>CHALLENGES</div>
+  <div class="coin-nav"><span>🪙</span><span id="nav-balance">0</span></div>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:24px;gap:22px;">
+  <div class="summary-row">
+    <div class="sum-stat"><div class="v" id="s-done">0</div><div class="l">COMPLETED</div></div>
+    <div class="sum-stat"><div class="v" id="s-total">0</div><div class="l">TOTAL</div></div>
+    <div class="sum-stat"><div class="v" id="s-earned">0</div><div class="l">COINS EARNED</div></div>
+  </div>
+
+  <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--text2);text-align:center;max-width:500px">
+    Play games to unlock challenges. Claim rewards to receive coins. Challenges auto-detect your progress!
+  </div>
+
+  <div class="ch-grid" id="ch-grid"></div>
+</div>
+
+<script>
+const tb=document.getElementById('tb');
+tb.addEventListener('click',()=>{CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
+tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
+
+function refresh(){ document.getElementById('nav-balance').textContent=CoinEngine.getBalance(); }
+document.addEventListener('az:balance',refresh); refresh();
+
+function render(){
+  const state=CoinEngine.getChallengeState();
+  const defs=CoinEngine.CHALLENGE_DEFS;
+  const grid=document.getElementById('ch-grid');
+
+  let done=0,earned=0;
+  state && Object.values(state).forEach(s=>{ if(s.claimed){ done++; } });
+  defs.forEach(ch=>{ if(state[ch.id]?.claimed) earned+=ch.reward; });
+
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-total').textContent=defs.length;
+  document.getElementById('s-earned').textContent=earned;
+
+  grid.innerHTML=defs.map(ch=>{
+    const s=state[ch.id]||{};
+    const isMet=s.met||s.claimed;
+    const isClaimed=s.claimed;
+    let statusHTML,cardCls='ch-card';
+    if(isClaimed){ statusHTML='<span class="ch-status done">✓ CLAIMED</span>'; cardCls+=' claimed'; }
+    else if(isMet){ statusHTML=`<button class="ch-status ready" onclick="claim('${ch.id}')">CLAIM +${ch.reward} 🪙</button>`; cardCls+=' met'; }
+    else { statusHTML='<span class="ch-status pending">LOCKED</span>'; }
+    return `<div class="${cardCls}" id="ch-${ch.id}">
+      <div class="ch-top">
+        <span class="ch-icon">${ch.icon}</span>
+        <span class="ch-label">${ch.label}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="ch-reward">+${ch.reward} 🪙</span>
+        ${statusHTML}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function claim(id){
+  const earned=CoinEngine.claimChallenge(id);
+  if(earned){ showToast(`+${earned} 🪙 Challenge complete!`,'success'); render(); }
+}
+
+render();
+
+function showToast(msg,type='success'){
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    background:var(--neon-d);color:#000;font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+    padding:12px 22px;border-radius:8px;z-index:600;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    white-space:nowrap;animation:toastIn .3s ease`;
+  t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2800);
+}
+const s=document.createElement('style');
+s.textContent='@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+document.head.appendChild(s);
+</script>
+</body>
+</html>

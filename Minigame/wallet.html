@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wallet — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+.wallet-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; width:100%; max-width:900px; }
+.pack-card {
+  background:var(--card-bg); border:1px solid var(--line2); border-radius:var(--radius);
+  padding:22px 20px; display:flex; flex-direction:column; gap:12px;
+  position:relative; overflow:hidden; transition:all .2s;
+}
+.pack-card:hover { border-color:var(--neon-c); box-shadow:0 0 24px color-mix(in srgb,var(--neon-c) 18%,transparent); }
+.pack-card.featured {
+  border-color:var(--neon-c);
+  box-shadow:0 0 28px color-mix(in srgb,var(--neon-c) 22%,transparent);
+}
+.pack-badge {
+  position:absolute; top:12px; right:12px;
+  font-family:var(--font-mono); font-size:.48rem; font-weight:700;
+  background:var(--neon-c); color:#000; padding:3px 8px; border-radius:4px;
+}
+.pack-amount { font-family:var(--font-display); font-size:3rem; letter-spacing:.04em; color:var(--neon-c); line-height:1; }
+.pack-amount small { font-size:1.2rem; font-family:var(--font-mono); color:var(--text2); }
+.pack-bonus { font-family:var(--font-mono); font-size:.7rem; color:var(--neon-d); }
+.pack-price { font-family:var(--font-ui); font-size:1.2rem; font-weight:700; color:var(--text); }
+.pack-price small { font-size:.7rem; color:var(--muted); }
+
+/* earn section */
+.earn-card {
+  background:var(--card-bg); border:1px solid var(--line2); border-radius:var(--radius);
+  padding:20px; display:flex; gap:16px; align-items:center;
+  transition:all .15s; max-width:580px; width:100%;
+}
+.earn-card:hover { border-color:var(--neon-d); }
+.earn-icon { font-size:2.4rem; flex-shrink:0; }
+.earn-info .title { font-family:var(--font-ui); font-weight:700; font-size:1rem; margin-bottom:4px; }
+.earn-info .sub { font-family:var(--font-mono); font-size:.7rem; color:var(--text2); }
+
+/* ad video simulation */
+.ad-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.92);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:20px; z-index:500;
+}
+.ad-overlay.hidden { display:none; }
+.ad-screen {
+  width:min(480px,90vw); aspect-ratio:16/9;
+  background:#111; border-radius:8px; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position:relative; border:1px solid var(--line2);
+}
+.ad-skip {
+  position:absolute; bottom:12px; right:12px;
+  font-family:var(--font-mono); font-size:.65rem; font-weight:700;
+  padding:6px 12px; border-radius:4px;
+  background:rgba(255,255,255,.12); color:#fff; border:none; cursor:pointer;
+}
+.ad-progress {
+  width:min(480px,90vw); height:4px; background:#222; border-radius:2px; overflow:hidden;
+}
+.ad-progress-fill { height:100%; background:var(--neon-d); transition:width .2s linear; }
+.ad-brand { font-size:2rem; margin-bottom:8px; }
+.ad-text { font-family:var(--font-mono); font-size:.75rem; color:#888; }
+
+/* history */
+.history-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line);
+  font-family:var(--font-mono); font-size:.75rem;
+}
+.history-item .hi-icon { font-size:1.2rem; }
+.history-item .hi-label { flex:1; color:var(--text2); }
+.history-item .hi-amt { font-weight:700; }
+.history-item .hi-amt.pos { color:var(--neon-d); }
+.history-item .hi-amt.neg { color:var(--neon-b); }
+
+/* balance display */
+.big-balance {
+  font-family:var(--font-display); font-size:5rem; letter-spacing:.04em;
+  color:var(--neon-c); line-height:1;
+  text-shadow:0 0 40px color-mix(in srgb,var(--neon-c) 40%,transparent);
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>WALLET</div>
+  <div class="coin-nav"><span>🪙</span><span id="nav-balance">0</span></div>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="gap:28px; padding-top:28px;">
+
+  <!-- Balance -->
+  <div style="text-align:center">
+    <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);letter-spacing:.2em;margin-bottom:8px">YOUR BALANCE</div>
+    <div class="big-balance" id="big-bal">0</div>
+    <div style="font-family:var(--font-mono);font-size:.75rem;color:var(--text2);margin-top:6px">🪙 coins</div>
+  </div>
+
+  <!-- Earn free coins -->
+  <div style="width:100%;max-width:900px;">
+    <div class="section-title">EARN FREE COINS</div>
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+      <div class="earn-card">
+        <div class="earn-icon">📺</div>
+        <div class="earn-info">
+          <div class="title">Watch a Video Ad</div>
+          <div class="sub">Watch a 15-second ad and earn <span style="color:var(--neon-c)">🪙 50 coins</span> instantly.</div>
+        </div>
+        <button class="btn filled" style="--c:var(--neon-d);flex-shrink:0" onclick="watchAd()">WATCH</button>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">🎮</div>
+        <div class="earn-info">
+          <div class="title">Daily Login Bonus</div>
+          <div class="sub">Claim <span style="color:var(--neon-c)">🪙 25 coins</span> once per day for free!</div>
+        </div>
+        <button class="btn filled" style="--c:var(--neon-a);flex-shrink:0" id="daily-btn" onclick="claimDaily()">CLAIM</button>
+      </div>
+      <div class="earn-card">
+        <div class="earn-icon">🏆</div>
+        <div class="earn-info">
+          <div class="title">Complete Challenges</div>
+          <div class="sub">Each challenge rewards you with coins. Check the challenges board!</div>
+        </div>
+        <a class="btn" style="--c:var(--neon-e);flex-shrink:0" href="challenges.html">VIEW</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buy coins -->
+  <div style="width:100%;max-width:900px;">
+    <div class="section-title">BUY COINS <span style="font-weight:400;color:var(--muted);font-size:.55rem">(DEMO — no real charge)</span></div>
+    <div class="wallet-grid">
+      <div class="pack-card">
+        <div class="pack-amount">500 <small>🪙</small></div>
+        <div class="pack-price">$0.99 <small>/ one-time</small></div>
+        <button class="btn" style="--c:var(--neon-c)" onclick="demoBuy(500,'$0.99')">BUY NOW</button>
+      </div>
+      <div class="pack-card featured">
+        <div class="pack-badge">POPULAR</div>
+        <div class="pack-amount">2,500 <small>🪙</small></div>
+        <div class="pack-bonus">+ 500 bonus coins!</div>
+        <div class="pack-price">$4.99 <small>/ one-time</small></div>
+        <button class="btn filled" style="--c:var(--neon-c)" onclick="demoBuy(3000,'$4.99')">BUY NOW</button>
+      </div>
+      <div class="pack-card">
+        <div class="pack-badge">BEST VALUE</div>
+        <div class="pack-amount">6,000 <small>🪙</small></div>
+        <div class="pack-bonus">+ 2000 bonus coins!</div>
+        <div class="pack-price">$9.99 <small>/ one-time</small></div>
+        <button class="btn" style="--c:var(--neon-c)" onclick="demoBuy(8000,'$9.99')">BUY NOW</button>
+      </div>
+    </div>
+    <p style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);text-align:center;margin-top:12px">
+      ⚠️ This is a demo. No real payments are processed. Coins are in-game only and have no real-world value.
+    </p>
+  </div>
+
+  <!-- Power-up Shop -->
+  <div style="width:100%;max-width:580px;">
+    <div class="section-title">POWER-UP SHOP</div>
+    <div id="pu-shop" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;"></div>
+  </div>
+
+  <!-- History -->
+  <div style="width:100%;max-width:580px;">
+    <div class="section-title">TRANSACTION HISTORY</div>
+    <div class="card-box" id="history-list" style="max-height:280px;overflow-y:auto;">
+      <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);text-align:center;padding:20px 0">No transactions yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Ad overlay -->
+<div class="ad-overlay hidden" id="ad-overlay">
+  <div class="ad-screen">
+    <div class="ad-brand" id="ad-brand">🎮</div>
+    <div class="ad-text" id="ad-text">Your ad here</div>
+    <button class="ad-skip" id="ad-skip" onclick="skipAd()" style="display:none">Skip ✕</button>
+  </div>
+  <div class="ad-progress"><div class="ad-progress-fill" id="ad-fill" style="width:0%"></div></div>
+  <div style="font-family:var(--font-mono);font-size:.7rem;color:#555" id="ad-timer">15</div>
+</div>
+
+<!-- Purchase confirm -->
+<div class="ad-overlay hidden" id="buy-overlay">
+  <div class="card-box" style="max-width:360px;text-align:center;display:flex;flex-direction:column;gap:16px;padding:28px">
+    <div style="font-size:2.5rem">🪙</div>
+    <div style="font-family:var(--font-display);font-size:1.8rem;color:var(--neon-c)" id="buy-title">Confirm Purchase</div>
+    <div style="font-family:var(--font-mono);font-size:.78rem;color:var(--text2)" id="buy-body">You will receive coins.</div>
+    <div class="btn-row">
+      <button class="btn filled" style="--c:var(--neon-c)" id="buy-confirm">✓ CONFIRM (DEMO)</button>
+      <button class="btn" style="--c:var(--neon-b)" onclick="document.getElementById('buy-overlay').classList.add('hidden')">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─ Balance refresh ─
+function refresh() {
+  const b=CoinEngine.getBalance();
+  document.getElementById('nav-balance').textContent=b;
+  document.getElementById('big-bal').textContent=b.toLocaleString();
+}
+document.addEventListener('az:balance',refresh); refresh();
+
+// ─ Theme ─
+const tb=document.getElementById('tb');
+tb.addEventListener('click',()=>{CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
+tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
+
+// ─ History ─
+const HIST_KEY='az_history';
+function getHistory() { try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]');}catch{return[];} }
+function addHistory(icon,label,amount) {
+  const h=getHistory();
+  h.unshift({icon,label,amount,ts:Date.now()});
+  if(h.length>40) h.pop();
+  localStorage.setItem(HIST_KEY,JSON.stringify(h));
+  renderHistory();
+}
+function renderHistory() {
+  const h=getHistory();
+  const el=document.getElementById('history-list');
+  if(!h.length){el.innerHTML='<div style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);text-align:center;padding:20px 0">No transactions yet.</div>';return;}
+  el.innerHTML=h.map(t=>`
+    <div class="history-item">
+      <span class="hi-icon">${t.icon}</span>
+      <span class="hi-label">${t.label}</span>
+      <span class="hi-amt ${t.amount>0?'pos':'neg'}">${t.amount>0?'+':''}${t.amount} 🪙</span>
+    </div>`).join('');
+}
+renderHistory();
+
+// ─ Power-up Shop ─
+function renderPUShop(){
+  var grid=document.getElementById('pu-shop');if(!grid)return;grid.innerHTML='';
+  var owned=CoinEngine.getPowerUps();
+  CoinEngine.POWERUP_DEFS.forEach(function(p){
+    var qty=owned[p.id]||0;
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;gap:7px;align-items:center;text-align:center;';
+    card.innerHTML='<div style="font-size:1.5rem">'+p.icon+'</div>'+
+      '<div style="font-family:var(--font-mono);font-size:.62rem;font-weight:700;color:var(--text)">'+p.label+'</div>'+
+      '<div style="font-size:.58rem;color:var(--muted);line-height:1.5">'+p.desc+'</div>'+
+      (qty>0?'<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon-d)">Owned: '+qty+'</div>':'')+
+      '<button class="btn filled" style="--c:var(--neon-c);font-size:.62rem;padding:6px 12px;width:100%">BUY 🪙'+p.cost+'</button>';
+    card.querySelector('button').addEventListener('click',function(){
+      if(CoinEngine.buyPowerUp(p.id)){SoundEngine.play('coin');renderPUShop();refresh();}
+      else CoinEngine.toast('Not enough coins!','warn');
+    });
+    grid.appendChild(card);
+  });
+}
+renderPUShop();
+document.addEventListener('az:balance',renderPUShop);
+
+// ─ Daily bonus ─
+const DAILY_KEY='az_daily';
+function claimDaily() {
+  const last=parseInt(localStorage.getItem(DAILY_KEY)||'0');
+  const now=Date.now();
+  if(now-last < 86400000) {
+    const h=Math.floor((86400000-(now-last))/3600000);
+    showToast(`Come back in ${h}h for your daily bonus!`,'info'); return;
+  }
+  localStorage.setItem(DAILY_KEY,now);
+  CoinEngine.add(25);
+  addHistory('🎁','Daily Login Bonus',25);
+  document.getElementById('daily-btn').textContent='✓ CLAIMED';
+  document.getElementById('daily-btn').disabled=true;
+  showToast('+25 🪙 Daily bonus claimed!','success');
+}
+// Check if already claimed
+(function(){ const last=parseInt(localStorage.getItem(DAILY_KEY)||'0'); if(Date.now()-last<86400000){document.getElementById('daily-btn').textContent='✓ CLAIMED';document.getElementById('daily-btn').disabled=true;} })();
+
+// ─ Watch ad ─
+let adTm, adSecs;
+const ADS = [
+  {brand:'🎮',text:'Play more games on Arcade Zone!'},
+  {brand:'🚀',text:'Sponsored: Launch your next adventure.'},
+  {brand:'🍕',text:'Pizza break? Order now!'},
+];
+function watchAd() {
+  const ad=ADS[Math.floor(Math.random()*ADS.length)];
+  document.getElementById('ad-brand').textContent=ad.brand;
+  document.getElementById('ad-text').textContent=ad.text;
+  document.getElementById('ad-overlay').classList.remove('hidden');
+  document.getElementById('ad-skip').style.display='none';
+  document.getElementById('ad-fill').style.width='0%';
+  adSecs=15;
+  document.getElementById('ad-timer').textContent=adSecs;
+  adTm=setInterval(()=>{
+    adSecs--;
+    const pct=((15-adSecs)/15*100);
+    document.getElementById('ad-fill').style.width=pct+'%';
+    document.getElementById('ad-timer').textContent=adSecs;
+    if(adSecs<=5) document.getElementById('ad-skip').style.display='block';
+    if(adSecs<=0) finishAd();
+  },1000);
+}
+function finishAd() {
+  clearInterval(adTm);
+  document.getElementById('ad-overlay').classList.add('hidden');
+  CoinEngine.add(50);
+  addHistory('📺','Watched Video Ad',50);
+  showToast('+50 🪙 Thanks for watching!','success');
+}
+function skipAd() {
+  if(adSecs>5) return;
+  finishAd();
+}
+
+// ─ Buy coins (demo) ─
+let pendingCoins=0;
+function demoBuy(coins,price) {
+  pendingCoins=coins;
+  document.getElementById('buy-title').textContent='Confirm Purchase';
+  document.getElementById('buy-body').textContent=`You'll receive 🪙 ${coins.toLocaleString()} coins.\nDemo price: ${price}`;
+  document.getElementById('buy-overlay').classList.remove('hidden');
+  document.getElementById('buy-confirm').onclick=()=>{
+    CoinEngine.add(pendingCoins);
+    addHistory('💳',`Purchased ${pendingCoins.toLocaleString()} coins (Demo)`,pendingCoins);
+    document.getElementById('buy-overlay').classList.add('hidden');
+    showToast(`+${pendingCoins.toLocaleString()} 🪙 Demo purchase complete!`,'success');
+  };
+}
+
+// ─ Toast ─
+function showToast(msg,type='success') {
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    background:${type==='success'?'var(--neon-d)':'var(--neon-a)'};color:#000;
+    font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+    padding:12px 22px;border-radius:8px;z-index:600;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    animation:toastIn .3s ease;white-space:nowrap`;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2800);
+}
+const toastStyle=document.createElement('style');
+toastStyle.textContent='@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+document.head.appendChild(toastStyle);
+</script>
+</body>
+</html>

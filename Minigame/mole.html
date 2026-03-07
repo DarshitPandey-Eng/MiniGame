@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whack-a-Mole — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-c);}
+.mole-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px;background:var(--card-bg);border:1px solid var(--line2);border-radius:var(--radius);max-width:420px;width:100%;}
+.hole-wrap{display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden;height:90px;border-radius:50% 50% 10px 10px;}
+.hole-bg{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:88px;height:28px;background:radial-gradient(ellipse at 50% 100%,#03030a 60%,transparent 100%);border:2px solid #111130;border-radius:50%;}
+.mole{position:absolute;bottom:0;font-size:2.5rem;line-height:1;transform:translateY(110%);transition:transform .13s cubic-bezier(.34,1.56,.64,1);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;z-index:2;}
+.mole.up{transform:translateY(8%);}
+.mole.bonked{transform:translateY(5%) scale(1.2) rotate(-20deg);filter:hue-rotate(80deg) saturate(2);}
+.spop{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:.65rem;font-weight:700;color:var(--neon-c);pointer-events:none;animation:spopUp .6s ease-out forwards;z-index:10;}
+@keyframes spopUp{from{opacity:1;top:20px;}to{opacity:0;top:-8px;}}
+.timerbar{width:100%;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;max-width:420px;}
+.timerbar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--neon-b),var(--neon-c));box-shadow:0 0 8px var(--neon-c);transition:width .25s linear;}
+.timedisp{font-family:var(--font-display);font-size:2rem;letter-spacing:.05em;color:var(--neon-c);}
+.timedisp.urgent{color:var(--neon-b);animation:urg .45s infinite;}
+@keyframes urg{0%,100%{opacity:1}50%{opacity:.5}}
+.combo-lbl{font-family:var(--font-mono);font-size:.65rem;font-weight:700;color:var(--neon-f);min-height:1.2em;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+<div class="page" style="gap:12px;">
+  <div style="display:flex;gap:16px;align-items:center;">
+    <div class="timedisp" id="tc">30</div>
+    <div class="combo-lbl" id="cb"></div>
+  </div>
+  <div class="timerbar"><div class="timerbar-fill" id="tf"></div></div>
+  <div style="position:relative;width:100%;max-width:420px;">
+    <div class="mole-grid" id="grid"></div>
+    <div class="overlay" id="ov-start">
+      <div class="ov-title" style="color:var(--neon-c)">WHACK-A-MOLE</div>
+      <div class="ov-sub">Click the moles! 30 seconds.<br>Chain hits for combo bonuses!<br><br>Cost: <b>🪙 5</b></div>
+      <button class="btn filled" style="--c:var(--neon-c)" onclick="startGame()">▶ START (🪙 5)</button>
+    </div>
+    <div class="overlay hidden" id="ov-over">
+      <div class="ov-title" style="color:var(--neon-b)">TIME'S UP!</div>
+      <div class="ov-score" id="sc-final">0</div>
+      <div class="ov-sub">Earned: <b id="earned">0</b> 🪙</div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-c)" onclick="startGame()">▶ RETRY (🪙 5)</button>
+        <a class="btn" href="index.html">HUB</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>WHACK-A-MOLE</div>'+
+    '<div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>'+
+    '<div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var HOLES=9,hi=0;
+var score,timeLeft,combo,comboTm,countdown,spawnTms=[],running=false;
+var holes=[];
+
+/* build grid */
+var grid=document.getElementById('grid');
+for(var i=0;i<HOLES;i++){
+  (function(idx){
+    var wrap=document.createElement('div');wrap.className='hole-wrap';
+    var bg=document.createElement('div');bg.className='hole-bg';
+    var mole=document.createElement('div');mole.className='mole';mole.textContent='🦔';
+    mole.addEventListener('pointerdown',function(e){e.preventDefault();bonk(idx);});
+    wrap.appendChild(bg);wrap.appendChild(mole);grid.appendChild(wrap);
+    holes.push({wrap:wrap,mole:mole,active:false,tid:null});
+  })(i);
+}
+
+function startGame(){
+  if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
+  CoinEngine.addHistory('🦔','Whack-a-Mole — started',-5);
+  document.getElementById('ov-start').classList.add('hidden');
+  document.getElementById('ov-over').classList.add('hidden');
+  score=0;combo=0;timeLeft=30;running=true;
+  document.getElementById('sc').textContent=0;
+  document.getElementById('tc').textContent='30';
+  document.getElementById('tc').classList.remove('urgent');
+  document.getElementById('tf').style.width='100%';
+  document.getElementById('cb').textContent='';
+  holes.forEach(function(h){clearTimeout(h.tid);h.active=false;h.mole.className='mole';});
+  spawnTms.forEach(clearTimeout);spawnTms=[];
+  clearInterval(countdown);
+  countdown=setInterval(function(){
+    timeLeft--;
+    document.getElementById('tc').textContent=timeLeft;
+    document.getElementById('tf').style.width=(timeLeft/30*100)+'%';
+    if(timeLeft<=5)document.getElementById('tc').classList.add('urgent');
+    if(timeLeft<=0)endGame();
+  },1000);
+  wave();
+}
+
+function wave(){
+  if(!running)return;
+  var pick=getInactive();
+  if(pick>=0)showMole(pick);
+  if(Math.random()>.62&&timeLeft<22){var p2=getInactive();if(p2>=0&&p2!==pick)showMole(p2);}
+  var delay=Math.max(380,900-(30-timeLeft)*18);
+  spawnTms.push(setTimeout(wave,delay));
+}
+
+function getInactive(){
+  var free=holes.map(function(h,i){return{h:h,i:i};}).filter(function(x){return!x.h.active;});
+  if(!free.length)return -1;
+  return free[Math.floor(Math.random()*free.length)].i;
+}
+
+function showMole(i){
+  var h=holes[i];h.active=true;h.mole.className='mole up';
+  var stay=750+Math.random()*500;
+  h.tid=setTimeout(function(){retract(i);},stay);
+}
+function retract(i){holes[i].active=false;holes[i].mole.className='mole';}
+
+function bonk(i){
+  if(!running)return;
+  var h=holes[i];if(!h.active)return;
+  clearTimeout(h.tid);h.active=false;
+  h.mole.className='mole bonked';
+  setTimeout(function(){h.mole.className='mole';},300);
+  SoundEngine.play('pop');
+  combo++;clearTimeout(comboTm);
+  comboTm=setTimeout(function(){combo=0;},1100);
+  var pts=combo>=4?5:combo>=3?3:combo>=2?2:1;
+  score+=pts;document.getElementById('sc').textContent=score;
+  if(score>hi)document.getElementById('hi').textContent=hi=score;
+  if(combo>1)document.getElementById('cb').textContent=combo+'× COMBO +'+pts;
+  else document.getElementById('cb').textContent='';
+  var pop=document.createElement('div');pop.className='spop';pop.textContent='+'+pts;
+  h.wrap.appendChild(pop);setTimeout(function(){if(pop.parentNode)pop.parentNode.removeChild(pop);},620);
+}
+
+function endGame(){
+  running=false;clearInterval(countdown);spawnTms.forEach(clearTimeout);spawnTms=[];
+  holes.forEach(function(h){clearTimeout(h.tid);h.active=false;h.mole.className='mole';});
+  var earned=CoinEngine.REWARDS.mole(score);
+  if(earned>0){CoinEngine.add(earned,'Whack-a-Mole — score '+score,'🦔');}
+  CoinEngine.recordGame('mole',score,false,{earned:earned});
+  document.getElementById('sc-final').textContent=score+' pts';
+  document.getElementById('earned').textContent=earned;
+  document.getElementById('ov-over').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

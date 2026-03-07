@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casino — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+.casino-tabs { display:flex; gap:10px; }
+.tab {
+  font-family:var(--font-mono); font-size:.72rem; font-weight:700;
+  padding:9px 18px; border-radius:8px;
+  border:1px solid var(--line2); color:var(--text2);
+  background:var(--card-bg); cursor:pointer; transition:all .15s;
+}
+.tab.on { border-color:var(--neon-b); color:var(--neon-b); background:color-mix(in srgb,var(--neon-b) 10%,transparent); }
+
+.tab-panel { display:none; width:100%; max-width:600px; }
+.tab-panel.on { display:flex; flex-direction:column; align-items:center; gap:20px; }
+
+/* ── COIN FLIP ── */
+.coin-3d {
+  width:120px; height:120px; perspective:700px; cursor:pointer;
+  transition:transform .1s;
+}
+.coin-inner {
+  width:100%; height:100%;
+  position:relative; transform-style:preserve-3d;
+  transition:transform .8s cubic-bezier(.4,2,.6,1);
+  border-radius:50%;
+}
+.coin-inner.flipping { animation:coinSpin .8s ease-out forwards; }
+@keyframes coinSpin {
+  0%   { transform:rotateY(0deg) translateY(0); }
+  30%  { transform:rotateY(360deg) translateY(-40px); }
+  70%  { transform:rotateY(720deg) translateY(-20px); }
+  100% { transform:rotateY(var(--final-rot,0deg)) translateY(0); }
+}
+.coin-face {
+  position:absolute; inset:0; border-radius:50%;
+  backface-visibility:hidden;
+  display:flex; align-items:center; justify-content:center;
+  font-size:2.8rem;
+  border:4px solid;
+}
+.coin-heads {
+  background:radial-gradient(circle at 35% 35%,#ffe980,#b8860b);
+  border-color:#ffe135; box-shadow:inset 0 0 20px rgba(0,0,0,.3), 0 0 20px rgba(255,225,53,.4);
+}
+.coin-tails {
+  background:radial-gradient(circle at 35% 35%,#d0d0e0,#708090);
+  border-color:#a0a0c0; box-shadow:inset 0 0 20px rgba(0,0,0,.3);
+  transform:rotateY(180deg);
+}
+
+.bet-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.bet-btn {
+  font-family:var(--font-mono); font-size:.68rem; font-weight:700;
+  padding:7px 14px; border-radius:6px;
+  border:1px solid var(--line2); color:var(--muted);
+  background:var(--card-bg); cursor:pointer; transition:all .15s;
+}
+.bet-btn.on,.bet-btn:hover { border-color:var(--neon-c); color:var(--neon-c); background:color-mix(in srgb,var(--neon-c) 10%,transparent); }
+
+.side-row { display:flex; gap:10px; }
+.side-btn {
+  flex:1; padding:12px; border-radius:8px;
+  font-family:var(--font-mono); font-size:.78rem; font-weight:700;
+  border:2px solid; cursor:pointer; transition:all .15s; background:transparent;
+}
+.side-btn.heads { border-color:var(--neon-c); color:var(--neon-c); }
+.side-btn.tails { border-color:var(--text2);  color:var(--text2);  }
+.side-btn.on.heads { background:var(--neon-c); color:#000; box-shadow:0 0 16px rgba(255,225,53,.4); }
+.side-btn.on.tails { background:var(--text2);  color:#000; }
+
+.result-banner {
+  font-family:var(--font-display); font-size:2.5rem; letter-spacing:.06em;
+  min-height:2.8rem; text-align:center;
+}
+.result-banner.win  { color:var(--neon-d); text-shadow:0 0 20px var(--neon-d); }
+.result-banner.lose { color:var(--neon-b); text-shadow:0 0 20px var(--neon-b); }
+
+/* ── SLOTS ── */
+.slots-machine {
+  background:var(--bg2); border:2px solid var(--line2);
+  border-radius:14px; padding:22px; width:100%;
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+}
+.reels {
+  display:flex; gap:10px;
+}
+.reel {
+  width:80px; height:80px; border-radius:10px;
+  background:var(--bg0); border:2px solid var(--line2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:2.8rem; overflow:hidden; position:relative;
+}
+.reel-symbol { transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
+.reel.spinning .reel-symbol { animation:reelSpin var(--dur,.5s) ease-out; }
+@keyframes reelSpin {
+  0%   { transform:translateY(-80px); opacity:0; }
+  60%  { transform:translateY(10px); opacity:1; }
+  100% { transform:translateY(0); }
+}
+.slots-result {
+  font-family:var(--font-display); font-size:2rem; letter-spacing:.04em;
+  min-height:2.4rem; text-align:center;
+}
+.paytable {
+  display:grid; grid-template-columns:1fr 1fr; gap:6px 20px;
+  font-family:var(--font-mono); font-size:.65rem; color:var(--text2);
+  background:var(--bg1); border-radius:8px; padding:12px 16px;
+  width:100%; border:1px solid var(--line);
+}
+.paytable b { color:var(--neon-c); }
+
+/* ── STATS ── */
+.casino-stats { display:flex; gap:20px; flex-wrap:wrap; justify-content:center; }
+.c-stat { text-align:center; min-width:80px; }
+.c-stat .v { font-family:var(--font-display); font-size:1.8rem; color:var(--neon-a); }
+.c-stat .l { font-family:var(--font-mono); font-size:.52rem; color:var(--muted); letter-spacing:.1em; }
+
+/* risk level */
+.risk-row { display:flex; gap:8px; }
+.risk-btn {
+  font-family:var(--font-mono); font-size:.62rem; font-weight:700;
+  padding:6px 12px; border-radius:6px;
+  border:1px solid var(--line2); color:var(--muted);
+  background:var(--card-bg); cursor:pointer; transition:all .15s;
+}
+.risk-btn.on { border-color:var(--neon-b); color:var(--neon-b); background:color-mix(in srgb,var(--neon-b) 10%,transparent); }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>CASINO</div>
+  <div class="coin-nav"><span>🪙</span><span id="nav-balance">0</span></div>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:24px; gap:20px;">
+
+  <div style="text-align:center;font-family:var(--font-mono);font-size:.7rem;color:var(--muted)">
+    ⚠️ In-game coins only · No real money · 18+ responsible gaming reminder
+  </div>
+
+  <!-- Stats -->
+  <div class="casino-stats">
+    <div class="c-stat"><div class="v" id="s-wins">0</div><div class="l">WINS</div></div>
+    <div class="c-stat"><div class="v" id="s-losses">0</div><div class="l">LOSSES</div></div>
+    <div class="c-stat"><div class="v" id="s-won">0</div><div class="l">COINS WON</div></div>
+    <div class="c-stat"><div class="v" id="s-lost">0</div><div class="l">COINS LOST</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="casino-tabs">
+    <button class="tab on" onclick="switchTab('flip',this)">🪙 Coin Flip</button>
+    <button class="tab"    onclick="switchTab('slots',this)">🎰 Slots</button>
+    <a class="tab" href="roulette.html" style="text-decoration:none;">🎡 Roulette</a>
+  </div>
+
+  <!-- COIN FLIP -->
+  <div class="tab-panel on" id="tab-flip">
+    <div class="coin-3d" id="coin3d" onclick="flipCoin()">
+      <div class="coin-inner" id="coin-inner">
+        <div class="coin-face coin-heads">👑</div>
+        <div class="coin-face coin-tails">🌙</div>
+      </div>
+    </div>
+
+    <div class="result-banner" id="flip-result"></div>
+
+    <div class="card-box" style="width:100%;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <div class="section-title">YOUR SIDE</div>
+        <div class="side-row">
+          <button class="side-btn heads on" id="side-heads" onclick="setSide('heads')">👑 HEADS</button>
+          <button class="side-btn tails"    id="side-tails" onclick="setSide('tails')">🌙 TAILS</button>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">BET AMOUNT</div>
+        <div class="bet-row">
+          <button class="bet-btn on" onclick="setBet(10,this)">10</button>
+          <button class="bet-btn"    onclick="setBet(25,this)">25</button>
+          <button class="bet-btn"    onclick="setBet(50,this)">50</button>
+          <button class="bet-btn"    onclick="setBet(100,this)">100</button>
+          <button class="bet-btn"    onclick="setBet(250,this)">250</button>
+          <button class="bet-btn"    onclick="setBetAll()">ALL-IN</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--neon-c);margin-top:8px">
+          Betting: 🪙 <span id="flip-bet-disp">10</span> · Win: 🪙 <span id="flip-win-disp">10</span>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">RISK MULTIPLIER <span style="color:var(--muted)">(1x = 50/50)</span></div>
+        <div class="risk-row">
+          <button class="risk-btn on" onclick="setRisk(1,'1x',this)">1× Normal</button>
+          <button class="risk-btn"    onclick="setRisk(1.5,'1.5x',this)">1.5× Medium</button>
+          <button class="risk-btn"    onclick="setRisk(2,'2x',this)">2× High Risk</button>
+          <button class="risk-btn"    onclick="setRisk(3,'3x',this)">3× Extreme</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);margin-top:6px">Higher multiplier = lower win chance but bigger payout</div>
+      </div>
+      <button class="btn filled" style="--c:var(--neon-b);width:100%" id="flip-btn" onclick="flipCoin()">🪙 FLIP!</button>
+    </div>
+  </div>
+
+  <!-- SLOTS -->
+  <div class="tab-panel" id="tab-slots">
+    <div class="slots-machine">
+      <div class="reels">
+        <div class="reel" id="r0"><div class="reel-symbol" id="rs0">🍒</div></div>
+        <div class="reel" id="r1"><div class="reel-symbol" id="rs1">🍋</div></div>
+        <div class="reel" id="r2"><div class="reel-symbol" id="rs2">🍊</div></div>
+      </div>
+      <div class="slots-result" id="slots-result"></div>
+    </div>
+
+    <div class="card-box" style="width:100%;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <div class="section-title">BET AMOUNT</div>
+        <div class="bet-row">
+          <button class="bet-btn on" onclick="setSlotBet(10,this)">10</button>
+          <button class="bet-btn"    onclick="setSlotBet(25,this)">25</button>
+          <button class="bet-btn"    onclick="setSlotBet(50,this)">50</button>
+          <button class="bet-btn"    onclick="setSlotBet(100,this)">100</button>
+          <button class="bet-btn"    onclick="setSlotBetAll()">ALL-IN</button>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--neon-c);margin-top:8px">
+          Betting: 🪙 <span id="slot-bet-disp">10</span>
+        </div>
+      </div>
+      <button class="btn filled" style="--c:var(--neon-e);width:100%" id="spin-btn" onclick="spinSlots()">🎰 SPIN!</button>
+      <div class="paytable">
+        <div><b>🍒🍒🍒</b> Three Cherries</div><div><b>2×</b> bet</div>
+        <div><b>🍋🍋🍋</b> Three Lemons</div><div><b>3×</b> bet</div>
+        <div><b>🍊🍊🍊</b> Three Oranges</div><div><b>4×</b> bet</div>
+        <div><b>⭐⭐⭐</b> Three Stars</div><div><b>8×</b> bet</div>
+        <div><b>💎💎💎</b> Jackpot!</div><div><b>20×</b> bet</div>
+        <div><b>Any 2 same</b></div><div><b>1×</b> bet back</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─ Theme ─
+const tb=document.getElementById('tb');
+tb.addEventListener('click',()=>{CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
+tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
+
+function refresh() {
+  const b=CoinEngine.getBalance();
+  document.getElementById('nav-balance').textContent=b;
+}
+document.addEventListener('az:balance',refresh); refresh();
+
+// ─ Casino stats ─
+const CS_KEY='az_casino_stats';
+function getCS(){ try{return JSON.parse(localStorage.getItem(CS_KEY)||'{}')}catch{return{}} }
+function saveCS(s){ localStorage.setItem(CS_KEY,JSON.stringify(s)); renderCS(); }
+function renderCS(){
+  const s=getCS();
+  document.getElementById('s-wins').textContent=s.wins||0;
+  document.getElementById('s-losses').textContent=s.losses||0;
+  document.getElementById('s-won').textContent=s.won||0;
+  document.getElementById('s-lost').textContent=s.lost||0;
+}
+renderCS();
+
+function recordResult(won,coinsWon,coinsLost){
+  const s=getCS();
+  if(won){s.wins=(s.wins||0)+1;s.won=(s.won||0)+coinsWon;}
+  else{s.losses=(s.losses||0)+1;s.lost=(s.lost||0)+coinsLost;}
+  saveCS(s);
+  CoinEngine.recordGame('casino',coinsWon,won);
+}
+
+// ─ Tabs ─
+function switchTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('tab-'+id).classList.add('on');
+}
+
+// ═══════════════ COIN FLIP ═══════════════
+let flipBet=10, flipSide='heads', flipRisk=1, flipBusy=false;
+
+function setSide(s){
+  flipSide=s;
+  document.getElementById('side-heads').classList.toggle('on',s==='heads');
+  document.getElementById('side-tails').classList.toggle('on',s==='tails');
+}
+function setBet(n,btn){
+  flipBet=n;
+  document.querySelectorAll('#tab-flip .bet-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  updateFlipDisplay();
+}
+function setBetAll(){
+  flipBet=CoinEngine.getBalance();
+  document.querySelectorAll('#tab-flip .bet-btn').forEach(b=>b.classList.remove('on'));
+  updateFlipDisplay();
+}
+function setRisk(m,lbl,btn){
+  flipRisk=m;
+  document.querySelectorAll('.risk-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  updateFlipDisplay();
+}
+function updateFlipDisplay(){
+  document.getElementById('flip-bet-disp').textContent=flipBet;
+  document.getElementById('flip-win-disp').textContent=Math.floor(flipBet*flipRisk*1.95);
+}
+updateFlipDisplay();
+
+function flipCoin(){
+  if(flipBusy) return;
+  if(CoinEngine.getBalance()<flipBet){ showToast('Not enough coins! Visit the Wallet.','warn'); return; }
+
+  flipBusy=true;
+  document.getElementById('flip-btn').disabled=true;
+  document.getElementById('flip-result').textContent='';
+  document.getElementById('flip-result').className='result-banner';
+
+  // determine result
+  // Higher risk = lower win probability
+  const winChance = flipRisk===1?0.49:flipRisk===1.5?0.38:flipRisk===2?0.30:0.22;
+  const won = Math.random() < winChance;
+  const result = won ? flipSide : (flipSide==='heads'?'tails':'heads');
+
+  // animate
+  const inner=document.getElementById('coin-inner');
+  const finalRot = result==='heads' ? 0 : 180;
+  inner.style.setProperty('--final-rot', finalRot+'deg');
+  inner.classList.add('flipping');
+
+  setTimeout(()=>{
+    inner.classList.remove('flipping');
+    inner.style.transform=`rotateY(${finalRot}deg)`;
+
+    const rb=document.getElementById('flip-result');
+    if(won){
+      const payout=Math.floor(flipBet*flipRisk*1.95);
+      CoinEngine.spend(flipBet);
+      CoinEngine.add(flipBet+payout);
+      rb.textContent=`YOU WIN! +${payout} 🪙`;
+      rb.className='result-banner win';
+      recordResult(true,payout,0);
+      showToast(`+${payout} 🪙 You won!`,'success');
+    } else {
+      CoinEngine.spend(flipBet);
+      rb.textContent=`YOU LOSE! -${flipBet} 🪙`;
+      rb.className='result-banner lose';
+      recordResult(false,0,flipBet);
+      showToast(`-${flipBet} 🪙 Better luck next time.`,'warn');
+    }
+    flipBusy=false;
+    document.getElementById('flip-btn').disabled=false;
+    updateFlipDisplay();
+  }, 900);
+}
+
+// ═══════════════ SLOTS ═══════════════
+const SYMBOLS=['🍒','🍋','🍊','⭐','💎'];
+const WEIGHTS= [40,  30,  20,  8,   2]; // weighted probabilities
+const PAYOUTS={'🍒🍒🍒':2,'🍋🍋🍋':3,'🍊🍊🍊':4,'⭐⭐⭐':8,'💎💎💎':20};
+let slotBet=10, slotBusy=false;
+
+function weightedRandom(){
+  const total=WEIGHTS.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<SYMBOLS.length;i++){ r-=WEIGHTS[i]; if(r<=0) return SYMBOLS[i]; }
+  return SYMBOLS[0];
+}
+function setSlotBet(n,btn){
+  slotBet=n;
+  document.querySelectorAll('#tab-slots .bet-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('slot-bet-disp').textContent=n;
+}
+function setSlotBetAll(){
+  slotBet=CoinEngine.getBalance();
+  document.querySelectorAll('#tab-slots .bet-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('slot-bet-disp').textContent=slotBet;
+}
+
+function spinSlots(){
+  if(slotBusy) return;
+  if(CoinEngine.getBalance()<slotBet){ showToast('Not enough coins!','warn'); return; }
+
+  slotBusy=true; CoinEngine.spend(slotBet);
+  document.getElementById('spin-btn').disabled=true;
+  document.getElementById('slots-result').textContent='';
+  document.getElementById('slots-result').className='slots-result';
+
+  const results=[weightedRandom(),weightedRandom(),weightedRandom()];
+
+  // stagger reel reveals
+  results.forEach((sym,i)=>{
+    const reel=document.getElementById('r'+i);
+    const rs=document.getElementById('rs'+i);
+    const delay=i*180;
+    setTimeout(()=>{
+      reel.classList.add('spinning');
+      reel.style.setProperty('--dur', (0.5+i*0.15)+'s');
+      setTimeout(()=>{ rs.textContent=sym; reel.classList.remove('spinning'); },100+delay);
+    },delay);
+  });
+
+  setTimeout(()=>{
+    const key=results.join('');
+    const sr=document.getElementById('slots-result');
+
+    if(PAYOUTS[key]){
+      const win=slotBet*PAYOUTS[key];
+      CoinEngine.add(win);
+      sr.textContent=key==='💎💎💎'?`🎉 JACKPOT! +${win} 🪙`:`WIN! +${win} 🪙`;
+      sr.style.color=key==='💎💎💎'?'var(--neon-c)':'var(--neon-d)';
+      recordResult(true,win,0);
+      showToast(`+${win} 🪙 ${key==='💎💎💎'?'JACKPOT!':'You won!'}`,key==='💎💎💎'?'jackpot':'success');
+    } else {
+      // check 2 matching
+      const s=results;
+      const twoMatch=s[0]===s[1]||s[1]===s[2]||s[0]===s[2];
+      if(twoMatch){
+        CoinEngine.add(slotBet); // get bet back
+        sr.textContent=`Pair! Bet returned 🪙`;
+        sr.style.color='var(--neon-a)';
+        recordResult(true,0,0);
+        showToast('Pair! Your bet was returned.','info');
+      } else {
+        sr.textContent=`No match. -${slotBet} 🪙`;
+        sr.style.color='var(--neon-b)';
+        recordResult(false,0,slotBet);
+        showToast(`-${slotBet} 🪙 No match.`,'warn');
+      }
+    }
+    slotBusy=false;
+    document.getElementById('spin-btn').disabled=false;
+  }, 900);
+}
+
+// ─ Toast ─
+function showToast(msg,type='success'){
+  const colors={success:'var(--neon-d)',warn:'var(--neon-b)',info:'var(--neon-a)',jackpot:'var(--neon-c)'};
+  const t=document.createElement('div');
+  t.style.cssText=`position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+    background:${colors[type]||colors.success};color:#000;
+    font-family:var(--font-mono);font-size:.78rem;font-weight:700;
+    padding:12px 22px;border-radius:8px;z-index:600;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap;
+    animation:toastIn .3s ease`;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2800);
+}
+const s=document.createElement('style');
+s.textContent='@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+document.head.appendChild(s);
+</script>
+</body>
+</html>

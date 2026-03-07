@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reaction Test — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-b);}
+#zone{width:min(400px,92vw);height:240px;border-radius:14px;border:2px solid var(--dim);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .1s,border-color .15s,box-shadow .15s;gap:10px;position:relative;overflow:hidden;}
+#zone.idle   {background:var(--card-bg);}
+#zone.waiting{background:#160028;border-color:var(--neon-e);box-shadow:0 0 28px rgba(191,90,242,.2);}
+#zone.ready  {background:#003318;border-color:var(--neon-d);box-shadow:0 0 56px rgba(0,230,118,.35);}
+#zone.early  {background:#280010;border-color:var(--neon-b);}
+#zone.result {background:var(--card-bg);border-color:var(--neon-c);}
+#z-icon{font-size:3.2rem;transition:transform .1s;line-height:1;}
+#zone.ready #z-icon{transform:scale(1.22);}
+#z-msg{font-family:var(--font-mono);font-size:.78rem;text-align:center;line-height:1.9;padding:0 20px;}
+#zone.idle   #z-msg{color:var(--muted);}
+#zone.waiting #z-msg{color:var(--neon-e);}
+#zone.ready  #z-msg{color:var(--neon-d);font-size:.95rem;font-weight:700;}
+#zone.early  #z-msg{color:var(--neon-b);}
+#zone.result #z-msg{color:var(--muted);}
+#z-time{font-family:var(--font-display);font-size:3.5rem;letter-spacing:.04em;color:var(--neon-c);text-shadow:0 0 22px rgba(255,225,53,.5);display:none;line-height:1;}
+#zone.result #z-time{display:block;}
+#z-rating{font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--neon-d);display:none;}
+#zone.result #z-rating{display:block;}
+.rts{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;}
+.rts-item{text-align:center;min-width:75px;}
+.rts-item .v{font-family:var(--font-display);font-size:1.8rem;color:var(--neon-a);}
+.rts-item .l{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;}
+#history{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px;}
+.chip{font-family:var(--font-mono);font-size:.7rem;font-weight:700;padding:5px 12px;border-radius:5px;border:1px solid;}
+.chip.best{color:var(--neon-d);border-color:var(--neon-d);background:rgba(0,230,118,.07);}
+.chip.good{color:var(--neon-c);border-color:var(--neon-c);background:rgba(255,225,53,.06);}
+.chip.avg {color:var(--muted);border-color:var(--dim);}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+<div class="page" style="gap:20px;">
+  <div id="zone" class="idle" onclick="click_()">
+    <div id="z-icon">🖱️</div>
+    <div id="z-msg">CLICK TO START</div>
+    <div id="z-time">0ms</div>
+    <div id="z-rating"></div>
+  </div>
+  <div class="rts">
+    <div class="rts-item"><div class="v" id="s-best">—</div><div class="l">BEST (ms)</div></div>
+    <div class="rts-item"><div class="v" id="s-avg">—</div><div class="l">AVG (ms)</div></div>
+    <div class="rts-item"><div class="v" id="s-cnt">0</div><div class="l">ATTEMPTS</div></div>
+    <div class="rts-item"><div class="v" id="s-earned">0</div><div class="l">🪙 EARNED</div></div>
+  </div>
+  <div id="history"></div>
+  <button class="btn" style="--c:var(--neon-a)" onclick="reset_()">RESET STATS</button>
+</div>
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>REACTION TEST</div>'+
+    '<div class="score-pill"><span class="val" id="sc-best">—</span><span class="lbl">BEST</span></div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var IDLE=0,WAITING=1,READY=2,EARLY=3,RESULT=4;
+var state=IDLE,waitTm,readyAt,times=[],totalEarned=0;
+var zone=document.getElementById('zone');
+
+function setState(s,cls){state=s;zone.className=cls;}
+
+function click_(){
+  if(state===IDLE||state===RESULT) beginWait();
+  else if(state===WAITING) tooEarly();
+  else if(state===READY) measure();
+}
+
+function beginWait(){
+  setState(WAITING,'waiting');
+  document.getElementById('z-icon').textContent='⏳';
+  document.getElementById('z-msg').textContent='WAIT FOR GREEN…';
+  clearTimeout(waitTm);
+  waitTm=setTimeout(function(){
+    setState(READY,'ready');
+    document.getElementById('z-icon').textContent='🟢';
+    document.getElementById('z-msg').textContent='CLICK NOW!';
+    readyAt=performance.now();
+  },1500+Math.random()*3500);
+}
+
+function tooEarly(){
+  clearTimeout(waitTm);
+  setState(EARLY,'early');
+  document.getElementById('z-icon').textContent='❌';
+  document.getElementById('z-msg').textContent='TOO EARLY! Click to try again.';
+  setTimeout(function(){if(state===EARLY)reset_state();},1400);
+}
+
+function reset_state(){
+  setState(IDLE,'idle');
+  document.getElementById('z-icon').textContent='🖱️';
+  document.getElementById('z-msg').textContent='CLICK TO START';
+  document.getElementById('z-time').textContent='0ms';
+}
+
+function measure(){
+  var ms=Math.round(performance.now()-readyAt);
+  times.push(ms);
+  setState(RESULT,'result');
+  document.getElementById('z-icon').textContent='⚡';
+  document.getElementById('z-time').textContent=ms+'ms';
+  document.getElementById('z-msg').textContent='';
+  var r=rating(ms);
+  document.getElementById('z-rating').textContent=r.label;
+  document.getElementById('z-rating').style.color=r.color;
+
+  /* earn coins */
+  var earned=CoinEngine.REWARDS.reaction(ms);
+  if(earned>0){
+    CoinEngine.add(earned,'Reaction '+ms+'ms','⚡');
+    
+    totalEarned+=earned;
+    document.getElementById('s-earned').textContent=totalEarned;
+  }
+  CoinEngine.recordGame('reaction',ms,ms<=200,{earned:earned});
+  updateStats(); addChip(ms);
+  setTimeout(function(){if(state===RESULT)reset_state();},2400);
+}
+
+function rating(ms){
+  if(ms<150)return{label:'⚡ SUPERHUMAN',color:'var(--neon-d)'};
+  if(ms<200)return{label:'🔥 LIGHTNING',color:'var(--neon-d)'};
+  if(ms<260)return{label:'✅ EXCELLENT',color:'var(--neon-c)'};
+  if(ms<350)return{label:'👍 GREAT',color:'var(--neon-c)'};
+  if(ms<450)return{label:'🙂 AVERAGE',color:'var(--neon-b)'};
+  return{label:'🐢 SLOW',color:'var(--neon-b)'};
+}
+
+function updateStats(){
+  if(!times.length)return;
+  var best=Math.min.apply(null,times);
+  var avg=Math.round(times.reduce(function(a,b){return a+b;})/times.length);
+  document.getElementById('s-best').textContent=best;
+  document.getElementById('s-avg').textContent=avg;
+  document.getElementById('s-cnt').textContent=times.length;
+  document.getElementById('sc-best').textContent=best+'ms';
+}
+
+function addChip(ms){
+  var hist=document.getElementById('history');
+  var best=Math.min.apply(null,times);
+  var c=document.createElement('div');
+  c.className='chip '+(ms===best?'best':ms<350?'good':'avg');
+  c.textContent=ms+'ms';
+  hist.insertBefore(c,hist.firstChild);
+  while(hist.children.length>12)hist.removeChild(hist.lastChild);
+}
+
+function reset_(){
+  clearTimeout(waitTm);times=[];totalEarned=0;
+  reset_state();
+  ['s-best','s-avg'].forEach(function(id){document.getElementById(id).textContent='—';});
+  document.getElementById('s-cnt').textContent='0';
+  document.getElementById('s-earned').textContent='0';
+  document.getElementById('sc-best').textContent='—';
+  document.getElementById('history').innerHTML='';
+}
+</script>
+</body>
+</html>

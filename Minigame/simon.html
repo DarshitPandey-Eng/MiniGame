@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simon Says — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-b);}
+.simon-ring{position:relative;width:min(280px,80vw);height:min(280px,80vw);border-radius:50%;background:var(--bg2);border:3px solid var(--line2);}
+.sbtn{position:absolute;width:42%;height:42%;cursor:pointer;transition:filter .06s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.sbtn.tl{top:4%;left:4%;border-radius:100% 0 0 0;background:var(--neon-d);}
+.sbtn.tr{top:4%;right:4%;border-radius:0 100% 0 0;background:var(--neon-b);}
+.sbtn.bl{bottom:4%;left:4%;border-radius:0 0 0 100%;background:var(--neon-c);}
+.sbtn.br{bottom:4%;right:4%;border-radius:0 0 100% 0;background:var(--neon-a);}
+.sbtn.lit{filter:brightness(2.5) saturate(2)!important;}
+.sbtn:active{filter:brightness(1.6);}
+.simon-hub{position:absolute;inset:36%;border-radius:50%;background:var(--bg0);border:3px solid var(--line2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:5;}
+.simon-hub .rn{font-family:var(--font-display);font-size:1.5rem;color:var(--neon-c);line-height:1;}
+.simon-hub .rl{font-family:var(--font-mono);font-size:.42rem;color:var(--muted);letter-spacing:.1em;}
+.sstatus{font-family:var(--font-mono);font-size:.78rem;font-weight:700;color:var(--muted);min-height:1.4em;text-align:center;letter-spacing:.05em;}
+.sstatus.playing{color:var(--neon-d);}
+.sstatus.watch{color:var(--neon-c);}
+.sstatus.fail{color:var(--neon-b);}
+.sdots{display:flex;gap:5px;height:8px;min-height:8px;}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:background .15s,box-shadow .15s;}
+.sdot.done{background:var(--neon-d);box-shadow:0 0 6px var(--neon-d);}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+<div class="page" style="gap:18px;">
+  <div class="sstatus" id="status">Press START to play</div>
+  <div class="simon-ring">
+    <div class="sbtn tl" id="b0" onclick="press(0)"></div>
+    <div class="sbtn tr" id="b1" onclick="press(1)"></div>
+    <div class="sbtn bl" id="b2" onclick="press(2)"></div>
+    <div class="sbtn br" id="b3" onclick="press(3)"></div>
+    <div class="simon-hub"><div class="rn" id="c-rnd">-</div><div class="rl">ROUND</div></div>
+  </div>
+  <div class="sdots" id="sdots"></div>
+  <div class="btn-row">
+    <button class="btn filled" style="--c:var(--neon-b)" onclick="startGame()">▶ START (🪙 5)</button>
+    <a class="btn" href="index.html">HUB</a>
+  </div>
+</div>
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>SIMON SAYS</div>'+
+    '<div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">ROUND</span></div>'+
+    '<div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var TONES=[329,261,392,523];
+var sequence=[],playerIdx=0,round=0,hi=0,accepting=false,busy=false;
+var audioCtx=null;
+
+function getAC(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+
+function playTone(idx,dur){
+  dur=dur||220;
+  try{
+    var ac=getAC(),o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.value=TONES[idx];o.type='sine';
+    g.gain.setValueAtTime(0,ac.currentTime);
+    g.gain.linearRampToValueAtTime(.35,ac.currentTime+.01);
+    g.gain.linearRampToValueAtTime(0,ac.currentTime+dur/1000);
+    o.start();o.stop(ac.currentTime+dur/1000+.03);
+  }catch(e){}
+}
+function playFail(){
+  try{
+    var ac=getAC(),o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.value=90;o.type='sawtooth';
+    g.gain.setValueAtTime(.25,ac.currentTime);
+    g.gain.linearRampToValueAtTime(0,ac.currentTime+.5);
+    o.start();o.stop(ac.currentTime+.52);
+  }catch(e){}
+}
+
+function flashBtn(idx,dur){
+  dur=dur||280;
+  return new Promise(function(res){
+    var btn=document.getElementById('b'+idx);
+    btn.classList.add('lit');
+    SoundEngine.play('simon', idx);
+    setTimeout(function(){btn.classList.remove('lit');setTimeout(res,55);},dur);
+  });
+}
+
+function wait(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+async function playSequence(){
+  busy=true;accepting=false;
+  setStatus('WATCH CAREFULLY…','watch');
+  var spd=Math.max(200,550-round*20);
+  for(var i=0;i<sequence.length;i++){
+    await flashBtn(sequence[i],spd);
+    await wait(spd*.3);
+  }
+  accepting=true;busy=false;playerIdx=0;
+  setStatus('YOUR TURN!','playing');
+  updateDots();
+}
+
+function startGame(){
+  if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
+  CoinEngine.addHistory('🔴','Simon Says — started',-5);
+  sequence=[];playerIdx=0;round=0;
+  setRound(0);updateDots();
+  nextRound();
+}
+
+async function nextRound(){
+  round++;
+  sequence.push(Math.floor(Math.random()*4));
+  setRound(round);updateDots();
+  await wait(600);
+  await playSequence();
+}
+
+function press(idx){
+  if(!accepting||busy)return;
+  flashBtn(idx,200);
+  if(sequence[playerIdx]!==idx){fail();return;}
+  playerIdx++;
+  updateDots(playerIdx);
+  if(playerIdx>=sequence.length){
+    accepting=false;
+    if(sequence.length>hi){hi=sequence.length;document.getElementById('hi').textContent=hi;}
+    setStatus('CORRECT! ✓','playing');
+    setTimeout(nextRound,900);
+  }
+}
+
+function fail(){
+  accepting=false;busy=true;SoundEngine.play("buzz");
+  var btn=document.getElementById('b'+(sequence[playerIdx]||0));
+  btn.style.filter='brightness(2.5) hue-rotate(180deg)';
+  setTimeout(function(){btn.style.filter='';},500);
+  if(round>hi){hi=round;document.getElementById('hi').textContent=hi;}
+  setStatus('WRONG!','fail');
+  /* reward */
+  var earned=CoinEngine.REWARDS.simon(round);
+  if(earned>0){CoinEngine.add(earned,'Simon Says — round '+round,earned);}
+  CoinEngine.recordGame('simon',round,false,{earned:earned});
+  CoinEngine.toast('Round '+round+' · Earned '+earned+' 🪙','coin');
+  setTimeout(function(){busy=false;setStatus('Press START to play again','');},900);
+}
+
+function updateDots(done){
+  done=done||0;
+  var el=document.getElementById('sdots');el.innerHTML='';
+  sequence.forEach(function(_,i){
+    var d=document.createElement('div');d.className='sdot'+(i<done?' done':'');el.appendChild(d);
+  });
+}
+function setStatus(txt,cls){var s=document.getElementById('status');s.textContent=txt;s.className='sstatus '+(cls||'');}
+function setRound(n){document.getElementById('sc').textContent=n;document.getElementById('c-rnd').textContent=n||'-';}
+</script>
+</body>
+</html>

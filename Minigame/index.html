@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcade Zone — Browser Minigames</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,black 0%,transparent 70%);transition:opacity .3s;}
+.xp-hero-bar{width:min(320px,85vw);background:var(--bg2);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--line2);margin-top:6px;}
+.xp-hero-fill{height:100%;background:linear-gradient(90deg,var(--neon-a),var(--neon-e));box-shadow:0 0 8px var(--neon-a);transition:width .6s ease;}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<nav class="nav" id="main-nav">
+  <div class="nav-logo">ARCADE<em>ZONE</em></div>
+  <div class="nav-sep"></div>
+  <div class="level-badge" style="font-size:.7rem;">⭐ <span class="az-level">Lv.1</span></div>
+  <div class="streak-badge" style="font-size:.68rem;">🔥 <span class="az-streak">0</span></div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="theme-btn">🌙</button>
+</nav>
+
+<div class="hub-hero">
+  <div class="hub-hero-bg"></div>
+  <div class="hub-headline"><div class="a">ARCADE</div><div class="b">ZONE</div></div>
+  <p class="hub-tagline">10 games · earn coins · level up · hit the casino</p>
+  <div class="xp-hero-bar"><div class="xp-hero-fill az-xp-bar" style="width:0%"></div></div>
+  <div class="hub-stats">
+    <div class="hub-stat"><div class="n az-bal">0</div><div class="t">COINS</div></div>
+    <div class="hub-stat"><div class="n az-level">Lv.1</div><div class="t">LEVEL</div></div>
+    <div class="hub-stat"><div class="n" id="s-challs">0</div><div class="t">CHALLENGES</div></div>
+  </div>
+</div>
+
+<main>
+  <div class="hub-section">
+    <div class="hub-quick-links">
+      <a class="quick-link" href="wallet.html"     style="--lc:var(--neon-c)">🪙 Wallet</a>
+      <a class="quick-link" href="casino.html"     style="--lc:var(--neon-b)">🎰 Casino</a>
+      <a class="quick-link" href="quests.html"     style="--lc:var(--neon-c)">📋 Quests</a>
+      <a class="quick-link" href="challenges.html" style="--lc:var(--neon-d)">🏆 Challenges</a>
+      <a class="quick-link" href="profile.html"    style="--lc:var(--neon-e)">👤 Profile</a>
+    </div>
+    <div class="hub-section-title">CLASSIC GAMES</div>
+    <div class="games-grid" id="grid-classic"></div>
+    <div class="hub-section-title" style="margin-top:40px">REFLEX &amp; SKILL</div>
+    <div class="games-grid" id="grid-skill"></div>
+  </div>
+</main>
+<site-footer>ARCADE ZONE © 2026 · NO ADS · NO TRACKING · JUST FUN</site-footer>
+
+<script>
+var GAMES={classic:[
+  {id:'snake',   icon:'🐍',name:'Snake',       desc:'Eat, grow, survive.',               tag:'CLASSIC', diff:1,ca:'var(--neon-d)',cost:10},
+  {id:'tetris',  icon:'🟦',name:'Tetris',       desc:'Stack, clear lines, beat the speed.',tag:'PUZZLE', diff:2,ca:'var(--neon-a)',cost:10},
+  {id:'breakout',icon:'🟠',name:'Breakout',     desc:'Smash every brick with your ball.', tag:'ACTION',  diff:2,ca:'var(--neon-f)',cost:10},
+  {id:'2048',    icon:'🔢',name:'2048',         desc:'Merge tiles. Reach 2048.',           tag:'STRATEGY',diff:2,ca:'var(--neon-c)',cost:10},
+  {id:'flappy',  icon:'🐦',name:'Flappy Bird',  desc:'Tap to flap. Dodge every pipe.',    tag:'ARCADE',  diff:3,ca:'var(--neon-d)',cost:10},
+],skill:[
+  {id:'mole',    icon:'🦔',name:'Whack-a-Mole', desc:'30 seconds. Combo for bonus!',      tag:'REFLEX',  diff:1,ca:'var(--neon-c)',cost:5},
+  {id:'memory',  icon:'🃏',name:'Memory Match',  desc:'Flip cards. Find all pairs.',       tag:'MEMORY',  diff:1,ca:'var(--neon-e)',cost:5},
+  {id:'reaction',icon:'⚡',name:'Reaction Test', desc:'Click when it turns green.',        tag:'SPEED',   diff:1,ca:'var(--neon-b)',cost:0},
+  {id:'typing',  icon:'⌨️',name:'Typing Speed',  desc:'60-second WPM challenge.',          tag:'SKILL',   diff:2,ca:'#c0c0e0',cost:0},
+  {id:'simon',   icon:'🔴',name:'Simon Says',    desc:'Follow the growing pattern.',       tag:'MEMORY',  diff:2,ca:'var(--neon-b)',cost:5},
+]};
+function dots(n){return[1,2,3].map(function(i){return'<span class="'+(i<=n?'':'off')+'"></span>';}).join('');}
+function costBadge(c){return c===0?'<span class="cost-badge free">FREE</span>':'<span class="cost-badge">🪙 '+c+'</span>';}
+function card(g){return'<a class="game-card" href="'+g.id+'.html" style="--ca:'+g.ca+'">'+
+  '<div class="card-top"><span class="card-icon">'+g.icon+'</span><span class="card-tag">'+g.tag+'</span></div>'+
+  '<div class="card-name">'+g.name+'</div><div class="card-desc">'+g.desc+'</div>'+
+  '<div class="card-footer"><span class="card-play">PLAY</span>'+
+  '<div style="display:flex;align-items:center;gap:7px;">'+costBadge(g.cost)+'<span class="card-diff">'+dots(g.diff)+'</span></div>'+
+  '</div></a>';}
+document.getElementById('grid-classic').innerHTML=GAMES.classic.map(card).join('');
+document.getElementById('grid-skill').innerHTML=GAMES.skill.map(card).join('');
+function refresh(){
+  var done=0;var cs=CoinEngine.getChallengeState();for(var k in cs)if(cs[k].claimed)done++;
+  document.getElementById('s-challs').textContent=done;
+}
+document.addEventListener('az:balance',refresh);refresh();
+var tb=document.getElementById('theme-btn');
+tb.addEventListener('click',function(){CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
+tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
+document.addEventListener('az:xp',function(e){
+  document.querySelectorAll('.az-level').forEach(function(el){el.textContent='Lv.'+e.detail.level;});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-e);}
+.section-block{width:100%;max-width:600px;background:var(--card-bg);border:1px solid var(--line2);border-radius:var(--radius);padding:20px;}
+.stats-table{width:100%;border-collapse:collapse;}
+.stats-table th{font-family:var(--font-mono);font-size:.55rem;color:var(--muted);letter-spacing:.12em;text-align:left;padding:6px 0;border-bottom:1px solid var(--line2);}
+.stats-table td{font-family:var(--font-mono);font-size:.72rem;padding:7px 4px;border-bottom:1px solid var(--line);}
+.stats-table td:last-child{text-align:right;color:var(--neon-a);}
+.pu-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;}
+.pu-card{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;}
+.pu-icon{font-size:1.6rem;}
+.pu-name{font-family:var(--font-mono);font-size:.62rem;font-weight:700;color:var(--text);}
+.pu-desc{font-size:.58rem;color:var(--muted);line-height:1.5;}
+.pu-owned{font-family:var(--font-mono);font-size:.6rem;color:var(--neon-d);}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+
+<div class="page" style="gap:20px;padding-top:16px;">
+
+  <!-- Hero -->
+  <div class="profile-hero" style="width:100%;max-width:600px;">
+    <div class="profile-avatar" id="avatar">🎮</div>
+    <div class="profile-name">PLAYER ONE</div>
+    <div class="level-badge" style="font-size:.85rem;">⭐ <span class="az-level">Lv.1</span> &nbsp;·&nbsp; <span id="xp-cur">0</span> / <span id="xp-next">100</span> XP</div>
+    <div class="profile-xp-bar-wrap">
+      <div class="profile-xp-fill az-xp-bar" style="width:0%"></div>
+    </div>
+    <div class="streak-badge">🔥 <span class="az-streak">0</span>-day streak &nbsp;·&nbsp; Best: <span id="best-streak">0</span></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+      <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+    </div>
+    <!-- Stats row -->
+    <div class="profile-stats-grid" style="margin-top:8px;">
+      <div class="pstat"><div class="v" id="ps-games">0</div><div class="l">GAMES PLAYED</div></div>
+      <div class="pstat"><div class="v" id="ps-coins">0</div><div class="l">COINS EARNED</div></div>
+      <div class="pstat"><div class="v" id="ps-achiev">0</div><div class="l">ACHIEVEMENTS</div></div>
+    </div>
+  </div>
+
+  <!-- Achievements -->
+  <div class="section-block">
+    <div class="section-title">ACHIEVEMENTS</div>
+    <div class="ach-grid" id="ach-grid"></div>
+  </div>
+
+  <!-- Game stats -->
+  <div class="section-block">
+    <div class="section-title">GAME STATS</div>
+    <table class="stats-table">
+      <thead><tr><th>GAME</th><th>PLAYS</th><th>WINS</th><th>BEST SCORE</th></tr></thead>
+      <tbody id="stats-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Power-up inventory -->
+  <div class="section-block">
+    <div class="section-title">POWER-UP SHOP</div>
+    <p style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);margin-bottom:12px;">Activate before starting a game in the pre-game screen. Effects apply once.</p>
+    <div class="pu-shop-grid" id="pu-grid"></div>
+  </div>
+
+  <!-- Reset -->
+  <div style="max-width:600px;width:100%;text-align:center;">
+    <button class="btn" style="--c:var(--neon-b);font-size:.7rem;" onclick="confirmReset()">⚠️ Reset All Progress</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-e);box-shadow:0 0 8px var(--neon-e)"></span>PROFILE</div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var GAME_NAMES={snake:'🐍 Snake',tetris:'🟦 Tetris',breakout:'🟠 Breakout','2048':'🔢 2048',
+  flappy:'🐦 Flappy',mole:'🦔 Whack-a-Mole',memory:'🃏 Memory',reaction:'⚡ Reaction',
+  typing:'⌨️ Typing',simon:'🔴 Simon',casino:'🎰 Casino',slots:'🎰 Slots',roulette:'🎡 Roulette'};
+
+function renderPage(){
+  /* XP */
+  var xpd=CoinEngine.getXPData();
+  var nextXP=CoinEngine.getXPForNextLevel(xpd.level);
+  var prevXP=CoinEngine.XP_PER_LEVEL[xpd.level-1]||0;
+  var cur=xpd.xp-prevXP, needed=nextXP-prevXP;
+  document.getElementById('xp-cur').textContent=xpd.xp;
+  document.getElementById('xp-next').textContent=xpd.level>=50?'MAX':nextXP;
+  document.querySelectorAll('.az-xp-bar').forEach(function(b){b.style.width=(xpd.level>=50?100:Math.round(cur/needed*100))+'%';});
+
+  /* Streak */
+  var st=CoinEngine.getStreak();
+  document.querySelectorAll('.az-streak').forEach(function(e){e.textContent=st.current;});
+  document.getElementById('best-streak').textContent=st.best;
+
+  /* Quick stats */
+  var stats=CoinEngine.getStats();
+  var totalPlays=0;
+  for(var k in stats) totalPlays+=(stats[k].plays||0);
+  var achCount=Object.keys(CoinEngine.getAchievements()).length;
+  document.getElementById('ps-games').textContent=totalPlays;
+  document.getElementById('ps-coins').textContent=CoinEngine.getBalance();
+  document.getElementById('ps-achiev').textContent=achCount+'/'+CoinEngine.ACHIEVEMENTS.length;
+
+  /* Achievements */
+  var achState=CoinEngine.getAchievements();
+  var grid=document.getElementById('ach-grid');
+  grid.innerHTML='';
+  CoinEngine.ACHIEVEMENTS.forEach(function(a){
+    var unlocked=!!achState[a.id];
+    var card=document.createElement('div');
+    card.className='ach-card '+(unlocked?'unlocked':'locked');
+    card.innerHTML='<div class="ach-icon">'+(a.secret&&!unlocked?'❓':a.icon)+'</div>'+
+      '<div class="ach-name">'+(a.secret&&!unlocked?'???':a.label)+'</div>'+
+      '<div class="ach-desc">'+(a.secret&&!unlocked?'Secret achievement':a.desc)+'</div>'+
+      '<div class="ach-xp">+'+a.xp+' XP</div>'+
+      (unlocked?'<div style="font-family:var(--font-mono);font-size:.52rem;color:var(--neon-d)">✓ UNLOCKED</div>':'');
+    grid.appendChild(card);
+  });
+
+  /* Game stats table */
+  var tbody=document.getElementById('stats-body');
+  tbody.innerHTML='';
+  var order=['snake','tetris','breakout','2048','flappy','mole','memory','reaction','typing','simon','casino'];
+  order.forEach(function(gid){
+    var s=stats[gid]||{plays:0,best:0,wins:0};
+    if(!s.plays)return;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(GAME_NAMES[gid]||gid)+'</td><td style="text-align:right">'+s.plays+'</td>'+
+      '<td style="text-align:right">'+s.wins+'</td><td>'+s.best+'</td>';
+    tbody.appendChild(tr);
+  });
+  if(!tbody.children.length){
+    tbody.innerHTML='<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px;">No games played yet!</td></tr>';
+  }
+
+  /* Power-up shop */
+  var puGrid=document.getElementById('pu-grid');
+  puGrid.innerHTML='';
+  var owned=CoinEngine.getPowerUps();
+  CoinEngine.POWERUP_DEFS.forEach(function(p){
+    var qty=owned[p.id]||0;
+    var card=document.createElement('div');
+    card.className='pu-card';
+    card.innerHTML='<div class="pu-icon">'+p.icon+'</div>'+
+      '<div class="pu-name">'+p.label+'</div>'+
+      '<div class="pu-desc">'+p.desc+'</div>'+
+      (qty>0?'<div class="pu-owned">Owned: '+qty+'</div>':'')+
+      '<button class="btn filled" style="--c:var(--neon-c);font-size:.65rem;padding:7px 14px;" onclick="buyPU(\''+p.id+'\',this)">'+
+        'BUY 🪙'+p.cost+'</button>';
+    puGrid.appendChild(card);
+  });
+}
+
+function buyPU(id,btn){
+  if(CoinEngine.buyPowerUp(id)){
+    SoundEngine.play('coin');
+    renderPage();
+  } else {
+    CoinEngine.toast('Not enough coins!','warn');
+  }
+}
+
+function confirmReset(){
+  if(confirm('Reset ALL progress? This cannot be undone!')){
+    ['az_coins','az_stats','az_challenges','az_xp','az_streak','az_quests',
+     'az_achieve','az_powerup','az_history','az_casino_stats'].forEach(function(k){
+      localStorage.removeItem(k);
+    });
+    CoinEngine.toast('Progress reset!','warn');
+    setTimeout(function(){location.reload();},800);
+  }
+}
+
+document.addEventListener('az:xp',renderPage);
+document.addEventListener('az:achievement',renderPage);
+renderPage();
+</script>
+</body>
+</html>

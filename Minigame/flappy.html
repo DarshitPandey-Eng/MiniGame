@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root { --accent: var(--neon-d); }
+#cv { display:block; touch-action:none; }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-d);box-shadow:0 0 8px var(--neon-d)"></span>FLAPPY BIRD</div>
+  <div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>
+  <div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>
+  <div class="coin-nav"><span>🪙</span><span id="nav-bal">0</span></div>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:16px;gap:12px;">
+  <div class="game-frame" style="position:relative;">
+    <canvas id="cv"></canvas>
+
+    <div class="overlay" id="ov-start">
+      <div class="ov-title" style="color:var(--neon-d)">FLAPPY BIRD</div>
+      <div class="ov-sub">
+        Press <b>Space</b>, click, or tap to flap.<br>
+        Dodge every pipe. Good luck!<br><br>
+        Cost: <span style="color:var(--neon-c)">🪙 10 per play</span>
+      </div>
+      <div class="cost-badge" id="balance-check">Balance: 🪙 0</div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-d)" id="start-btn" onclick="startGame()">▶ START (10 🪙)</button>
+        <a class="btn" style="--c:var(--neon-c)" href="wallet.html">GET COINS</a>
+      </div>
+    </div>
+    <div class="overlay hidden" id="ov-over">
+      <div class="ov-title" style="color:var(--neon-b)">GAME OVER</div>
+      <div class="ov-score" id="sc-final">0</div>
+      <div class="ov-sub">Best: <b id="hi-final">0</b> &nbsp;|&nbsp; Earned: <b id="earned-coins">0</b> 🪙</div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-d)" onclick="startGame()">▶ RETRY (10 🪙)</button>
+        <a class="btn" href="index.html">HUB</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Theme ── */
+const tb=document.getElementById('tb');
+tb.addEventListener('click',()=>{CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
+tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
+function refreshBal(){
+  const b=CoinEngine.getBalance();
+  document.getElementById('nav-bal').textContent=b;
+  document.getElementById('balance-check').textContent='Balance: 🪙 '+b;
+}
+document.addEventListener('az:balance',refreshBal); refreshBal();
+
+/* ── Canvas + DPR ── */
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const DPR = Math.min(window.devicePixelRatio || 1, 2); // cap at 2x for perf
+
+/* Base logical dimensions (what we code against) */
+const LW = 360, LH = 500;
+
+/* Physical canvas size (responsive) */
+let cw, ch;
+function resizeCanvas() {
+  const maxW = Math.min(window.innerWidth - 32, 400);
+  const scale = maxW / LW;
+  cw = Math.round(LW * scale);
+  ch = Math.round(LH * scale);
+  cv.style.width  = cw + 'px';
+  cv.style.height = ch + 'px';
+  cv.width  = cw * DPR;
+  cv.height = ch * DPR;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(DPR * scale, DPR * scale);  /* always draw in LW×LH logical space */
+}
+resizeCanvas();
+window.addEventListener('resize', () => { if (!gameState || gameState==='idle') resizeCanvas(); });
+
+/* ── Constants (logical px) ── */
+const GRAV    = 0.38;
+const FLAP_V  = -7.2;
+const PIPE_W  = 54;
+const PIPE_GAP= 155;
+const PIPE_SPD= 2.6;
+const BIRD_R  = 14;
+
+/* ── State ── */
+let gameState = 'idle'; // idle | playing | dead
+let bird, pipes, score, hi = 0, raf, pipeTimer, particles, stars;
+
+function makeBird() {
+  return { x: LW * 0.25, y: LH * 0.45, vy: 0, rot: 0 };
+}
+function makeStars() {
+  return Array.from({length:50}, ()=>({
+    x: Math.random() * LW,
+    y: Math.random() * LH,
+    r: 0.5 + Math.random() * 1.5,
+    t: Math.random() * Math.PI * 2
+  }));
+}
+
+function startGame() {
+  if (!CoinEngine.spend(10)) {
+    alert('Not enough coins! Visit the Wallet to get more.');
+    return;
+  }
+  document.getElementById('ov-start').classList.add('hidden');
+  document.getElementById('ov-over').classList.add('hidden');
+
+  bird      = makeBird();
+  pipes     = [];
+  score     = 0;
+  particles = [];
+  stars     = makeStars();
+  pipeTimer = 0;
+  gameState = 'playing';
+
+  setScore(0);
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(loop);
+}
+
+/* ── Main loop ── */
+let lastTs = 0;
+function loop(ts) {
+  if (gameState !== 'playing') return;
+  raf = requestAnimationFrame(loop);
+
+  const dt = Math.min((ts - lastTs) / 16.67, 2.5); // normalize to 60fps, cap spike
+  lastTs = ts;
+
+  update(dt);
+  draw();
+}
+
+function update(dt) {
+  /* Bird */
+  bird.vy  += GRAV * dt;
+  bird.vy   = Math.min(bird.vy, 12);      // terminal velocity
+  bird.y   += bird.vy * dt;
+  bird.rot  = Math.max(-28, Math.min(85, bird.vy * 3.5));
+
+  /* Ceiling */
+  if (bird.y - BIRD_R < 0) { bird.y = BIRD_R; bird.vy = 0; }
+
+  /* Floor */
+  if (bird.y + BIRD_R > LH) { die(); return; }
+
+  /* Pipe timer */
+  pipeTimer += dt;
+  if (pipeTimer > 88) { addPipe(); pipeTimer = 0; }
+
+  /* Move pipes */
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    pipes[i].x -= PIPE_SPD * dt;
+    if (pipes[i].x + PIPE_W < 0) { pipes.splice(i, 1); continue; }
+
+    /* Score */
+    if (!pipes[i].scored && pipes[i].x + PIPE_W < bird.x) {
+      pipes[i].scored = true;
+      score++;
+      setScore(score);
+      spawnParticles(bird.x, bird.y, '#ffe135');
+    }
+
+    /* Collision (AABB vs circle) */
+    if (circleRect(bird.x, bird.y, BIRD_R - 3,
+        pipes[i].x, 0, PIPE_W, pipes[i].topH) ||
+        circleRect(bird.x, bird.y, BIRD_R - 3,
+        pipes[i].x, pipes[i].topH + PIPE_GAP, PIPE_W, LH)) {
+      die(); return;
+    }
+  }
+
+  /* Particles */
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.15 * dt;
+    p.life -= 0.04 * dt; p.r *= (1 - 0.04 * dt);
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  /* Stars */
+  stars.forEach(s => s.t += 0.03 * dt);
+}
+
+function addPipe() {
+  const minTop = LH * 0.15;
+  const maxTop = LH * 0.70;
+  pipes.push({
+    x: LW + PIPE_W,
+    topH: minTop + Math.random() * (maxTop - minTop),
+    scored: false
+  });
+}
+
+function circleRect(cx, cy, cr, rx, ry, rw, rh) {
+  const nx = Math.max(rx, Math.min(cx, rx + rw));
+  const ny = Math.max(ry, Math.min(cy, ry + rh));
+  return (cx - nx) ** 2 + (cy - ny) ** 2 < cr * cr;
+}
+
+function die() {
+  gameState = 'dead';
+  if (score > hi) hi = score;
+
+  // reward coins: 8 per pipe cleared
+  const earned = score * 8;
+  if (earned > 0) CoinEngine.add(earned);
+  CoinEngine.recordGame('flappy', score, false);
+
+  document.getElementById('sc-final').textContent = score;
+  document.getElementById('hi-final').textContent = hi;
+  document.getElementById('hi').textContent = hi;
+  document.getElementById('earned-coins').textContent = earned;
+  document.getElementById('ov-over').classList.remove('hidden');
+  refreshBal();
+}
+
+function spawnParticles(cx, cy, col) {
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 3;
+    particles.push({ x:cx, y:cy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2.5, r:3+Math.random()*3, life:1, col });
+  }
+}
+
+/* ── Draw ── */
+function draw() {
+  /* Sky */
+  const sky = ctx.createLinearGradient(0, 0, 0, LH);
+  const isDark = CoinEngine.getTheme() === 'dark';
+  sky.addColorStop(0, isDark ? '#04040f' : '#e8f4ff');
+  sky.addColorStop(1, isDark ? '#0a0a20' : '#c8e8ff');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, LW, LH);
+
+  /* Stars (dark mode only) */
+  if (isDark) {
+    stars.forEach(s => {
+      ctx.globalAlpha = 0.2 + 0.3 * Math.sin(s.t);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  /* Ground line */
+  ctx.fillStyle = isDark ? '#0d1a0d' : '#5a9e40';
+  ctx.fillRect(0, LH - 30, LW, 30);
+  ctx.fillStyle = isDark ? '#1a3a1a' : '#7bbf60';
+  ctx.fillRect(0, LH - 30, LW, 6);
+
+  /* Pipes */
+  pipes.forEach(p => drawPipe(p));
+
+  /* Particles */
+  particles.forEach(p => {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.col; ctx.shadowColor = p.col; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0, p.r), 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+  /* Bird */
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.rotate(bird.rot * Math.PI / 180);
+
+  /* Body */
+  ctx.fillStyle = '#ffe135'; ctx.shadowColor = '#ffe135'; ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.arc(0, 0, BIRD_R, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+
+  /* Wing */
+  ctx.fillStyle = '#ff9900';
+  ctx.beginPath(); ctx.ellipse(-3, 3, 9, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+
+  /* White eye */
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(5, -4, 5.5, 0, Math.PI * 2); ctx.fill();
+
+  /* Pupil */
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(6.5, -3.5, 2.8, 0, Math.PI * 2); ctx.fill();
+
+  /* Beak */
+  ctx.fillStyle = '#ff6b35';
+  ctx.beginPath(); ctx.moveTo(12, -2); ctx.lineTo(21, 0); ctx.lineTo(12, 5); ctx.closePath(); ctx.fill();
+
+  ctx.restore();
+
+  /* HUD score */
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LW/2 - 40, 14, 80, 36);
+  ctx.fillStyle = '#fff'; ctx.shadowColor = '#ffe135'; ctx.shadowBlur = 10;
+  ctx.font = 'bold 26px "Bebas Neue", cursive';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(score, LW / 2, 33);
+  ctx.restore();
+  ctx.shadowBlur = 0;
+}
+
+function drawPipe(p) {
+  const isDark = CoinEngine.getTheme() === 'dark';
+  const bodyColor = isDark ? '#1a4a1a' : '#3d9e3d';
+  const capColor  = isDark ? '#2a6a2a' : '#5abf5a';
+  const glowColor = isDark ? '#00e676' : '#3d9e3d';
+  const CAP_H = 22, CAP_EXTRA = 7;
+
+  /* Top pipe body */
+  ctx.fillStyle = bodyColor; ctx.shadowColor = glowColor; ctx.shadowBlur = 6;
+  ctx.fillRect(p.x, 0, PIPE_W, p.topH);
+
+  /* Top cap */
+  ctx.fillStyle = capColor;
+  ctx.fillRect(p.x - CAP_EXTRA, p.topH - CAP_H, PIPE_W + CAP_EXTRA * 2, CAP_H);
+
+  /* Bottom pipe body */
+  const botY = p.topH + PIPE_GAP;
+  ctx.fillStyle = bodyColor;
+  ctx.fillRect(p.x, botY, PIPE_W, LH - botY);
+
+  /* Bottom cap */
+  ctx.fillStyle = capColor;
+  ctx.fillRect(p.x - CAP_EXTRA, botY, PIPE_W + CAP_EXTRA * 2, CAP_H);
+
+  /* Highlight stripe */
+  ctx.fillStyle = 'rgba(255,255,255,0.09)';
+  ctx.fillRect(p.x + 5, 0, 8, p.topH);
+  ctx.fillRect(p.x + 5, botY, 8, LH - botY);
+  ctx.shadowBlur = 0;
+}
+
+function setScore(v) {
+  document.getElementById('sc').textContent = v;
+}
+
+/* ── Flap ── */
+function flap() {
+  if (gameState !== 'playing') return;
+  bird.vy = FLAP_V;
+  lastTs = performance.now(); // reset dt to avoid spike after flap
+}
+
+/* ── Input ── */
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); flap(); }
+});
+cv.addEventListener('click', flap);
+cv.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, { passive: false });
+
+/* ── Initial draw ── */
+stars = makeStars();
+bird  = { x: LW * 0.25, y: LH * 0.45, vy: 0, rot: 0 };
+pipes = []; particles = []; pipeTimer = 0;
+draw();
+refreshBal();
+document.getElementById('ov-start').classList.remove('hidden');
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Speed — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:#e8eaf6;}
+.tw{width:min(640px,96vw);display:flex;flex-direction:column;gap:13px;}
+.tstat-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+.tstat{text-align:center;min-width:65px;}
+.tstat .v{font-family:var(--font-display);font-size:1.85rem;letter-spacing:.04em;}
+.tstat .l{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.1em;}
+.wpm-v{color:var(--neon-a);}
+.acc-v{color:var(--neon-d);}
+.time-v{color:var(--neon-c);}
+.words-v{color:var(--neon-e);}
+#words-box{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:16px 18px;font-size:1rem;line-height:2.3;letter-spacing:.04em;position:relative;overflow:hidden;height:128px;cursor:text;overflow-y:auto;}
+.letter{color:var(--dim);}
+.letter.ok{color:var(--text);}
+.letter.bad{color:var(--neon-b);}
+.letter.extra{color:#c62828;text-decoration:underline;}
+.cursor-beam{display:inline-block;width:2px;height:1em;background:var(--neon-a);vertical-align:middle;animation:cblink .7s step-end infinite;box-shadow:0 0 5px var(--neon-a);margin-left:1px;}
+@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}
+#ty-input{background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:1rem;padding:12px 14px;outline:none;width:100%;transition:border-color .15s,box-shadow .15s;caret-color:var(--neon-a);}
+#ty-input:focus{border-color:var(--neon-a);box-shadow:0 0 0 3px rgba(0,229,255,.1);}
+.res-box{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:24px;text-align:center;display:none;flex-direction:column;align-items:center;gap:14px;}
+.res-box.show{display:flex;}
+.r-wpm{font-family:var(--font-display);font-size:clamp(2.8rem,10vw,4.5rem);letter-spacing:.04em;color:var(--neon-a);line-height:1;}
+.r-wpm span{font-family:var(--font-mono);font-size:1rem;color:var(--muted);}
+.r-grid{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.r-item b{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-c);}
+.r-item small{display:block;font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;margin-top:2px;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+<div class="page" style="padding-top:20px;">
+  <div class="tw">
+    <div class="tstat-row">
+      <div class="tstat"><div class="v wpm-v"  id="t-wpm">0</div><div class="l">WPM</div></div>
+      <div class="tstat"><div class="v acc-v"  id="t-acc">100%</div><div class="l">ACCURACY</div></div>
+      <div class="tstat"><div class="v time-v" id="t-time">60</div><div class="l">SECONDS</div></div>
+      <div class="tstat"><div class="v words-v" id="t-words">0</div><div class="l">WORDS</div></div>
+    </div>
+    <div class="prog"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+    <div id="words-box" onclick="document.getElementById('ty-input').focus()"></div>
+    <input id="ty-input" type="text" placeholder="Start typing to begin…"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+    <div class="res-box" id="results">
+      <div class="r-wpm" id="r-wpm">0 <span>WPM</span></div>
+      <div class="r-grid">
+        <div class="r-item"><b id="r-acc">100%</b><small>ACCURACY</small></div>
+        <div class="r-item"><b id="r-correct">0</b><small>CORRECT WORDS</small></div>
+        <div class="r-item"><b id="r-errors">0</b><small>ERRORS</small></div>
+        <div class="r-item"><b id="r-earned">0</b><small>🪙 EARNED</small></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-a)" onclick="newGame()">▶ AGAIN</button>
+        <a class="btn" href="index.html">HUB</a>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn filled" style="--c:var(--neon-a)" onclick="newGame()" id="start-btn">▶ START</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot"></span>TYPING SPEED</div>'+
+    '<div class="score-pill"><span class="val" id="sc-wpm">0</span><span class="lbl">WPM</span></div>'+
+    '<div class="score-pill"><span class="val" id="sc-best">0</span><span class="lbl">BEST</span></div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+var BANK='the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us great between need large often hand high place hold turn here why help put long play small number off always move live never last change much house point today world life few north open begin show hear again animal mother stand seem enough almost above both early yet real story computer science design software developer engineer program algorithm data network server client function variable class object array list queue stack tree graph binary search sort merge quick bubble selection insertion fibonacci recursion dynamic async await promise closure scope prototype inheritance polymorphism encapsulation interface method property constructor'.split(' ');
+
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+
+var DURATION=60;
+var words=[],wordEls=[],curIdx=0,correctWords=0,errorWords=0,correctChars=0;
+var timeLeft=DURATION,started=false,finished=false,tmr,bestWpm=0;
+var box=document.getElementById('words-box');
+var inp=document.getElementById('ty-input');
+
+function newGame(){
+  words=shuffle(BANK).slice(0,180);
+  curIdx=0;correctWords=0;errorWords=0;correctChars=0;
+  timeLeft=DURATION;started=false;finished=false;
+  clearInterval(tmr);
+  inp.value='';inp.disabled=false;
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('start-btn').style.display='';
+  updateHUD();buildDisplay();
+  inp.focus();
+}
+
+function buildDisplay(){
+  box.innerHTML='';wordEls=[];
+  words.forEach(function(w,wi){
+    var span=document.createElement('span');
+    span.style.display='inline';span.dataset.idx=wi;
+    w.split('').forEach(function(ch){
+      var c=document.createElement('span');c.className='letter';c.textContent=ch;span.appendChild(c);
+    });
+    box.appendChild(span);
+    box.appendChild(document.createTextNode(' '));
+    wordEls.push(span);
+  });
+  placeCursor(0,0);
+}
+
+function placeCursor(wi,ci){
+  document.querySelectorAll('.cursor-beam').forEach(function(e){e.parentNode&&e.parentNode.removeChild(e);});
+  var wEl=wordEls[wi];if(!wEl)return;
+  var chars=wEl.querySelectorAll('.letter');
+  var cur=document.createElement('span');cur.className='cursor-beam';
+  if(ci<chars.length) wEl.insertBefore(cur,chars[ci]);
+  else wEl.appendChild(cur);
+  /* scroll into view */
+  var top=wEl.offsetTop;
+  if(top>box.scrollTop+box.clientHeight-40) box.scrollTop=top-20;
+}
+
+inp.addEventListener('input',function(){
+  if(finished)return;
+  var val=inp.value;
+  if(!started&&val.length>0){
+    started=true;
+    document.getElementById('start-btn').style.display='none';
+    tmr=setInterval(tick,1000);
+  }
+  if(val.endsWith(' ')){submitWord(val.trimEnd());inp.value='';return;}
+  colorWord(curIdx,val);
+  placeCursor(curIdx,val.length);
+});
+
+inp.addEventListener('keydown',function(e){
+  if(finished)return;
+  if(e.key==='Backspace'&&inp.value===''&&curIdx>0){
+    curIdx--;
+    var wEl=wordEls[curIdx];
+    wEl.querySelectorAll('.letter').forEach(function(c){c.className='letter';});
+    wEl.querySelectorAll('.extra').forEach(function(c){c.parentNode&&c.parentNode.removeChild(c);});
+    placeCursor(curIdx,0);
+  }
+});
+
+function submitWord(typed){
+  var target=words[curIdx];
+  colorWord(curIdx,typed,true);
+  if(typed===target){correctWords++;correctChars+=target.length;}
+  else errorWords++;
+  curIdx++;
+  if(curIdx<words.length)placeCursor(curIdx,0);
+  updateHUD();
+}
+
+function colorWord(wi,typed,final){
+  var wEl=wordEls[wi];if(!wEl)return;
+  var target=words[wi];
+  wEl.querySelectorAll('.extra').forEach(function(c){c.parentNode&&c.parentNode.removeChild(c);});
+  var letters=wEl.querySelectorAll('.letter');
+  for(var i=0;i<letters.length;i++){
+    letters[i].className='letter';
+    if(i<typed.length) letters[i].className='letter '+(typed[i]===target[i]?'ok':'bad');
+  }
+  if(typed.length>target.length){
+    typed.slice(target.length).split('').forEach(function(ch){
+      var ex=document.createElement('span');ex.className='extra';ex.textContent=ch;wEl.appendChild(ex);
+    });
+  }
+}
+
+function tick(){
+  timeLeft--;
+  document.getElementById('t-time').textContent=timeLeft;
+  if(timeLeft<=0)endGame();
+  updateHUD();
+}
+
+function updateHUD(){
+  var el=DURATION-timeLeft,wpm=el>0?Math.round((correctWords/el)*60):0;
+  var tot=correctWords+errorWords,acc=tot>0?Math.round(correctWords/tot*100):100;
+  document.getElementById('t-wpm').textContent=wpm;
+  document.getElementById('t-acc').textContent=acc+'%';
+  document.getElementById('t-words').textContent=correctWords;
+  document.getElementById('sc-wpm').textContent=wpm;
+  document.getElementById('prog').style.width=(curIdx/words.length*100)+'%';
+}
+
+function endGame(){
+  finished=true;clearInterval(tmr);inp.disabled=true;
+  var wpm=Math.round((correctWords/DURATION)*60);
+  var tot=correctWords+errorWords,acc=tot>0?Math.round(correctWords/tot*100):100;
+  if(wpm>bestWpm){bestWpm=wpm;document.getElementById('sc-best').textContent=wpm;}
+  var earned=CoinEngine.REWARDS.typing(wpm);
+  if(earned>0){CoinEngine.add(earned,'Typing '+wpm+' WPM',earned);}
+  CoinEngine.recordGame('typing',wpm,wpm>=40,{earned:earned});
+  document.getElementById('r-wpm').innerHTML=wpm+' <span>WPM</span>';
+  document.getElementById('r-acc').textContent=acc+'%';
+  document.getElementById('r-correct').textContent=correctWords;
+  document.getElementById('r-errors').textContent=errorWords;
+  document.getElementById('r-earned').textContent=earned;
+  document.getElementById('results').classList.add('show');
+}
+
+newGame();
+</script>
+</body>
+</html>

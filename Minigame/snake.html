@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root { --accent: var(--neon-d); }
+#cv { display:block; background:var(--bg0); touch-action:none; }
+.speed-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.sp-btn {
+  font-family:var(--font-mono); font-size:.65rem; font-weight:700;
+  padding:8px 16px; border-radius:6px;
+  border:1px solid var(--dim); color:var(--muted);
+  background:transparent; cursor:pointer; transition:all .15s;
+}
+.sp-btn.on, .sp-btn:hover {
+  border-color:var(--neon-d); color:var(--neon-d);
+  background:rgba(0,230,118,.08);
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" id="main-nav"></nav>
+
+<div class="page">
+  <div class="game-frame" style="position:relative;">
+    <canvas id="cv"></canvas>
+
+    <!-- Start overlay -->
+    <div class="overlay" id="ov-start">
+      <div class="ov-title" style="color:var(--neon-d)">SNAKE</div>
+      <div class="ov-sub">Arrow keys / WASD to steer.<br>Eat 🍎 to grow. Don't crash!<br><br>Cost: <b>🪙 10</b> · Earn coins per food eaten.</div>
+      <div class="speed-row">
+        <button class="sp-btn"    onclick="setSpeed(160,this)">EASY</button>
+        <button class="sp-btn on" onclick="setSpeed(105,this)">NORMAL</button>
+        <button class="sp-btn"    onclick="setSpeed(65,this)">HARD</button>
+        <button class="sp-btn"    onclick="setSpeed(38,this)">INSANE</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-d)" onclick="startGame()">▶ START (🪙 10)</button>
+        <a class="btn" style="--c:var(--neon-c)" href="wallet.html">GET COINS</a>
+      </div>
+    </div>
+
+    <!-- Game over overlay -->
+    <div class="overlay hidden" id="ov-over">
+      <div class="ov-title" style="color:var(--neon-b)">GAME OVER</div>
+      <div class="ov-score" id="sc-final">0</div>
+      <div class="ov-sub">Coins earned: <b id="earned">0</b> 🪙</div>
+      <div class="btn-row">
+        <button class="btn filled" style="--c:var(--neon-d)" onclick="startGame()">▶ RETRY (🪙 10)</button>
+        <a class="btn" href="index.html">HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- D-pad for mobile -->
+  <div class="dpad">
+    <div class="dpad-void"></div>
+    <div class="dpad-btn" id="du">▲</div>
+    <div class="dpad-void"></div>
+    <div class="dpad-btn" id="dl">◀</div>
+    <div class="dpad-void"></div>
+    <div class="dpad-btn" id="dr">▶</div>
+    <div class="dpad-void"></div>
+    <div class="dpad-btn" id="dd">▼</div>
+    <div class="dpad-void"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var nav = document.getElementById('main-nav');
+  nav.innerHTML =
+    '<a class="nav-back" href="index.html">← Hub</a>' +
+    '<div class="nav-sep"></div>' +
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-d);box-shadow:0 0 8px var(--neon-d)"></span>SNAKE</div>' +
+    '<div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>' +
+    '<div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>' +
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>' +
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb = document.getElementById('tb');
+  function syncTheme() { tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); syncTheme(); });
+  syncTheme();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+  });
+})();
+
+/* ─ Canvas setup ─ */
+var cv  = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+var COLS = 20, ROWS = 20, TILE = 22;
+var PX = COLS * TILE;  /* logical canvas width/height */
+var PY = ROWS * TILE;
+
+cv.style.width  = PX + 'px';
+cv.style.height = PY + 'px';
+cv.width  = PX * DPR;
+cv.height = PY * DPR;
+ctx.scale(DPR, DPR);
+
+/* ─ Game state ─ */
+var snake, dir, nextDir, food, score, hi = 0;
+var msPerTick = 105, lastTick = 0;
+var rafId = 0, running = false;
+var particles = [];
+var totalEarned = 0;
+
+function setSpeed(ms, btn) {
+  msPerTick = ms;
+  document.querySelectorAll('.sp-btn').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+}
+
+function startGame() {
+  if (!CoinEngine.spend(10)) {
+    CoinEngine.toast('Not enough coins! Visit the Wallet.', 'warn');
+    return;
+  }
+  CoinEngine.addHistory('🐍', 'Snake — started', -10);
+
+  document.getElementById('ov-start').classList.add('hidden');
+  document.getElementById('ov-over').classList.add('hidden');
+
+  snake    = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir      = {x:1, y:0};
+  nextDir  = {x:1, y:0};
+  score    = 0;
+  totalEarned = 0;
+  particles = [];
+  running  = true;
+  lastTick = 0;
+  placeFood();
+  setScoreDisplay(0);
+
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+}
+
+/* ─ Food placement ─ */
+function placeFood() {
+  var tries = 0, p;
+  do {
+    p = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+    tries++;
+  } while (tries < 200 && snake.some(function(s){ return s.x===p.x && s.y===p.y; }));
+  food = p;
+}
+
+/* ─ Main loop ─ */
+function loop(ts) {
+  if (!running) return;
+  rafId = requestAnimationFrame(loop);
+
+  /* update particles every frame */
+  for (var i = particles.length - 1; i >= 0; i--) {
+    var p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.14;
+    p.life -= 0.035; p.r *= 0.96;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  /* tick on interval */
+  if (ts - lastTick < msPerTick) { draw(); return; }
+  lastTick = ts;
+
+  /* commit direction (no 180° reverse) */
+  if (!(nextDir.x === -dir.x || nextDir.y === -dir.y)) {
+    dir = { x: nextDir.x, y: nextDir.y };
+  }
+
+  var head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+  /* wall + self collision */
+  var hit = head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS;
+  if (!hit) {
+    for (var j = 0; j < snake.length; j++) {
+      if (snake[j].x === head.x && snake[j].y === head.y) { hit = true; break; }
+    }
+  }
+
+  if (hit) {
+    running = false;
+    SoundEngine.play('gameover');
+    var earned = CoinEngine.REWARDS.snake(score);
+    if (earned > 0) {
+      CoinEngine.add(earned, 'Snake — score ' + score, '🐍');
+    }
+    CoinEngine.recordGame('snake', score, false, {earned:earned});
+    if (score > hi) { hi = score; document.getElementById('hi').textContent = hi; }
+    document.getElementById('sc-final').textContent = score + ' pts';
+    document.getElementById('earned').textContent = earned;
+    document.getElementById('ov-over').classList.remove('hidden');
+    draw();
+    return;
+  }
+
+  snake.unshift(head);
+
+  /* eat food */
+  if (head.x === food.x && head.y === food.y) {
+    score += 10;
+    setScoreDisplay(score);
+    spawnParticles(head.x * TILE + TILE/2, head.y * TILE + TILE/2, '#00e676');
+    SoundEngine.play('eat');
+    placeFood();
+  } else {
+    snake.pop();
+  }
+
+  draw();
+}
+
+/* ─ Particles ─ */
+function spawnParticles(cx, cy, col) {
+  for (var i = 0; i < 12; i++) {
+    var a = Math.random() * Math.PI * 2;
+    var sp = 1.5 + Math.random() * 2.5;
+    particles.push({ x:cx, y:cy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2, r:3+Math.random()*3, life:1, col:col });
+  }
+}
+
+/* ─ Draw ─ */
+function draw() {
+  ctx.clearRect(0, 0, PX, PY);
+
+  /* background */
+  var isDark = CoinEngine.getTheme() === 'dark';
+  ctx.fillStyle = isDark ? '#07070f' : '#f0f0f8';
+  ctx.fillRect(0, 0, PX, PY);
+
+  /* grid dots */
+  ctx.fillStyle = isDark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.05)';
+  for (var gx = 0; gx < COLS; gx++) {
+    for (var gy = 0; gy < ROWS; gy++) {
+      ctx.fillRect(gx*TILE + TILE/2 - 0.5, gy*TILE + TILE/2 - 0.5, 1, 1);
+    }
+  }
+
+  /* food — only draw if food exists */
+  if (food) {
+    var pulse = 0.8 + 0.2 * Math.sin(Date.now() * 0.005);
+    ctx.save();
+    ctx.shadowColor = '#ff2d78';
+    ctx.shadowBlur  = 14 * pulse;
+    ctx.font = (TILE - 2) + 'px serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🍎', food.x * TILE + TILE/2, food.y * TILE + TILE/2);
+    ctx.restore();
+  }
+
+  /* snake */
+  if (snake) {
+    for (var si = 0; si < snake.length; si++) {
+      var seg = snake[si];
+      var t = 1 - (si / snake.length) * 0.55;
+      ctx.shadowColor = si < 4 ? '#00e676' : 'transparent';
+      ctx.shadowBlur  = si === 0 ? 16 : si < 3 ? 6 : 0;
+      ctx.fillStyle   = si === 0 ? 'rgba(0,229,255,' + t + ')' : 'rgba(0,230,118,' + t + ')';
+      var pad  = si === 0 ? 1 : 3;
+      var size = TILE - pad * 2;
+      rrect(seg.x*TILE+pad, seg.y*TILE+pad, size, size, si===0 ? 5 : 3);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  /* particles */
+  for (var pi = 0; pi < particles.length; pi++) {
+    var pt = particles[pi];
+    ctx.globalAlpha = Math.max(0, pt.life);
+    ctx.fillStyle   = pt.col;
+    ctx.shadowColor = pt.col;
+    ctx.shadowBlur  = 6;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, Math.max(0.1, pt.r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur  = 0;
+}
+
+function rrect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y,   x+w, y+r,   r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x,   y+h, x,   y+h-r, r);
+  ctx.lineTo(x,   y+r); ctx.arcTo(x,   y,   x+r, y,     r);
+  ctx.closePath();
+}
+
+function setScoreDisplay(v) {
+  document.getElementById('sc').textContent = v;
+}
+
+/* ─ Input ─ */
+var KEY_MAP = {
+  ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0],
+  w:[0,-1], s:[0,1], a:[-1,0], d:[1,0],
+  W:[0,-1], S:[0,1], A:[-1,0], D:[1,0],
+};
+document.addEventListener('keydown', function(e) {
+  var d = KEY_MAP[e.key];
+  if (d) { e.preventDefault(); nextDir = {x:d[0], y:d[1]}; }
+});
+
+document.getElementById('du').addEventListener('click', function(){ nextDir={x:0,y:-1}; });
+document.getElementById('dd').addEventListener('click', function(){ nextDir={x:0,y:1}; });
+document.getElementById('dl').addEventListener('click', function(){ nextDir={x:-1,y:0}; });
+document.getElementById('dr').addEventListener('click', function(){ nextDir={x:1,y:0}; });
+
+var tx0, ty0;
+cv.addEventListener('touchstart', function(e){ tx0=e.touches[0].clientX; ty0=e.touches[0].clientY; }, {passive:true});
+cv.addEventListener('touchend', function(e) {
+  var dx = e.changedTouches[0].clientX - tx0;
+  var dy = e.changedTouches[0].clientY - ty0;
+  if (Math.abs(dx) > Math.abs(dy)) nextDir = {x: dx>0?1:-1, y:0};
+  else nextDir = {x:0, y: dy>0?1:-1};
+}, {passive:true});
+
+/* ─ Initial idle draw ─ */
+food  = null;
+snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+draw();
+snake = null;
+food  = null;
+</script>
+</body>
+</html>

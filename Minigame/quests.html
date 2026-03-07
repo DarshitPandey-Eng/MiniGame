@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quests — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-c);}
+.quest-section{width:100%;max-width:600px;}
+.qs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.qs-title{font-family:var(--font-mono);font-size:.62rem;font-weight:700;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;}
+.timer{font-family:var(--font-mono);font-size:.65rem;color:var(--neon-b);background:color-mix(in srgb,var(--neon-b) 10%,transparent);padding:4px 10px;border-radius:5px;border:1px solid color-mix(in srgb,var(--neon-b) 25%,transparent);}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav"></nav>
+
+<div class="page" style="gap:22px;padding-top:22px;">
+  <!-- Player summary -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+    <div class="level-badge">⭐ <span class="az-level">Lv.1</span></div>
+    <div class="streak-badge">🔥 <span class="az-streak">0</span> day streak</div>
+    <div class="coin-nav" style="cursor:default"><span>🪙</span><span class="az-bal">0</span></div>
+  </div>
+
+  <!-- Daily quests -->
+  <div class="quest-section">
+    <div class="qs-header">
+      <div class="qs-title">DAILY QUESTS</div>
+      <div class="timer" id="daily-timer">Resets in --:--:--</div>
+    </div>
+    <div id="daily-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
+  <!-- Weekly quests -->
+  <div class="quest-section">
+    <div class="qs-header">
+      <div class="qs-title">WEEKLY QUESTS</div>
+      <div class="timer" id="weekly-timer">Resets in --d --h</div>
+    </div>
+    <div id="weekly-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+  </div>
+
+  <!-- Tips -->
+  <div style="background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:16px;max-width:600px;width:100%;">
+    <div class="section-title">HOW QUESTS WORK</div>
+    <p style="font-family:var(--font-mono);font-size:.7rem;color:var(--text2);line-height:1.9;">
+      Quests track your progress automatically as you play games. Daily quests reset every midnight.
+      Weekly quests reset each Monday. Completing quests earns you coins AND XP toward your level!
+    </p>
+  </div>
+</div>
+
+<script>
+/* ── Nav ── */
+(function(){
+  var n=document.getElementById('main-nav');
+  n.innerHTML='<a class="nav-back" href="index.html">← Hub</a><div class="nav-sep"></div>'+
+    '<div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>QUESTS</div>'+
+    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>'+
+    '<button class="theme-btn" id="tb">☀️</button>';
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});});
+})();
+
+function renderQuest(entry){
+  var d=entry.def, prog=entry.progress||0, target=d.target;
+  var pct=Math.min(100,Math.round(prog/target*100));
+  var isDone=entry.done;
+  var card=document.createElement('div');
+  card.className='quest-card'+(isDone?' done':' active');
+  card.innerHTML=
+    '<div class="qc-top">'+
+      '<span class="qc-icon">'+d.icon+'</span>'+
+      '<div style="flex:1">'+
+        '<div class="qc-label">'+d.label+'</div>'+
+        '<div class="qc-reward">+'+d.reward+' 🪙 &nbsp;·&nbsp; +'+Math.round(d.reward/2)+' XP</div>'+
+      '</div>'+
+      '<div style="font-family:var(--font-mono);font-size:.65rem;color:'+(isDone?'var(--neon-d)':'var(--muted)')+'">'+
+        (isDone?'✓ DONE':prog+'/'+target)+
+      '</div>'+
+    '</div>'+
+    '<div class="qc-prog"><div class="qc-prog-fill" style="width:'+pct+'%"></div></div>';
+  return card;
+}
+
+function render(){
+  var q=CoinEngine.getQuests();
+  var dl=document.getElementById('daily-list');
+  var wl=document.getElementById('weekly-list');
+  dl.innerHTML=''; wl.innerHTML='';
+  (q.daily||[]).forEach(function(e){ dl.appendChild(renderQuest(e)); });
+  (q.weekly||[]).forEach(function(e){ wl.appendChild(renderQuest(e)); });
+}
+
+/* Countdown timers */
+function pad(n){return n<10?'0'+n:String(n);}
+function updateTimers(){
+  var now=new Date();
+  /* Daily: midnight */
+  var midnight=new Date(now); midnight.setHours(24,0,0,0);
+  var ds=Math.floor((midnight-now)/1000);
+  document.getElementById('daily-timer').textContent=
+    'Resets in '+pad(Math.floor(ds/3600))+':'+pad(Math.floor((ds%3600)/60))+':'+pad(ds%60);
+  /* Weekly: next Monday */
+  var d=now.getDay(),diff=d===0?1:(8-d);
+  var nextMon=new Date(now); nextMon.setDate(now.getDate()+diff); nextMon.setHours(0,0,0,0);
+  var ws=Math.floor((nextMon-now)/1000/3600);
+  document.getElementById('weekly-timer').textContent=
+    'Resets in '+Math.floor(ws/24)+'d '+pad(ws%24)+'h';
+}
+
+render();
+updateTimers();
+setInterval(updateTimers,1000);
+document.addEventListener('az:quests',render);
+</script>
+</body>
+</html>
