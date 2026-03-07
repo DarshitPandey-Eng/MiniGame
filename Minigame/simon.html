@@ -44,6 +44,7 @@
   <div class="sdots" id="sdots"></div>
   <div class="btn-row">
     <button class="btn filled" style="--c:var(--neon-b)" onclick="startGame()">▶ START (🪙 5)</button>
+      <button class="btn" style="--c:var(--neon-a);font-size:.7rem;margin-top:6px" id="share-btn" onclick="shareScore('Simon Says',round)" style="display:none">📤 Share Score</button>
     <a class="btn" href="index.html">HUB</a>
   </div>
 </div>
@@ -171,6 +172,24 @@ function updateDots(done){
 }
 function setStatus(txt,cls){var s=document.getElementById('status');s.textContent=txt;s.className='sstatus '+(cls||'');}
 function setRound(n){document.getElementById('sc').textContent=n;document.getElementById('c-rnd').textContent=n||'-';}
+
+/* ── Share Score ── */
+function shareScore(game, val) {
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  if(navigator.share) {
+    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
+      CoinEngine.toast('Score copied to clipboard!','info');
+    });
+  }
+}
+
+function shareScore(game,val){
+  var txt='🎮 I reached round '+val+' in '+game+' on Arcade Zone!\nPlay free: https://arcadezone.vercel.app';
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else{navigator.clipboard&&navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied to clipboard!','info');});}
+}
 </script>
 </body>
 </html>

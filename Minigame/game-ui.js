@@ -79,6 +79,7 @@
   ═══════════════════════════════ */
   var NAV_ITEMS = [
     { href:'index.html',      icon:'🎮', label:'HUB'       },
+    { href:'spin.html',       icon:'🎡', label:'SPIN'      },
     { href:'casino.html',     icon:'🎰', label:'CASINO'    },
     { href:'quests.html',     icon:'📋', label:'QUESTS'    },
     { href:'wallet.html',     icon:'🪙', label:'WALLET'    },

@@ -56,6 +56,7 @@
     <div class="ov-sub">Earned: <b id="o-earned">0</b> 🪙</div>
     <div class="btn-row">
       <button class="btn filled" style="--c:var(--neon-c)" onclick="newGame()">▶ RETRY (🪙 10)</button>
+      <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="shareScore('2048',score)">📤 Share</button>
       <a class="btn" href="index.html">HUB</a>
     </div>
   </div>
@@ -208,6 +209,18 @@ board.addEventListener('touchend',function(e){
   render();
   newGame();
 })();
+
+/* ── Share Score ── */
+function shareScore(game, val) {
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  if(navigator.share) {
+    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
+      CoinEngine.toast('Score copied to clipboard!','info');
+    });
+  }
+}
 </script>
 </body>
 </html>

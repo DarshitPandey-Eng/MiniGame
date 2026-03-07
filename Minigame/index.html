@@ -31,12 +31,13 @@
 <div class="hub-hero">
   <div class="hub-hero-bg"></div>
   <div class="hub-headline"><div class="a">ARCADE</div><div class="b">ZONE</div></div>
-  <p class="hub-tagline">10 games · earn coins · level up · hit the casino</p>
+  <p class="hub-tagline">10 games · daily spin · level up · no ads ever</p>
   <div class="xp-hero-bar"><div class="xp-hero-fill az-xp-bar" style="width:0%"></div></div>
   <div class="hub-stats">
     <div class="hub-stat"><div class="n az-bal">0</div><div class="t">COINS</div></div>
     <div class="hub-stat"><div class="n az-level">Lv.1</div><div class="t">LEVEL</div></div>
     <div class="hub-stat"><div class="n" id="s-challs">0</div><div class="t">CHALLENGES</div></div>
+    <div class="hub-stat"><div class="n" id="s-plays">0</div><div class="t">GAMES PLAYED</div></div>
   </div>
 </div>
 
@@ -44,6 +45,7 @@
   <div class="hub-section">
     <div class="hub-quick-links">
       <a class="quick-link" href="wallet.html"     style="--lc:var(--neon-c)">🪙 Wallet</a>
+      <a class="quick-link" href="spin.html"       style="--lc:var(--neon-e)" id="ql-spin">🎡 Daily Spin</a>
       <a class="quick-link" href="casino.html"     style="--lc:var(--neon-b)">🎰 Casino</a>
       <a class="quick-link" href="quests.html"     style="--lc:var(--neon-c)">📋 Quests</a>
       <a class="quick-link" href="challenges.html" style="--lc:var(--neon-d)">🏆 Challenges</a>
@@ -55,7 +57,17 @@
     <div class="games-grid" id="grid-skill"></div>
   </div>
 </main>
-<site-footer>ARCADE ZONE © 2026 · NO ADS · NO TRACKING · JUST FUN</site-footer>
+<site-footer>
+  ARCADE ZONE © 2026 · NO ADS · NO TRACKING · JUST FUN
+  <a href="https://buymeacoffee.com/arcadezone" target="_blank" rel="noopener"
+     style="display:inline-flex;align-items:center;gap:6px;background:#FFDD00;color:#1a1000;
+     font-family:var(--font-mono);font-weight:800;font-size:.62rem;padding:6px 14px;
+     border-radius:6px;text-decoration:none;margin-left:12px;
+     box-shadow:0 2px 10px rgba(255,221,0,.25);transition:all .15s;"
+     onmouseover="this.style.background='#ffe733'" onmouseout="this.style.background='#FFDD00'">
+    ☕ Buy Me a Coffee
+  </a>
+</site-footer>
 
 <script>
 var GAMES={classic:[
@@ -84,6 +96,8 @@ document.getElementById('grid-skill').innerHTML=GAMES.skill.map(card).join('');
 function refresh(){
   var done=0;var cs=CoinEngine.getChallengeState();for(var k in cs)if(cs[k].claimed)done++;
   document.getElementById('s-challs').textContent=done;
+  var st=CoinEngine.getStats(),plays=0;for(var k in st)plays+=(st[k].plays||0);
+  var pe=document.getElementById('s-plays');if(pe)pe.textContent=plays;
 }
 document.addEventListener('az:balance',refresh);refresh();
 var tb=document.getElementById('theme-btn');
@@ -92,6 +106,40 @@ tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
 document.addEventListener('az:xp',function(e){
   document.querySelectorAll('.az-level').forEach(function(el){el.textContent='Lv.'+e.detail.level;});
 });
+
+/* Spin badge on quick link */
+(function(){
+  var el=document.getElementById('ql-spin');
+  if(!el)return;
+  if(CoinEngine.canSpin()){
+    var badge=document.createElement('span');
+    badge.textContent='NEW';
+    badge.style.cssText='background:var(--neon-b);color:#000;font-size:.44rem;font-weight:800;'+
+      'padding:2px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;';
+    el.appendChild(badge);
+  }
+})();
+
+/* Game of the Day highlight */
+(function(){
+  var games=['snake','tetris','breakout','2048','flappy','mole','memory','reaction','typing','simon'];
+  var seed=parseInt(new Date().toISOString().slice(0,10).replace(/-/g,''))%games.length;
+  var gotd=games[seed];
+  var cards=document.querySelectorAll('.game-card');
+  cards.forEach(function(card){
+    if(card.href&&card.href.indexOf(gotd+'.html')>=0){
+      card.setAttribute('data-gotd','1');
+      var badge=document.createElement('div');
+      badge.textContent='⭐ TODAY';
+      badge.style.cssText='position:absolute;top:8px;left:8px;font-family:var(--font-mono);'+
+        'font-size:.44rem;font-weight:800;background:var(--neon-c);color:#000;'+
+        'padding:3px 7px;border-radius:4px;z-index:2;pointer-events:none;';
+      card.style.position='relative';
+      card.insertBefore(badge,card.firstChild);
+      card.style.boxShadow='0 0 0 2px var(--neon-c), 0 0 22px color-mix(in srgb,var(--neon-c) 20%,transparent)';
+    }
+  });
+})();
 </script>
 </body>
 </html>

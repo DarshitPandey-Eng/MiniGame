@@ -10,7 +10,6 @@ window.CoinEngine = (function () {
     THEME:'az_theme', HIST:'az_history', XP:'az_xp',
     STREAK:'az_streak', QUESTS:'az_quests', ACHIEVE:'az_achieve',
     SOUND:'az_sound', POWERUP:'az_powerup',
-    ADS_TODAY:'az_ads_today',
   };
 
   function load(key,fb){ try{var v=localStorage.getItem(key);return v?JSON.parse(v):fb;}catch(e){return fb;} }
@@ -31,7 +30,7 @@ window.CoinEngine = (function () {
     try{localStorage.setItem(K.BAL,String(v));}catch(e){}
     _fire('az:balance',v); _refreshWidgets(v);
     /* Low balance nudge */
-    if(v<15) setTimeout(function(){ toast('🪙 Low on coins! Watch a video ad to earn more →','warn'); },400);
+    if(v<15) setTimeout(function(){ toast('🪙 Low on coins! Play games & complete challenges to earn more.','warn'); },400);
     return v;
   }
   function add(n,label,icon){
@@ -42,7 +41,7 @@ window.CoinEngine = (function () {
   }
   function spend(n){
     if(getBalance()<Number(n)){
-      toast('💸 Not enough coins! Watch a video ad to earn more.','warn');
+      toast('💸 Not enough coins! Claim your daily spin or complete challenges.','warn');
       return false;
     }
     setBalance(getBalance()-Number(n));
@@ -91,20 +90,6 @@ window.CoinEngine = (function () {
   }
   function getHistory(){ return load(K.HIST,[]); }
 
-  /* ══════════════════ AD TRACKING ══════════════════ */
-  var ADS_PER_DAY = 5;
-  function getAdsWatchedToday(){
-    var d=load(K.ADS_TODAY,{date:'',count:0});
-    if(d.date!==today()) return 0;
-    return d.count||0;
-  }
-  function recordAdWatched(){
-    var d=load(K.ADS_TODAY,{date:'',count:0});
-    if(d.date!==today()){ d={date:today(),count:0}; }
-    d.count++;
-    save(K.ADS_TODAY,d);
-  }
-  function canWatchAd(){ return getAdsWatchedToday()<ADS_PER_DAY; }
 
   /* ══════════════════ XP + LEVELS ══════════════════ */
   var XP_PER_LEVEL=[0,100,250,450,700,1000,1400,1900,2500,3200,4000,
@@ -252,6 +237,7 @@ window.CoinEngine = (function () {
     {id:'a13',icon:'🎯',label:'All-In',           desc:'Win a casino all-in bet',       xp:140, secret:true},
     {id:'a14',icon:'⭐',label:'Level 10',         desc:'Reach player level 10',         xp:200, secret:false},
     {id:'a15',icon:'🏆',label:'Legend',           desc:'Reach player level 25',         xp:400, secret:true},
+    {id:'a16',icon:'☕',label:'Supporter',        desc:'Bought the dev a coffee ☕',     xp:200, secret:false},
   ];
   function getAchievements(){ return load(K.ACHIEVE,{}); }
   function unlockAchievement(id){
@@ -406,6 +392,33 @@ window.CoinEngine = (function () {
   /* Entry costs unchanged — scarcity comes from low rewards */
   var COSTS={snake:10,tetris:10,breakout:10,'2048':10,flappy:10,mole:5,memory:5,reaction:0,typing:0,simon:5,casino:0};
 
+
+  /* ══════════════════ DAILY SPIN WHEEL ══════════════════ */
+  var SPIN_PRIZES=[
+    {coins:5,   weight:28, label:'5🪙',   color:'#00e5ff'},
+    {coins:10,  weight:24, label:'10🪙',  color:'#00e676'},
+    {coins:20,  weight:18, label:'20🪙',  color:'#ffe135'},
+    {coins:35,  weight:12, label:'35🪙',  color:'#ff6b35'},
+    {coins:50,  weight:9,  label:'50🪙',  color:'#bf5af2'},
+    {coins:75,  weight:5,  label:'75🪙',  color:'#ff2d78'},
+    {coins:100, weight:3,  label:'100🪙', color:'#ffe135'},
+    {coins:0,   weight:1,  label:'MISS',  color:'#333'},
+  ];
+  function canSpin(){
+    var d=load('az_spin',{date:'',spun:false});
+    return d.date!==today()||!d.spun;
+  }
+  function recordSpin(){ save('az_spin',{date:today(),spun:true}); _fire('az:spin',{}); }
+  function pickSpinPrize(){
+    var total=SPIN_PRIZES.reduce(function(a,p){return a+p.weight;},0);
+    var r=Math.random()*total,acc=0;
+    for(var i=0;i<SPIN_PRIZES.length;i++){
+      acc+=SPIN_PRIZES[i].weight;
+      if(r<=acc)return i;
+    }
+    return 0;
+  }
+
   /* ══════════════════ THEME ══════════════════ */
   function getTheme(){ return localStorage.getItem(K.THEME)||'dark'; }
   function setTheme(t){ try{localStorage.setItem(K.THEME,t);}catch(e){} document.documentElement.setAttribute('data-theme',t); _fire('az:theme',t); }
@@ -472,10 +485,9 @@ window.CoinEngine = (function () {
     usePowerUp:usePowerUp, hasActivePowerUp:hasActivePowerUp, getMultiplier:getMultiplier,
     REWARDS:REWARDS, COSTS:COSTS,
     recordGame:recordGame, getStats:getStats,
+    SPIN_PRIZES:SPIN_PRIZES, canSpin:canSpin, recordSpin:recordSpin, pickSpinPrize:pickSpinPrize,
     getTheme:getTheme, setTheme:setTheme, toggleTheme:toggleTheme, applyTheme:applyTheme,
     getSoundEnabled:getSoundEnabled, toggleSound:toggleSound,
-    getAdsWatchedToday:getAdsWatchedToday, recordAdWatched:recordAdWatched,
-    canWatchAd:canWatchAd, ADS_PER_DAY:ADS_PER_DAY,
     toast:toast,
   };
 })();

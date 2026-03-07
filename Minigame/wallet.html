@@ -9,122 +9,94 @@
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
-/* ── Big Balance ── */
 .big-balance{
-  font-family:var(--font-display);font-size:clamp(3rem,12vw,5.5rem);
+  font-family:var(--font-display);font-size:clamp(3.2rem,13vw,5.5rem);
   letter-spacing:.04em;color:var(--neon-c);line-height:1;
-  text-shadow:0 0 40px color-mix(in srgb,var(--neon-c) 40%,transparent);
+  text-shadow:0 0 40px color-mix(in srgb,var(--neon-c) 38%,transparent);
 }
-
-/* ── Earn Cards (mobile-first) ── */
 .earn-card{
   background:var(--card-bg);border:1px solid var(--line2);border-radius:var(--radius);
-  padding:16px;display:flex;flex-direction:column;gap:12px;
-  transition:border-color .2s;width:100%;max-width:560px;
+  padding:16px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s;width:100%;
 }
 .earn-card:hover{border-color:var(--neon-d);}
-.earn-card-row{display:flex;gap:14px;align-items:flex-start;}
-.earn-icon{font-size:2rem;flex-shrink:0;line-height:1;padding-top:2px;}
+.earn-row{display:flex;gap:14px;align-items:flex-start;}
+.earn-icon{font-size:1.9rem;flex-shrink:0;line-height:1;padding-top:3px;}
 .earn-info{flex:1;min-width:0;}
-.earn-info .title{font-family:var(--font-ui);font-weight:700;font-size:.95rem;margin-bottom:3px;}
-.earn-info .sub{font-family:var(--font-mono);font-size:.68rem;color:var(--text2);line-height:1.6;}
-.earn-action{display:flex;justify-content:flex-end;}
-.earn-action .btn{min-width:90px;text-align:center;}
+.earn-info .et{font-family:var(--font-ui);font-weight:700;font-size:.92rem;margin-bottom:3px;}
+.earn-info .es{font-family:var(--font-mono);font-size:.67rem;color:var(--text2);line-height:1.65;}
+.earn-act{display:flex;justify-content:flex-end;}
+.earn-act .btn,.earn-act a.btn{min-width:88px;text-align:center;}
 
-/* Ad limit badge */
-.ad-count-badge{
-  display:inline-block;font-family:var(--font-mono);font-size:.58rem;font-weight:700;
-  padding:3px 8px;border-radius:4px;
-  background:color-mix(in srgb,var(--neon-d) 15%,transparent);
-  border:1px solid color-mix(in srgb,var(--neon-d) 30%,transparent);
-  color:var(--neon-d);
+/* ── BMC Card ── */
+.bmc-card{
+  background:linear-gradient(135deg,
+    color-mix(in srgb,#FFDD00 14%,var(--card-bg)),
+    color-mix(in srgb,#FF8C00 8%,var(--card-bg)));
+  border:1.5px solid color-mix(in srgb,#FFDD00 32%,transparent);
+  border-radius:var(--radius);padding:22px 20px;
+  display:flex;flex-direction:column;gap:14px;
+  position:relative;overflow:hidden;width:100%;
+  box-shadow:0 4px 28px color-mix(in srgb,#FFDD00 10%,transparent);
 }
-.ad-count-badge.maxed{
-  background:color-mix(in srgb,var(--muted) 15%,transparent);
-  border-color:var(--line2);color:var(--muted);
+.bmc-card::after{
+  content:'☕';position:absolute;right:-10px;bottom:-16px;
+  font-size:7rem;opacity:.06;pointer-events:none;line-height:1;
 }
+.bmc-headline{
+  font-family:var(--font-display);font-size:1.55rem;letter-spacing:.06em;
+  color:#FFDD00;text-shadow:0 0 16px rgba(255,221,0,.35);
+}
+.bmc-body{font-family:var(--font-mono);font-size:.7rem;color:var(--text2);line-height:1.8;}
+.bmc-perks{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;}
+.bmc-perk{
+  font-family:var(--font-mono);font-size:.58rem;font-weight:700;
+  padding:3px 9px;border-radius:4px;
+  background:color-mix(in srgb,#FFDD00 13%,transparent);
+  border:1px solid color-mix(in srgb,#FFDD00 26%,transparent);
+  color:#FFDD00;
+}
+.bmc-btn{
+  display:inline-flex;align-items:center;gap:9px;
+  background:#FFDD00;color:#1a1000;
+  font-family:var(--font-ui);font-weight:800;font-size:.82rem;letter-spacing:.03em;
+  padding:12px 22px;border-radius:8px;text-decoration:none;
+  border:none;cursor:pointer;transition:all .15s;
+  box-shadow:0 4px 16px rgba(255,221,0,.32);width:fit-content;
+}
+.bmc-btn:hover{background:#ffe733;transform:translateY(-2px);box-shadow:0 6px 22px rgba(255,221,0,.45);}
+.bmc-btn:active{transform:translateY(0);}
 
-/* ── Coin Packs ── */
-.wallet-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));
-  gap:12px;width:100%;max-width:800px;
+/* Spin pill */
+.spin-pill{
+  display:inline-block;font-family:var(--font-mono);font-size:.6rem;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+  background:color-mix(in srgb,var(--neon-e) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--neon-e) 30%,transparent);
+  color:var(--neon-e);
 }
-.pack-card{
-  background:var(--card-bg);border:1px solid var(--line2);border-radius:var(--radius);
-  padding:20px 18px;display:flex;flex-direction:column;gap:10px;
-  position:relative;overflow:hidden;transition:all .2s;
-}
-.pack-card:hover{border-color:var(--neon-c);}
-.pack-card.featured{border-color:var(--neon-c);box-shadow:0 0 24px color-mix(in srgb,var(--neon-c) 18%,transparent);}
-.pack-badge{position:absolute;top:10px;right:10px;font-family:var(--font-mono);font-size:.46rem;font-weight:700;background:var(--neon-c);color:#000;padding:3px 7px;border-radius:3px;}
-.pack-amount{font-family:var(--font-display);font-size:clamp(2rem,6vw,2.8rem);letter-spacing:.04em;color:var(--neon-c);line-height:1;}
-.pack-amount small{font-size:1rem;font-family:var(--font-mono);color:var(--text2);}
-.pack-bonus{font-family:var(--font-mono);font-size:.68rem;color:var(--neon-d);}
-.pack-price{font-family:var(--font-ui);font-size:1.1rem;font-weight:700;color:var(--text);}
-.pack-price small{font-size:.68rem;color:var(--muted);}
-
-/* ── Ad overlay ── */
-.ad-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.94);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:16px;z-index:500;padding:16px;
-}
-.ad-overlay.hidden{display:none;}
-.ad-screen{
-  width:min(480px,95vw);aspect-ratio:16/9;
-  background:#0a0a14;border-radius:10px;overflow:hidden;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;border:1px solid var(--line2);
-}
-.ad-skip-btn{
-  position:absolute;bottom:12px;right:12px;
-  font-family:var(--font-mono);font-size:.65rem;font-weight:700;
-  padding:7px 14px;border-radius:5px;
-  background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2);
-  cursor:pointer;transition:background .15s;
-}
-.ad-skip-btn:hover{background:rgba(255,255,255,.25);}
-.ad-progress-wrap{width:min(480px,95vw);height:5px;background:#1a1a2e;border-radius:3px;overflow:hidden;}
-.ad-progress-fill{height:100%;background:var(--neon-d);transition:width .2s linear;border-radius:3px;}
-.ad-brand{font-size:2.5rem;margin-bottom:6px;}
-.ad-headline{font-family:var(--font-display);font-size:1.6rem;color:var(--neon-c);letter-spacing:.06em;}
-.ad-tagline{font-family:var(--font-mono);font-size:.68rem;color:#666;margin-top:4px;}
-.ad-reward-pill{
-  position:absolute;top:10px;left:10px;
-  font-family:var(--font-mono);font-size:.62rem;font-weight:700;
-  background:color-mix(in srgb,var(--neon-c) 20%,transparent);
-  border:1px solid color-mix(in srgb,var(--neon-c) 35%,transparent);
-  color:var(--neon-c);padding:4px 10px;border-radius:5px;
+.spin-pill.used{
+  background:transparent;border-color:var(--line2);color:var(--muted);
 }
 
-/* ── History ── */
-.history-item{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 0;border-bottom:1px solid var(--line);
-  font-family:var(--font-mono);font-size:.72rem;
-}
-.hi-icon{font-size:1.1rem;flex-shrink:0;}
-.hi-label{flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hi-amt{font-weight:700;white-space:nowrap;}
-.hi-amt.pos{color:var(--neon-d);}
-.hi-amt.neg{color:var(--neon-b);}
-
-/* ── Power-up shop ── */
-.pu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,140px),1fr));gap:10px;width:100%;}
+/* Power-up shop */
+.pu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,136px),1fr));gap:10px;width:100%;}
 .pu-card{
   background:var(--bg2);border:1px solid var(--line2);border-radius:10px;
   padding:14px 12px;display:flex;flex-direction:column;gap:7px;
   align-items:center;text-align:center;transition:border-color .15s;
 }
 .pu-card:hover{border-color:var(--neon-c);}
-.pu-icon{font-size:1.5rem;}
-.pu-name{font-family:var(--font-mono);font-size:.6rem;font-weight:700;color:var(--text);}
-.pu-desc{font-size:.56rem;color:var(--muted);line-height:1.6;}
-.pu-owned{font-family:var(--font-mono);font-size:.58rem;color:var(--neon-d);}
 
-/* ── Sections ── */
-.wallet-section{width:100%;max-width:800px;display:flex;flex-direction:column;gap:10px;}
+/* History */
+.hi{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.hi-ico{font-size:1.05rem;flex-shrink:0;}
+.hi-lbl{flex:1;font-family:var(--font-mono);font-size:.68rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hi-ts{font-family:var(--font-mono);font-size:.54rem;color:var(--muted);flex-shrink:0;}
+.hi-amt{font-family:var(--font-mono);font-size:.7rem;font-weight:700;white-space:nowrap;margin-left:6px;}
+.hi-amt.pos{color:var(--neon-d);}
+.hi-amt.neg{color:var(--neon-b);}
+
+.w-section{width:100%;max-width:600px;display:flex;flex-direction:column;gap:10px;}
 </style>
 </head>
 <body>
@@ -132,324 +104,238 @@
   <a class="nav-back" href="index.html">← Hub</a>
   <div class="nav-sep"></div>
   <div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>WALLET</div>
-  <a class="coin-nav" href="#"><span>🪙</span><span class="az-bal" id="nav-bal">0</span></a>
+  <a class="coin-nav" href="#"><span>🪙</span><span class="az-bal">0</span></a>
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
 
-<div class="page" style="gap:24px;padding-top:22px;align-items:center;">
+<div class="page" style="gap:22px;padding-top:22px;align-items:center;">
 
   <!-- Balance hero -->
-  <div style="text-align:center;padding:8px 0;">
-    <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);letter-spacing:.22em;margin-bottom:6px;">YOUR BALANCE</div>
+  <div style="text-align:center;padding:4px 0 8px;">
+    <div style="font-family:var(--font-mono);font-size:.54rem;color:var(--muted);letter-spacing:.22em;margin-bottom:5px;">YOUR BALANCE</div>
     <div class="big-balance az-bal">0</div>
-    <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--text2);margin-top:5px;">🪙 arcade coins</div>
+    <div style="font-family:var(--font-mono);font-size:.66rem;color:var(--text2);margin-top:4px;">🪙 arcade coins</div>
     <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-      <div class="level-badge" style="font-size:.68rem;">⭐ <span class="az-level">Lv.1</span></div>
-      <div class="streak-badge" style="font-size:.66rem;">🔥 <span class="az-streak">0</span>-day streak</div>
+      <div class="level-badge" style="font-size:.65rem;">⭐ <span class="az-level">Lv.1</span></div>
+      <div class="streak-badge" style="font-size:.63rem;">🔥 <span class="az-streak">0</span>-day streak</div>
     </div>
   </div>
 
-  <!-- ──────── EARN FREE COINS ──────── -->
-  <div class="wallet-section">
-    <div class="section-title">EARN FREE COINS</div>
+  <!-- ☕ BUY ME A COFFEE -->
+  <div class="w-section">
+    <div class="bmc-card">
+      <div>
+        <div class="bmc-headline">☕ Buy Me a Coffee</div>
+        <p class="bmc-body">
+          Arcade Zone is <strong style="color:var(--text)">100% free</strong> — no ads, no paywalls, no data harvesting.<br>
+          If you're having fun, buying a coffee helps keep the lights on and new games coming!
+        </p>
+        <div class="bmc-perks">
+          <span class="bmc-perk">❤️ Support indie dev</span>
+          <span class="bmc-perk">🎮 Fund new games</span>
+          <span class="bmc-perk">🚀 Stay free forever</span>
+          <span class="bmc-perk">☕ Unlock Supporter badge</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <a class="bmc-btn" href="https://buymeacoffee.com/arcadezone" target="_blank" rel="noopener" onclick="onBMC()">
+          ☕ &nbsp;Buy Me a Coffee
+        </a>
+        <span style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);">no account needed</span>
+      </div>
+    </div>
+  </div>
 
-    <!-- Watch Ad -->
-    <div class="earn-card" id="ad-card">
-      <div class="earn-card-row">
-        <div class="earn-icon">📺</div>
+  <!-- EARN COINS -->
+  <div class="w-section">
+    <div class="section-title">EARN COINS</div>
+
+    <!-- Daily Spin -->
+    <div class="earn-card">
+      <div class="earn-row">
+        <div class="earn-icon">🎡</div>
         <div class="earn-info">
-          <div class="title">Watch a Video Ad</div>
-          <div class="sub">
-            Watch a 15-second ad → earn <strong style="color:var(--neon-c)">🪙 25 coins</strong>
-            <br>
-            <span class="ad-count-badge" id="ad-badge">0 / 5 watched today</span>
+          <div class="et">Daily Spin Wheel</div>
+          <div class="es">Spin once per day — win up to <strong style="color:var(--neon-e)">🪙 100 coins</strong>!<br>
+            <span class="spin-pill" id="spin-pill">✨ Available now!</span>
           </div>
         </div>
       </div>
-      <div class="earn-action">
-        <button class="btn filled" style="--c:var(--neon-d)" id="watch-btn" onclick="watchAd()">▶ WATCH</button>
+      <div class="earn-act">
+        <a class="btn filled" style="--c:var(--neon-e)" id="spin-btn" href="spin.html">🎡 SPIN</a>
       </div>
     </div>
 
     <!-- Daily Bonus -->
-    <div class="earn-card" id="daily-card">
-      <div class="earn-card-row">
+    <div class="earn-card">
+      <div class="earn-row">
         <div class="earn-icon">🎁</div>
         <div class="earn-info">
-          <div class="title">Daily Login Bonus</div>
-          <div class="sub">
-            Claim <strong style="color:var(--neon-c)">🪙 15 coins</strong> once per day.
-            <br>
-            <span id="daily-sub-text">Available now!</span>
+          <div class="et">Daily Login Bonus</div>
+          <div class="es">Free <strong style="color:var(--neon-c)">🪙 20 coins</strong> every 24 hours.<br>
+            <span id="daily-sub" style="color:var(--neon-d)">Available now!</span>
           </div>
         </div>
       </div>
-      <div class="earn-action">
+      <div class="earn-act">
         <button class="btn filled" style="--c:var(--neon-a)" id="daily-btn" onclick="claimDaily()">CLAIM</button>
       </div>
     </div>
 
-    <!-- Streak Bonus info -->
+    <!-- Streak -->
     <div class="earn-card">
-      <div class="earn-card-row">
+      <div class="earn-row">
         <div class="earn-icon">🔥</div>
         <div class="earn-info">
-          <div class="title">Daily Streak Bonus</div>
-          <div class="sub">
-            Log in every day to build a streak. <strong style="color:var(--neon-f)">+3 coins per day</strong> (up to 20).
-            <br>Current streak: <strong style="color:var(--neon-f)"><span class="az-streak">0</span> days</strong>
+          <div class="et">Login Streak Bonus</div>
+          <div class="es">Return daily to build a streak. <strong style="color:var(--neon-f)">+4 coins/day</strong> (up to 30).<br>
+            Current streak: <strong style="color:var(--neon-f)"><span class="az-streak">0</span> days</strong>
           </div>
         </div>
       </div>
-      <div class="earn-action">
-        <a class="btn" style="--c:var(--neon-f)" href="profile.html">VIEW</a>
+      <div class="earn-act">
+        <a class="btn" style="--c:var(--neon-f)" href="profile.html">PROFILE</a>
       </div>
     </div>
 
     <!-- Challenges -->
     <div class="earn-card">
-      <div class="earn-card-row">
+      <div class="earn-row">
         <div class="earn-icon">🏆</div>
         <div class="earn-info">
-          <div class="title">Complete Challenges</div>
-          <div class="sub">Finish in-game challenges for coin rewards. <span id="chall-count" style="color:var(--neon-c)">Loading...</span></div>
+          <div class="et">Challenges</div>
+          <div class="es">Hit score targets in each game.<br>
+            <span id="chall-count" style="color:var(--neon-c)">Loading…</span>
+          </div>
         </div>
       </div>
-      <div class="earn-action">
+      <div class="earn-act">
         <a class="btn" style="--c:var(--neon-e)" href="challenges.html">VIEW</a>
       </div>
     </div>
 
     <!-- Quests -->
     <div class="earn-card">
-      <div class="earn-card-row">
+      <div class="earn-row">
         <div class="earn-icon">📋</div>
         <div class="earn-info">
-          <div class="title">Daily &amp; Weekly Quests</div>
-          <div class="sub">Fresh quests every day. Complete them for bonus coins and XP.</div>
+          <div class="et">Daily &amp; Weekly Quests</div>
+          <div class="es">Fresh objectives every day &amp; week. Complete for coins + XP.</div>
         </div>
       </div>
-      <div class="earn-action">
+      <div class="earn-act">
         <a class="btn" style="--c:var(--neon-c)" href="quests.html">VIEW</a>
       </div>
     </div>
+
+    <!-- Play games -->
+    <div class="earn-card">
+      <div class="earn-row">
+        <div class="earn-icon">🎮</div>
+        <div class="earn-info">
+          <div class="et">Play Games</div>
+          <div class="es">Earn coins on every session. Use the Casino to gamble your stash for bigger rewards.</div>
+        </div>
+      </div>
+      <div class="earn-act">
+        <a class="btn" style="--c:var(--neon-d)" href="index.html">PLAY</a>
+      </div>
+    </div>
   </div>
 
-  <!-- ──────── POWER-UP SHOP ──────── -->
-  <div class="wallet-section">
+  <!-- POWER-UP SHOP -->
+  <div class="w-section">
     <div class="section-title">POWER-UP SHOP</div>
-    <p style="font-family:var(--font-mono);font-size:.65rem;color:var(--muted);">Activate before starting a game for an edge. Effects apply once per game.</p>
+    <p style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin:0;">Spend coins on boosts. Activate before starting a game — effects are consumed on use.</p>
     <div class="pu-grid" id="pu-grid"></div>
   </div>
 
-  <!-- ──────── BUY COINS ──────── -->
-  <div class="wallet-section">
-    <div class="section-title">BUY COINS <span style="font-weight:400;color:var(--muted);font-size:.52rem">(DEMO — no real charge)</span></div>
-    <div class="wallet-grid">
-      <div class="pack-card">
-        <div class="pack-amount">300 <small>🪙</small></div>
-        <div class="pack-price">$0.99 <small>/ one-time</small></div>
-        <button class="btn" style="--c:var(--neon-c)" onclick="demoBuy(300,'$0.99')">BUY NOW</button>
-      </div>
-      <div class="pack-card featured">
-        <div class="pack-badge">POPULAR</div>
-        <div class="pack-amount">1,000 <small>🪙</small></div>
-        <div class="pack-bonus">+ 200 bonus coins!</div>
-        <div class="pack-price">$2.99 <small>/ one-time</small></div>
-        <button class="btn filled" style="--c:var(--neon-c)" onclick="demoBuy(1200,'$2.99')">BUY NOW</button>
-      </div>
-      <div class="pack-card">
-        <div class="pack-badge">BEST VALUE</div>
-        <div class="pack-amount">3,000 <small>🪙</small></div>
-        <div class="pack-bonus">+ 1000 bonus coins!</div>
-        <div class="pack-price">$7.99 <small>/ one-time</small></div>
-        <button class="btn" style="--c:var(--neon-c)" onclick="demoBuy(4000,'$7.99')">BUY NOW</button>
-      </div>
-    </div>
-    <p style="font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;max-width:480px;line-height:1.7;">
-      ⚠️ Demo only. No payments are processed. Coins have no real-world value.
-    </p>
-  </div>
-
-  <!-- ──────── HISTORY ──────── -->
-  <div class="wallet-section">
+  <!-- HISTORY -->
+  <div class="w-section">
     <div class="section-title">TRANSACTION HISTORY</div>
-    <div class="card-box" id="history-list" style="max-height:300px;overflow-y:auto;">
-      <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);text-align:center;padding:20px 0">No transactions yet.</div>
+    <div class="card-box" id="hist" style="max-height:320px;overflow-y:auto;">
+      <p style="font-family:var(--font-mono);font-size:.68rem;color:var(--muted);text-align:center;padding:20px 0;">No transactions yet.</p>
     </div>
   </div>
 
-</div><!-- /page -->
-
-<!-- ── Ad Overlay ── -->
-<div class="ad-overlay hidden" id="ad-overlay">
-  <div class="ad-screen" id="ad-screen">
-    <div class="ad-reward-pill">🪙 +25 on completion</div>
-    <div class="ad-brand" id="ad-brand">🎮</div>
-    <div class="ad-headline" id="ad-headline">ARCADE ZONE</div>
-    <div class="ad-tagline" id="ad-tagline">Play. Earn. Repeat.</div>
-    <button class="ad-skip-btn hidden" id="ad-skip" onclick="skipAd()">Skip Ad ✕</button>
-  </div>
-  <div class="ad-progress-wrap">
-    <div class="ad-progress-fill" id="ad-fill" style="width:0%"></div>
-  </div>
-  <div style="font-family:var(--font-mono);font-size:.72rem;color:#444;display:flex;gap:14px;align-items:center;">
-    <span id="ad-timer-text">15s remaining</span>
-    <span style="color:#333">|</span>
-    <span style="color:#555;font-size:.6rem">Simulated ad — no real advertisers</span>
-  </div>
-</div>
-
-<!-- ── Buy Confirm ── -->
-<div class="ad-overlay hidden" id="buy-overlay">
-  <div class="card-box" style="max-width:340px;width:90%;text-align:center;display:flex;flex-direction:column;gap:16px;padding:28px 20px;">
-    <div style="font-size:2.5rem">🪙</div>
-    <div style="font-family:var(--font-display);font-size:1.8rem;color:var(--neon-c)">Confirm Purchase</div>
-    <div style="font-family:var(--font-mono);font-size:.74rem;color:var(--text2);line-height:1.8" id="buy-body">You will receive coins.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-      <button class="btn filled" style="--c:var(--neon-c)" id="buy-confirm">✓ CONFIRM (DEMO)</button>
-      <button class="btn" style="--c:var(--neon-b)" onclick="document.getElementById('buy-overlay').classList.add('hidden')">CANCEL</button>
-    </div>
-  </div>
 </div>
 
 <script>
-/* ── Theme ── */
+/* Theme */
 var tb=document.getElementById('tb');
 function syncTheme(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
-tb.addEventListener('click',function(){CoinEngine.toggleTheme();syncTheme();});
-syncTheme();
+tb.addEventListener('click',function(){CoinEngine.toggleTheme();syncTheme();}); syncTheme();
 
-/* ── Balance ── */
-document.addEventListener('az:balance',function(){ renderHistory(); renderPUShop(); updateAdBadge(); updateDailyBtn(); updateChallengeCount(); });
-
-/* ── Challenges count ── */
-function updateChallengeCount(){
-  var state=CoinEngine.getChallengeState();
-  var unclaimed=CoinEngine.CHALLENGE_DEFS.filter(function(ch){
-    return state[ch.id]&&state[ch.id].met&&!state[ch.id].claimed;
-  }).length;
-  var el=document.getElementById('chall-count');
-  if(!el)return;
-  if(unclaimed>0){ el.textContent=unclaimed+' reward'+(unclaimed>1?'s':'')+' ready to claim!'; el.style.color='var(--neon-d)'; }
-  else el.textContent='Play games to unlock challenges.';
-}
-updateChallengeCount();
-
-/* ── Ad system ── */
-var AD_REWARD=25;
-var ADS=[
-  {brand:'🚀',headline:'SPACE DASH',tagline:'The galaxy awaits — coming soon!'},
-  {brand:'🍕',headline:'PIZZA QUEST',tagline:'Level up your lunch.'},
-  {brand:'🌊',headline:'WAVE SURFER',tagline:'Ride the pixel waves.'},
-  {brand:'🤖',headline:'ROBO CITY',tagline:'Build. Battle. Repeat.'},
-  {brand:'🎸',headline:'CHORD HERO',tagline:'Six strings. Infinite glory.'},
-];
-var adTimer=null, adSecs=15;
-
-function updateAdBadge(){
-  var watched=CoinEngine.getAdsWatchedToday();
-  var max=CoinEngine.ADS_PER_DAY;
-  var badge=document.getElementById('ad-badge');
-  var btn=document.getElementById('watch-btn');
-  if(!badge)return;
-  badge.textContent=watched+' / '+max+' watched today';
-  if(watched>=max){
-    badge.className='ad-count-badge maxed';
-    btn.disabled=true;
-    btn.textContent='Come back tomorrow';
-    btn.style.opacity='.5';
+/* Spin UI */
+function updateSpinUI(){
+  var pill=document.getElementById('spin-pill'), btn=document.getElementById('spin-btn');
+  if(CoinEngine.canSpin()){
+    pill.textContent='✨ Available now!'; pill.className='spin-pill';
+    btn.style.opacity='1'; btn.textContent='🎡 SPIN';
   } else {
-    badge.className='ad-count-badge';
-    btn.disabled=false;
-    btn.textContent='▶ WATCH (🪙 '+AD_REWARD+')';
-    btn.style.opacity='1';
+    pill.textContent='✓ Come back tomorrow'; pill.className='spin-pill used';
+    btn.style.opacity='.5'; btn.textContent='✓ Spun Today';
   }
 }
-updateAdBadge();
+updateSpinUI();
+document.addEventListener('az:spin', updateSpinUI);
 
-function watchAd(){
-  if(!CoinEngine.canWatchAd()){CoinEngine.toast('Max ads watched today. Come back tomorrow!','warn');return;}
-  var ad=ADS[Math.floor(Math.random()*ADS.length)];
-  document.getElementById('ad-brand').textContent=ad.brand;
-  document.getElementById('ad-headline').textContent=ad.headline;
-  document.getElementById('ad-tagline').textContent=ad.tagline;
-  document.getElementById('ad-overlay').classList.remove('hidden');
-  document.getElementById('ad-skip').classList.add('hidden');
-  document.getElementById('ad-fill').style.width='0%';
-  adSecs=15;
-  document.getElementById('ad-timer-text').textContent='15s remaining';
-  SoundEngine.play('deal');
-  adTimer=setInterval(function(){
-    adSecs--;
-    var pct=((15-adSecs)/15*100);
-    document.getElementById('ad-fill').style.width=pct+'%';
-    document.getElementById('ad-timer-text').textContent=adSecs+'s remaining';
-    if(adSecs<=5) document.getElementById('ad-skip').classList.remove('hidden');
-    if(adSecs<=0) finishAd();
-  },1000);
-}
-function finishAd(){
-  clearInterval(adTimer);
-  document.getElementById('ad-overlay').classList.add('hidden');
-  CoinEngine.recordAdWatched();
-  CoinEngine.add(AD_REWARD,'Watched Video Ad','📺');
-  SoundEngine.play('coin');
-  CoinEngine.toast('+'+AD_REWARD+' 🪙  Thanks for watching!','success');
-  renderHistory();
-  updateAdBadge();
-}
-function skipAd(){ if(adSecs<=5) finishAd(); }
-
-/* ── Daily Bonus ── */
-var DAILY_KEY='az_daily';
+/* Daily bonus */
+var DK='az_daily';
 function updateDailyBtn(){
-  var last=parseInt(localStorage.getItem(DAILY_KEY)||'0');
-  var btn=document.getElementById('daily-btn');
-  var sub=document.getElementById('daily-sub-text');
-  if(!btn)return;
+  var last=parseInt(localStorage.getItem(DK)||'0');
+  var btn=document.getElementById('daily-btn'), sub=document.getElementById('daily-sub');
   if(Date.now()-last<86400000){
     var h=Math.ceil((86400000-(Date.now()-last))/3600000);
-    btn.textContent='✓ Claimed';
-    btn.disabled=true;
-    btn.style.opacity='.55';
-    if(sub) sub.textContent='Next bonus in '+h+'h';
-    if(sub) sub.style.color='var(--muted)';
+    btn.textContent='✓ Claimed'; btn.disabled=true; btn.style.opacity='.5';
+    if(sub){sub.textContent='Next bonus in '+h+'h'; sub.style.color='var(--muted)';}
   } else {
-    btn.textContent='CLAIM';
-    btn.disabled=false;
-    btn.style.opacity='1';
-    if(sub){ sub.textContent='Available now!'; sub.style.color='var(--neon-d)'; }
+    btn.textContent='CLAIM'; btn.disabled=false; btn.style.opacity='1';
+    if(sub){sub.textContent='Available now!'; sub.style.color='var(--neon-d)';}
   }
 }
 function claimDaily(){
-  var last=parseInt(localStorage.getItem(DAILY_KEY)||'0');
-  if(Date.now()-last<86400000){
-    var h=Math.ceil((86400000-(Date.now()-last))/3600000);
-    CoinEngine.toast('Come back in '+h+'h for your daily bonus!','info');
-    return;
+  if(Date.now()-parseInt(localStorage.getItem(DK)||'0')<86400000){
+    var h=Math.ceil((86400000-(Date.now()-parseInt(localStorage.getItem(DK)||'0')))/3600000);
+    CoinEngine.toast('Come back in '+h+'h!','info'); return;
   }
-  localStorage.setItem(DAILY_KEY,Date.now());
-  CoinEngine.add(15,'Daily Login Bonus','🎁');
+  localStorage.setItem(DK,String(Date.now()));
+  CoinEngine.add(20,'Daily Login Bonus','🎁');
   SoundEngine.play('coin');
-  renderHistory();
-  updateDailyBtn();
+  updateDailyBtn(); renderHist();
 }
 updateDailyBtn();
 
-/* ── Power-up shop ── */
+/* Challenges count */
+function updateChalls(){
+  var st=CoinEngine.getChallengeState();
+  var n=CoinEngine.CHALLENGE_DEFS.filter(function(c){return st[c.id]&&st[c.id].met&&!st[c.id].claimed;}).length;
+  var el=document.getElementById('chall-count'); if(!el)return;
+  el.textContent=n>0?n+' reward'+(n>1?'s':'')+' ready to claim!':'Play games to unlock challenges.';
+  el.style.color=n>0?'var(--neon-d)':'var(--text2)';
+}
+updateChalls();
+
+/* BMC click → supporter achievement */
+function onBMC(){
+  setTimeout(function(){
+    CoinEngine.unlockAchievement('a16');
+    CoinEngine.toast('☕ Thank you so much! You earned the Supporter badge! +200 XP','coin');
+  }, 800);
+}
+
+/* Power-up shop */
 function renderPUShop(){
-  var grid=document.getElementById('pu-grid');if(!grid)return;grid.innerHTML='';
+  var grid=document.getElementById('pu-grid'); if(!grid)return; grid.innerHTML='';
   var owned=CoinEngine.getPowerUps();
   CoinEngine.POWERUP_DEFS.forEach(function(p){
-    var qty=owned[p.id]||0;
-    var card=document.createElement('div');
-    card.className='pu-card';
-    card.innerHTML='<div class="pu-icon">'+p.icon+'</div>'+
-      '<div class="pu-name">'+p.label+'</div>'+
-      '<div class="pu-desc">'+p.desc+'</div>'+
-      (qty>0?'<div class="pu-owned">Owned: '+qty+'</div>':'')+
-      '<button class="btn filled" style="--c:var(--neon-c);font-size:.6rem;padding:6px 10px;width:100%">🪙'+p.cost+'</button>';
+    var qty=owned[p.id]||0, card=document.createElement('div'); card.className='pu-card';
+    card.innerHTML=
+      '<div style="font-size:1.45rem">'+p.icon+'</div>'+
+      '<div style="font-family:var(--font-mono);font-size:.59rem;font-weight:700;color:var(--text)">'+p.label+'</div>'+
+      '<div style="font-size:.54rem;color:var(--muted);line-height:1.55">'+p.desc+'</div>'+
+      (qty?'<div style="font-family:var(--font-mono);font-size:.57rem;color:var(--neon-d)">Owned: '+qty+'</div>':'')+
+      '<button class="btn filled" style="--c:var(--neon-c);font-size:.59rem;padding:6px 10px;width:100%">🪙 '+p.cost+'</button>';
     card.querySelector('button').addEventListener('click',function(){
       if(CoinEngine.buyPowerUp(p.id)){SoundEngine.play('coin');renderPUShop();}
       else CoinEngine.toast('Not enough coins!','warn');
@@ -459,45 +345,24 @@ function renderPUShop(){
 }
 renderPUShop();
 
-/* ── History ── */
-function renderHistory(){
-  var h=CoinEngine.getHistory();
-  var el=document.getElementById('history-list');
-  if(!h.length){
-    el.innerHTML='<div style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);text-align:center;padding:20px 0">No transactions yet.</div>';
-    return;
-  }
-  function timeAgo(ts){
-    var s=Math.floor((Date.now()-ts)/1000);
-    if(s<60)return s+'s ago';
-    if(s<3600)return Math.floor(s/60)+'m ago';
-    return Math.floor(s/3600)+'h ago';
-  }
-  el.innerHTML=h.map(function(t){
-    return '<div class="history-item">'+
-      '<span class="hi-icon">'+t.icon+'</span>'+
-      '<span class="hi-label">'+t.label+'</span>'+
-      '<span style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);flex-shrink:0;margin-right:6px;">'+timeAgo(t.ts)+'</span>'+
-      '<span class="hi-amt '+(t.amount>0?'pos':'neg')+'">'+(t.amount>0?'+':'')+t.amount+' 🪙</span>'+
-      '</div>';
+/* History */
+function timeAgo(ts){
+  var s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return s+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago';
+}
+function renderHist(){
+  var h=CoinEngine.getHistory(), el=document.getElementById('hist');
+  if(!h.length){ el.innerHTML='<p style="font-family:var(--font-mono);font-size:.68rem;color:var(--muted);text-align:center;padding:20px 0">No transactions yet.</p>'; return; }
+  el.innerHTML=h.slice(0,50).map(function(t){
+    return '<div class="hi"><span class="hi-ico">'+t.icon+'</span><span class="hi-lbl">'+t.label+'</span>'+
+      '<span class="hi-ts">'+timeAgo(t.ts)+'</span>'+
+      '<span class="hi-amt '+(t.amount>0?'pos':'neg')+'">'+(t.amount>0?'+':'')+t.amount+'🪙</span></div>';
   }).join('');
 }
-renderHistory();
+renderHist();
 
-/* ── Demo buy ── */
-var pendingCoins=0;
-function demoBuy(coins,price){
-  pendingCoins=coins;
-  document.getElementById('buy-body').textContent='You\'ll receive 🪙 '+coins.toLocaleString()+' coins.\nDemo price: '+price+'\n(No real payment)';
-  document.getElementById('buy-overlay').classList.remove('hidden');
-  document.getElementById('buy-confirm').onclick=function(){
-    CoinEngine.add(pendingCoins,'Purchased '+pendingCoins.toLocaleString()+' coins (Demo)','💳');
-    SoundEngine.play('jackpot');
-    document.getElementById('buy-overlay').classList.add('hidden');
-    renderHistory();
-    CoinEngine.toast('+'+pendingCoins.toLocaleString()+' 🪙  Demo purchase!','success');
-  };
-}
+document.addEventListener('az:balance',function(){ renderPUShop(); renderHist(); updateChalls(); updateDailyBtn(); });
 </script>
 </body>
 </html>

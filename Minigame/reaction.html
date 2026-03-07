@@ -173,6 +173,12 @@ function reset_(){
   document.getElementById('sc-best').textContent='—';
   document.getElementById('history').innerHTML='';
 }
+
+function shareScore(game,val){
+  var txt='🎮 I scored '+val+' in '+game+' on Arcade Zone!\nPlay free: https://arcadezone.vercel.app';
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else{navigator.clipboard&&navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
 </script>
 </body>
 </html>

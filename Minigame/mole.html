@@ -47,6 +47,7 @@
       <div class="ov-sub">Earned: <b id="earned">0</b> 🪙</div>
       <div class="btn-row">
         <button class="btn filled" style="--c:var(--neon-c)" onclick="startGame()">▶ RETRY (🪙 5)</button>
+        <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="shareScore('Whack-a-Mole',score)">📤 Share</button>
         <a class="btn" href="index.html">HUB</a>
       </div>
     </div>
@@ -158,6 +159,18 @@ function endGame(){
   document.getElementById('sc-final').textContent=score+' pts';
   document.getElementById('earned').textContent=earned;
   document.getElementById('ov-over').classList.remove('hidden');
+}
+
+/* ── Share Score ── */
+function shareScore(game, val) {
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  if(navigator.share) {
+    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
+      CoinEngine.toast('Score copied to clipboard!','info');
+    });
+  }
 }
 </script>
 </body>

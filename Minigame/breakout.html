@@ -26,6 +26,7 @@
       <div class="ov-sub">Earned: <b id="earned">0</b> 🪙</div>
       <div class="btn-row">
         <button class="btn filled" style="--c:var(--neon-f)" onclick="startGame()">▶ RETRY (🪙 10)</button>
+        <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="shareScore('Breakout',score)">📤 Share</button>
         <a class="btn" href="index.html">HUB</a>
       </div>
     </div>
@@ -208,6 +209,18 @@ function setLives(v){document.getElementById('lives-d').textContent='❤️'.rep
 cv.addEventListener('mousemove',function(e){var r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(BW/r.width);});
 cv.addEventListener('touchmove',function(e){e.preventDefault();var r=cv.getBoundingClientRect();mouseX=(e.touches[0].clientX-r.left)*(BW/r.width);},{passive:false});
 ctx.fillStyle='#07070f';ctx.fillRect(0,0,BW,BH);
+
+/* ── Share Score ── */
+function shareScore(game, val) {
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  if(navigator.share) {
+    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
+      CoinEngine.toast('Score copied to clipboard!','info');
+    });
+  }
+}
 </script>
 </body>
 </html>

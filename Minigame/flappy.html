@@ -47,6 +47,7 @@
       <div class="ov-sub">Best: <b id="hi-final">0</b> &nbsp;|&nbsp; Earned: <b id="earned-coins">0</b> 🪙</div>
       <div class="btn-row">
         <button class="btn filled" style="--c:var(--neon-d)" onclick="startGame()">▶ RETRY (10 🪙)</button>
+        <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="shareScore('Flappy Bird',score)">📤 Share</button>
         <a class="btn" href="index.html">HUB</a>
       </div>
     </div>
@@ -373,6 +374,18 @@ pipes = []; particles = []; pipeTimer = 0;
 draw();
 refreshBal();
 document.getElementById('ov-start').classList.remove('hidden');
+
+/* ── Share Score ── */
+function shareScore(game, val) {
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  if(navigator.share) {
+    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
+      CoinEngine.toast('Score copied to clipboard!','info');
+    });
+  }
+}
 </script>
 </body>
 </html>

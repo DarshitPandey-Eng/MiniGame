@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Spin — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+.spin-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+  width:100%;max-width:520px;padding:0 12px;
+}
+.wheel-container{position:relative;width:min(340px,85vw);height:min(340px,85vw);}
+#spin-canvas{width:100%;height:100%;display:block;border-radius:50%;
+  filter:drop-shadow(0 0 28px color-mix(in srgb,var(--neon-e) 30%,transparent));}
+.wheel-pointer{
+  position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+  font-size:2rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));
+  z-index:5;pointer-events:none;
+}
+.spin-result{
+  font-family:var(--font-display);font-size:clamp(2rem,8vw,3rem);
+  letter-spacing:.06em;color:var(--neon-c);text-align:center;
+  animation:spinResultPop .4s cubic-bezier(.17,.67,.35,1.4) both;
+  min-height:3.5rem;display:flex;align-items:center;justify-content:center;
+}
+@keyframes spinResultPop{
+  0%{opacity:0;transform:scale(.5);}
+  100%{opacity:1;transform:scale(1);}
+}
+.spin-sub{font-family:var(--font-mono);font-size:.72rem;color:var(--text2);text-align:center;}
+.prize-table{
+  width:100%;display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:7px;
+}
+.prize-pill{
+  display:flex;align-items:center;gap:6px;padding:7px 10px;
+  border-radius:7px;border:1px solid var(--line2);
+  font-family:var(--font-mono);font-size:.62rem;font-weight:700;
+  background:var(--bg2);
+}
+.prize-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.prize-chance{font-size:.52rem;color:var(--muted);font-weight:400;margin-left:auto;}
+
+/* Already spun state */
+.spin-used-card{
+  background:var(--card-bg);border:1px solid var(--line2);border-radius:var(--radius);
+  padding:28px 24px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;
+  max-width:380px;width:100%;
+}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="wallet.html">← Wallet</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-e);box-shadow:0 0 8px var(--neon-e)"></span>DAILY SPIN</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="gap:22px;padding-top:24px;align-items:center;" id="page-content">
+
+  <div class="spin-wrap">
+    <div style="text-align:center;">
+      <div style="font-family:var(--font-display);font-size:clamp(1.6rem,6vw,2.2rem);letter-spacing:.06em;color:var(--neon-e)">DAILY SPIN</div>
+      <p style="font-family:var(--font-mono);font-size:.68rem;color:var(--text2);margin-top:4px;">One free spin per day. Up to <strong style="color:var(--neon-c)">🪙 100 coins</strong>!</p>
+    </div>
+
+    <!-- Wheel -->
+    <div class="wheel-container" id="wheel-wrap">
+      <div class="wheel-pointer">▼</div>
+      <canvas id="spin-canvas" width="400" height="400"></canvas>
+    </div>
+
+    <!-- Result display -->
+    <div class="spin-result" id="spin-result"></div>
+    <div class="spin-sub" id="spin-sub">Tap the wheel or press SPIN to try your luck!</div>
+
+    <!-- Spin button -->
+    <button class="btn filled" style="--c:var(--neon-e);font-size:1rem;padding:14px 36px;letter-spacing:.08em;" id="spin-btn" onclick="doSpin()">
+      🎡 &nbsp;SPIN
+    </button>
+
+    <a href="wallet.html" class="btn" style="--c:var(--muted);font-size:.7rem;" id="back-link">← Back to Wallet</a>
+
+    <!-- Prize table -->
+    <div style="width:100%;">
+      <div class="section-title" style="margin-bottom:8px;">PRIZE TABLE</div>
+      <div class="prize-table" id="prize-table"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* Theme */
+var tb=document.getElementById('tb');
+function syncTheme(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+tb.addEventListener('click',function(){CoinEngine.toggleTheme();syncTheme();}); syncTheme();
+
+var PRIZES = CoinEngine.SPIN_PRIZES;
+var N = PRIZES.length;
+var TAU = Math.PI*2;
+var SLICE = TAU/N;
+
+/* ── Draw Wheel ── */
+var canvas = document.getElementById('spin-canvas');
+var ctx = canvas.getContext('2d');
+var SIZE = 400;
+canvas.width = SIZE; canvas.height = SIZE;
+var CX = SIZE/2, CY = SIZE/2, R = SIZE/2 - 6;
+
+function drawWheel(offsetAngle){
+  ctx.clearRect(0,0,SIZE,SIZE);
+  for(var i=0;i<N;i++){
+    var start = offsetAngle + i*SLICE;
+    var end   = start + SLICE;
+    /* wedge */
+    ctx.beginPath();
+    ctx.moveTo(CX,CY);
+    ctx.arc(CX,CY,R,start,end);
+    ctx.closePath();
+    ctx.fillStyle = PRIZES[i].color;
+    ctx.globalAlpha = 0.88;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,.45)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    /* label */
+    ctx.save();
+    ctx.translate(CX,CY);
+    ctx.rotate(start + SLICE/2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold '+(PRIZES[i].coins>=100?'13':'15')+'px monospace';
+    ctx.shadowColor = 'rgba(0,0,0,.7)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(PRIZES[i].label, R-10, 5);
+    ctx.restore();
+  }
+  /* center hub */
+  ctx.beginPath();
+  ctx.arc(CX,CY,22,0,TAU);
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('AZ', CX, CY);
+  /* outer ring */
+  ctx.beginPath();
+  ctx.arc(CX,CY,R,0,TAU);
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+/* ── Animation ── */
+var spinning = false;
+var currentAngle = -Math.PI/2; /* start so first slice is at top */
+drawWheel(currentAngle);
+
+/* Prize table */
+var total = PRIZES.reduce(function(a,p){return a+p.weight;},0);
+document.getElementById('prize-table').innerHTML = PRIZES.map(function(p){
+  var pct = Math.round(p.weight/total*100);
+  return '<div class="prize-pill">'+
+    '<div class="prize-dot" style="background:'+p.color+'"></div>'+
+    '<span style="color:'+p.color+'">'+p.label+'</span>'+
+    '<span class="prize-chance">~'+pct+'%</span>'+
+    '</div>';
+}).join('');
+
+/* Check if already spun */
+function checkAlreadySpun(){
+  if(!CoinEngine.canSpin()){
+    document.getElementById('spin-result').textContent='✓ Spun today!';
+    document.getElementById('spin-sub').textContent='Come back tomorrow for another spin.';
+    document.getElementById('spin-btn').disabled=true;
+    document.getElementById('spin-btn').style.opacity='.4';
+    document.getElementById('spin-btn').textContent='✓ Come Back Tomorrow';
+  }
+}
+checkAlreadySpun();
+
+/* Canvas click = spin */
+canvas.addEventListener('click', function(){ if(!spinning && CoinEngine.canSpin()) doSpin(); });
+
+function doSpin(){
+  if(spinning || !CoinEngine.canSpin()) return;
+  spinning = true;
+  document.getElementById('spin-btn').disabled=true;
+  document.getElementById('spin-result').textContent='';
+  document.getElementById('spin-sub').textContent='Spinning…';
+
+  var prizeIdx = CoinEngine.pickSpinPrize();
+  /* Calculate target angle: prize wedge must land under pointer (top = -PI/2) */
+  /* Pointer is at -PI/2 from center. We want prize i to land there. */
+  /* wedge i center = offsetAngle + i*SLICE + SLICE/2 = -PI/2 */
+  var targetWedgeAngle = -Math.PI/2 - (prizeIdx*SLICE + SLICE/2);
+  /* Add multiple full rotations for drama */
+  var spins = 5 + Math.floor(Math.random()*4);
+  var targetAngle = targetWedgeAngle - spins*TAU;
+  /* normalise start so we always spin forward */
+  var startAngle = currentAngle;
+
+  var duration = 4200 + Math.random()*800;
+  var startTime = null;
+
+  function easeOut(t){ return 1 - Math.pow(1-t, 4); }
+
+  /* tick sound */
+  var lastTick = -1;
+  function tickSound(angle){
+    var slice = Math.floor(((angle%(TAU)+TAU)%TAU) / SLICE);
+    if(slice!==lastTick){ SoundEngine.play('click'); lastTick=slice; }
+  }
+
+  function frame(ts){
+    if(!startTime) startTime=ts;
+    var elapsed = ts-startTime;
+    var t = Math.min(elapsed/duration,1);
+    var eased = easeOut(t);
+    var angle = startAngle + (targetAngle-startAngle)*eased;
+    currentAngle = angle;
+    drawWheel(angle);
+    tickSound(angle);
+    if(t<1){ requestAnimationFrame(frame); }
+    else { onSpinEnd(prizeIdx); }
+  }
+  requestAnimationFrame(frame);
+}
+
+function onSpinEnd(prizeIdx){
+  spinning = false;
+  CoinEngine.recordSpin();
+  var prize = PRIZES[prizeIdx];
+  SoundEngine.play(prize.coins>0?'jackpot':'buzz');
+
+  if(prize.coins>0){
+    CoinEngine.add(prize.coins,'Daily Spin Win','🎡');
+    document.getElementById('spin-result').textContent='🎉 +'+prize.coins+' 🪙';
+    document.getElementById('spin-sub').textContent='Coins added to your wallet! Come back tomorrow for another spin.';
+    /* lucky spin achievement */
+    if(prize.coins>=50) CoinEngine.unlockAchievement && CoinEngine.unlockAchievement('a17');
+  } else {
+    document.getElementById('spin-result').textContent='😬 Miss!';
+    document.getElementById('spin-sub').textContent='No coins this time. Better luck tomorrow!';
+  }
+
+  document.getElementById('spin-btn').textContent='✓ Done — Come Back Tomorrow';
+  document.getElementById('spin-btn').style.opacity='.45';
+}
+</script>
+</body>
+</html>
