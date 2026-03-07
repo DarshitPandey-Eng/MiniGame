@@ -11,18 +11,38 @@
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-e);}
-.hanoi-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:500px;padding:0 10px;}
-#hcv{display:block;touch-action:none;cursor:pointer;border-radius:8px;}
-.h-stats{display:flex;gap:8px;width:100%;}
-.h-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px;text-align:center;}
-.h-stat .v{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-e);}
-.h-stat .l{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.1em;}
-.h-hint{font-family:var(--font-mono);font-size:.62rem;color:var(--muted);text-align:center;line-height:1.7;}
-.level-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;}
-.lvl-btn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:6px 12px;
-  border-radius:6px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+.hn-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:980px;}
+#hncv{display:block;border-radius:12px;border:2px solid var(--line2);cursor:pointer;touch-action:none;}
+
+.hn-hud{display:flex;gap:8px;width:100%;}
+.hn-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:10px 8px;text-align:center;}
+.hn-stat .sv{font-family:var(--font-display);font-size:1.5rem;line-height:1;}
+.hn-stat .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.08em;margin-top:3px;}
+
+.hn-disc-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;}
+.hn-disc-btn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 13px;
+  border-radius:7px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .12s;}
+.hn-disc-btn.on{border-color:var(--neon-e);color:var(--neon-e);background:color-mix(in srgb,var(--neon-e) 12%,transparent);}
+
+.hn-action-row{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
+.hn-btn{font-family:var(--font-mono);font-size:.7rem;font-weight:700;padding:10px 18px;
+  border-radius:9px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--text2);
   cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;}
-.lvl-btn.on{border-color:var(--neon-e);color:var(--neon-e);background:color-mix(in srgb,var(--neon-e) 12%,transparent);}
+.hn-btn:hover{border-color:var(--neon-e);color:var(--neon-e);}
+.hn-btn.primary{background:var(--neon-e);color:#000;border-color:var(--neon-e);}
+.hn-btn:disabled{opacity:.35;cursor:default;}
+
+.hn-msg{font-family:var(--font-mono);font-size:.76rem;color:var(--text2);text-align:center;min-height:1.4rem;font-weight:600;}
+
+/* Desktop side panel */
+.hn-panel{display:flex;flex-direction:column;gap:10px;}
+.hn-best-list{display:flex;flex-direction:column;gap:4px;}
+.hn-best-row{display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--font-mono);font-size:.62rem;background:var(--card-bg);
+  border:1px solid var(--line2);border-radius:7px;padding:6px 10px;}
+.hn-best-row .lbl{color:var(--muted);}
+.hn-best-row .val{color:var(--neon-e);font-weight:700;}
 </style>
 </head>
 <body>
@@ -33,232 +53,538 @@
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
-<div class="page" style="padding-top:14px;align-items:center;">
-<div class="hanoi-wrap">
 
-  <div class="h-stats">
-    <div class="h-stat"><div class="v" id="h-moves">0</div><div class="l">MOVES</div></div>
-    <div class="h-stat"><div class="v" id="h-opt" style="color:var(--muted)">0</div><div class="l">OPTIMAL</div></div>
-    <div class="h-stat"><div class="v" id="h-best" style="color:var(--neon-c)">—</div><div class="l">BEST</div></div>
+<div class="page" style="padding-top:10px;align-items:center;">
+<div class="hn-wrap game-scale-root">
+
+  <div class="hn-hud" id="hn-hud">
+    <div class="hn-stat"><div class="sv" id="hn-moves" style="color:var(--neon-a)">0</div><div class="sl">MOVES</div></div>
+    <div class="hn-stat"><div class="sv" id="hn-opt"   style="color:var(--neon-c)">–</div><div class="sl">OPTIMAL</div></div>
+    <div class="hn-stat"><div class="sv" id="hn-time"  style="color:var(--neon-e)">0:00</div><div class="sl">TIME</div></div>
+    <div class="hn-stat"><div class="sv" id="hn-eff"   style="color:var(--neon-f)">–</div><div class="sl">EFFICIENCY</div></div>
   </div>
 
-  <div class="level-row">
-    <button class="lvl-btn" id="l3" onclick="setDiscs(3)">3 DISCS</button>
-    <button class="lvl-btn on" id="l4" onclick="setDiscs(4)">4 DISCS</button>
-    <button class="lvl-btn" id="l5" onclick="setDiscs(5)">5 DISCS</button>
-    <button class="lvl-btn" id="l6" onclick="setDiscs(6)">6 DISCS</button>
-    <button class="lvl-btn" id="l7" onclick="setDiscs(7)">7 DISCS</button>
-  </div>
+  <div class="game-desktop-layout" style="align-items:flex-start;">
+    <div class="game-canvas-col">
 
-  <div style="font-family:var(--font-display);font-size:.9rem;color:var(--text2);text-align:center;min-height:1.4rem;" id="h-status">Tap a peg to select, tap again to move</div>
+      <div class="hn-disc-row">
+        <button class="hn-disc-btn on" id="hd3" onclick="setDiscs(3)">3</button>
+        <button class="hn-disc-btn"    id="hd4" onclick="setDiscs(4)">4</button>
+        <button class="hn-disc-btn"    id="hd5" onclick="setDiscs(5)">5</button>
+        <button class="hn-disc-btn"    id="hd6" onclick="setDiscs(6)">6</button>
+        <button class="hn-disc-btn"    id="hd7" onclick="setDiscs(7)">7</button>
+        <button class="hn-disc-btn"    id="hd8" onclick="setDiscs(8)">8</button>
+      </div>
 
-  <canvas id="hcv"></canvas>
+      <canvas id="hncv"></canvas>
 
-  <div class="h-hint">
-    🎯 Move all discs to the rightmost peg<br>
-    · Only one disc at a time · Smaller disc always on top
-  </div>
+      <div class="hn-msg" id="hn-msg">Tap a peg to pick up, tap destination to place</div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-    <button class="btn filled" style="--c:var(--neon-e)" onclick="newGame()">▶ RESET</button>
-    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="doShare()">📤 Share</button>
+      <div class="hn-action-row">
+        <button class="hn-btn primary" onclick="newGame()">▶ NEW</button>
+        <button class="hn-btn" id="undo-btn" onclick="undoMove()" disabled>↩ UNDO</button>
+        <button class="hn-btn" id="auto-btn" onclick="autoSolve()">🤖 AUTO</button>
+        <button class="hn-btn" id="pause-btn" onclick="togglePause()" disabled>⏸ PAUSE</button>
+        <button class="hn-btn" onclick="doShare()">📤</button>
+      </div>
+
+      <!-- Zoom -->
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="changeZoom(-1)">−</button>
+        <span class="zoom-label" id="zoom-lbl">100%</span>
+        <button class="zoom-btn" onclick="changeZoom(1)">+</button>
+      </div>
+
+    </div>
+
+    <div class="hn-panel game-side-panel">
+      <div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;">BEST SCORES</div>
+      <div class="hn-best-list" id="best-list"></div>
+
+      <div class="hn-stat" style="max-width:999px;">
+        <div class="sv" id="hn-coins" style="color:var(--neon-d)">+0 🪙</div>
+        <div class="sl">COINS EARNED</div>
+      </div>
+
+      <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);line-height:1.9;margin-top:4px;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;">
+        <b style="color:var(--text)">HOW TO PLAY</b><br>
+        • Tap a peg to select it<br>
+        • Tap destination to move top disc<br>
+        • Never place larger on smaller<br>
+        • Move all discs to peg 3 to win!<br><br>
+        <b style="color:var(--neon-e)">REWARDS</b><br>
+        Perfect = N×12 🪙<br>
+        Solved  = N×4 🪙<br>
+        Undo or Auto = no reward
+      </div>
+    </div>
   </div>
 
 </div>
 </div>
+
 <script>
 /* Theme */
 var _tb=document.getElementById('tb');
 function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
-_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();draw();});  _sT();
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();draw();}); _sT();
 
-var cv=document.getElementById('hcv');
+/* ── Canvas ── */
+var cv=document.getElementById('hncv');
 var ctx=cv.getContext('2d');
 var DPR=Math.min(window.devicePixelRatio||1,2);
+var zoomIdx=2, zoomSteps=[0.6,0.8,1,1.2,1.5,1.8];
 
-var PEGS=3, N=4, pegs=[[],[],[]], selected=-1, moves=0, best={}, gameWon=false;
-var DISC_COLORS=['#ff2d78','#ff6b35','#ffe135','#00e676','#00e5ff','#bf5af2','#ff9900'];
-
-function calcSize(){
-  var w=Math.min(window.innerWidth-24,480);
-  return {w:w, h:Math.min(w*0.55,240)};
+function changeZoom(dir){
+  zoomIdx=Math.max(0,Math.min(zoomSteps.length-1,zoomIdx+dir));
+  document.getElementById('zoom-lbl').textContent=Math.round(zoomSteps[zoomIdx]*100)+'%';
+  initCanvas(); draw();
 }
 
+var W,H,PEG_X,PEG_W,BASE_Y,PEG_H,MAX_DISC_W,MIN_DISC_W,DISC_H;
+
 function initCanvas(){
-  var sz=calcSize();
-  cv.style.width=sz.w+'px'; cv.style.height=sz.h+'px';
-  cv.width=sz.w*DPR; cv.height=sz.h*DPR;
+  var avW=Math.min(window.innerWidth-40, window.innerWidth>820?620:window.innerWidth-20);
+  var avH=Math.max(220, Math.min(window.innerHeight-380,440));
+  var raw=Math.min(avW, avH*1.6, 640);
+  W=Math.floor(raw*zoomSteps[zoomIdx]);
+  H=Math.floor(W*0.52);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  cv.width=W*DPR; cv.height=H*DPR;
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  /* Geometry */
+  PEG_W=Math.max(5,Math.floor(W*0.018));
+  BASE_Y=H*0.86;
+  PEG_H=H*0.65;
+  MAX_DISC_W=W*0.27;
+  MIN_DISC_W=W*0.055;
+  DISC_H=Math.max(10,Math.min(28,H*0.1));
+  PEG_X=[W*0.18, W*0.5, W*0.82];
 }
 initCanvas();
 window.addEventListener('resize',function(){initCanvas();draw();});
 
-function setDiscs(n){
-  N=n;
-  ['3','4','5','6','7'].forEach(function(x){
-    document.getElementById('l'+x).className='lvl-btn'+(x==n?' on':'');
+/* ── Game state ── */
+var numDiscs=3, pegs=[[],[],[]], selected=-1;
+var moves=0, gameOver=false, usedUndo=false, usedAuto=false;
+var history=[]; /* stack of move objects {from,to,disc} */
+var timerInt=null, seconds=0, running=false, paused=false;
+
+/* Auto-solve */
+var autoSeq=[], autoIdx=0, autoTimer=null;
+
+/* Best scores */
+function getBest(n){ var v=localStorage.getItem('hanoi_best_'+n); return v?parseInt(v):null; }
+function setBest(n,m){ var b=getBest(n); if(b===null||m<b) localStorage.setItem('hanoi_best_'+n,m); }
+
+function renderBestList(){
+  var list=document.getElementById('best-list');
+  list.innerHTML='';
+  [3,4,5,6,7,8].forEach(function(n){
+    var b=getBest(n), opt=(1<<n)-1;
+    var row=document.createElement('div'); row.className='hn-best-row';
+    row.innerHTML='<span class="lbl">'+n+' discs (opt: '+opt+')</span>'
+      +'<span class="val">'+(b?b+' moves':'—')+'</span>';
+    list.appendChild(row);
   });
+}
+
+function setDiscs(n){
+  numDiscs=n;
+  [3,4,5,6,7,8].forEach(function(x){document.getElementById('hd'+x).className='hn-disc-btn'+(n===x?' on':'');});
   newGame();
 }
 
 function newGame(){
-  pegs=[[],[],[]]; selected=-1; moves=0; gameWon=false;
-  for(var i=N-1;i>=0;i--) pegs[0].push(i); // largest at bottom
-  var opt=Math.pow(2,N)-1;
-  document.getElementById('h-moves').textContent=0;
-  document.getElementById('h-opt').textContent=opt;
-  setStatus('Tap a peg to select');
+  stopAutoSolve(); stopTimer();
+  pegs=[[],[],[]];
+  for(var i=numDiscs;i>=1;i--) pegs[0].push(i);
+  selected=-1; moves=0; gameOver=false; usedUndo=false; usedAuto=false;
+  history=[]; seconds=0;
+  updateUI(); renderBestList();
+  document.getElementById('hn-coins').textContent='+0 🪙';
+  document.getElementById('undo-btn').disabled=true;
+  document.getElementById('pause-btn').disabled=true;
+  document.getElementById('auto-btn').disabled=false;
+  setMsg('Tap peg 1 to start — move all discs to peg 3!');
+  running=false; paused=false;
   draw();
-  SoundEngine.play('start');
 }
 
-function setStatus(msg){document.getElementById('h-status').textContent=msg;}
-
-/* Tap handling */
-function pegFromX(x){
-  var sz=calcSize();
-  var seg=sz.w/PEGS;
-  return Math.min(PEGS-1,Math.max(0,Math.floor(x/seg)));
+function updateUI(){
+  var opt=(1<<numDiscs)-1;
+  var eff=moves>0?Math.round((opt/moves)*100)+'%':'–';
+  document.getElementById('hn-moves').textContent=moves;
+  document.getElementById('hn-opt').textContent=opt;
+  document.getElementById('hn-eff').textContent=eff;
+  var m=Math.floor(seconds/60),s=seconds%60;
+  document.getElementById('hn-time').textContent=m+':'+(s<10?'0':'')+s;
 }
 
-cv.addEventListener('click',function(e){
-  if(gameWon)return;
-  var rect=cv.getBoundingClientRect();
-  var x=e.clientX-rect.left;
-  var peg=pegFromX(x);
-  handleTap(peg);
-});
-cv.addEventListener('touchend',function(e){
-  e.preventDefault();
-  if(gameWon)return;
-  var rect=cv.getBoundingClientRect();
-  var t=e.changedTouches[0];
-  var peg=pegFromX(t.clientX-rect.left);
-  handleTap(peg);
-},{passive:false});
-cv.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
+function setMsg(msg){document.getElementById('hn-msg').textContent=msg;}
 
-function handleTap(peg){
+/* ── Timer ── */
+function startTimer(){
+  if(running||paused)return;
+  running=true;
+  timerInt=setInterval(function(){if(!paused){seconds++;updateUI();}},1000);
+  document.getElementById('pause-btn').disabled=false;
+}
+function stopTimer(){clearInterval(timerInt);running=false;}
+
+function togglePause(){
+  paused=!paused;
+  document.getElementById('pause-btn').textContent=paused?'▶ PLAY':'⏸ PAUSE';
+  if(paused) setMsg('⏸ Paused');
+  else setMsg('Tap a peg to continue…');
+  draw();
+}
+
+/* ── Move logic ── */
+function selectPeg(pegIdx){
+  if(gameOver||paused) return;
+  if(!running&&moves===0) startTimer();
+
   if(selected===-1){
-    if(pegs[peg].length===0){setStatus('That peg is empty!');SoundEngine.play('buzz');return;}
-    selected=peg;
-    setStatus('Selected peg '+(peg+1)+'  — now tap destination');
-    SoundEngine.play('flip');
-    draw();
+    /* Pick up: must have a disc */
+    if(pegs[pegIdx].length===0){setMsg('⚠ That peg is empty!');SoundEngine.play('error');return;}
+    selected=pegIdx;
+    setMsg('Peg '+(pegIdx+1)+' selected — tap destination peg');
+    SoundEngine.play('click');
+  } else if(selected===pegIdx){
+    /* Deselect */
+    selected=-1;
+    setMsg('Tap a peg to pick up its top disc');
+    SoundEngine.play('toggle');
   } else {
-    if(peg===selected){selected=-1;setStatus('Deselected');draw();return;}
-    /* try move */
-    var disc=pegs[selected][pegs[selected].length-1];
-    var top=pegs[peg].length?pegs[peg][pegs[peg].length-1]:999;
-    if(disc<top){
-      pegs[peg].push(pegs[selected].pop());
-      moves++;
-      document.getElementById('h-moves').textContent=moves;
-      SoundEngine.play('match');
-      selected=-1;
-      draw();
-      /* check win */
-      if(pegs[2].length===N){
-        gameWon=true;
-        var opt=Math.pow(2,N)-1;
-        var perfect=moves===opt;
-        var reward=perfect?N*12:N*6;
-        CoinEngine.add(reward,'Tower of Hanoi — '+(perfect?'perfect':'solved'),'🗼');
-        CoinEngine.recordGame('hanoi',reward,true,{});
-        SoundEngine.play('success');
-        var bk='hanoi_best_'+N;
-        var prev=parseInt(localStorage.getItem(bk)||'0');
-        if(!prev||moves<prev){localStorage.setItem(bk,moves);}
-        document.getElementById('h-best').textContent=localStorage.getItem(bk)||moves;
-        setStatus(perfect?'🏆 Perfect! +'+reward+' 🪙 (Optimal solution!)':'🎉 Solved! +'+reward+' 🪙');
-        CoinEngine.toast('+'+reward+' 🪙 '+(perfect?'Perfect!':'Solved!'),'success');
-      } else {
-        setStatus('Move '+(moves)+' — keep going!');
-      }
-    } else {
-      SoundEngine.play('buzz');
-      setStatus('❌ Can\'t place larger disc on smaller!');
-      selected=-1;draw();
+    /* Move: validate */
+    var srcPeg=pegs[selected], dstPeg=pegs[pegIdx];
+    var disc=srcPeg[srcPeg.length-1];
+    if(dstPeg.length>0&&dstPeg[dstPeg.length-1]<disc){
+      setMsg('❌ Cannot place larger disc on smaller!');
+      SoundEngine.play('error');
+      /* Shake animation */
+      shakeTarget=pegIdx; setTimeout(function(){shakeTarget=-1;draw();},400);
+      return;
     }
+    /* Execute move */
+    history.push({from:selected,to:pegIdx,disc:disc});
+    srcPeg.pop();
+    dstPeg.push(disc);
+    moves++;
+    selected=-1;
+    SoundEngine.play('drop')||SoundEngine.play('pop');
+    document.getElementById('undo-btn').disabled=false;
+    updateUI();
+    draw();
+    /* Check win */
+    if(pegs[2].length===numDiscs) setTimeout(checkWin,200);
+    else setMsg('Tap a peg to continue…');
   }
+  draw();
 }
 
+var shakeTarget=-1;
+
+function undoMove(){
+  if(!history.length||gameOver)return;
+  usedUndo=true;
+  var m=history.pop();
+  /* Move stored {from, to, disc}: undo by popping from m.to and pushing back to m.from */
+  var disc=pegs[m.to].pop();
+  pegs[m.from].push(disc);
+  moves=Math.max(0,moves-1);
+  updateUI();
+  setMsg('↩ Move undone (undo used — no perfect reward)');
+  SoundEngine.play('toggle');
+  if(!history.length) document.getElementById('undo-btn').disabled=true;
+  draw();
+}
+
+/* ── Auto solve ── */
+function autoSolve(){
+  if(gameOver) return;
+  usedAuto=true;
+  stopAutoSolve();
+  /* Generate optimal solution */
+  pegs=[[],[],[]];
+  for(var i=numDiscs;i>=1;i--) pegs[0].push(i);
+  selected=-1; moves=0; history=[]; seconds=0;
+  document.getElementById('undo-btn').disabled=true;
+  document.getElementById('auto-btn').disabled=true;
+  setMsg('🤖 Auto-solving…');
+  autoSeq=[];
+  hanoiSolve(numDiscs,0,2,1,autoSeq);
+  autoIdx=0;
+  startTimer();
+  running=true; gameOver=false;
+  updateUI(); draw();
+  autoTimer=setInterval(function(){
+    if(paused||autoIdx>=autoSeq.length){if(autoIdx>=autoSeq.length)finishAuto();return;}
+    var m=autoSeq[autoIdx++];
+    var disc=pegs[m.from][pegs[m.from].length-1];
+    pegs[m.to].push(pegs[m.from].pop());
+    moves++; history.push({from:m.from,to:m.to,disc:disc});
+    updateUI(); draw();
+    SoundEngine.play('pop');
+    if(autoIdx>=autoSeq.length) setTimeout(finishAuto,300);
+  },Math.max(60,500/numDiscs));
+}
+
+function hanoiSolve(n,from,to,aux,seq){
+  if(n===0)return;
+  hanoiSolve(n-1,from,aux,to,seq);
+  seq.push({from:from,to:to});
+  hanoiSolve(n-1,aux,to,from,seq);
+}
+
+function stopAutoSolve(){clearInterval(autoTimer);autoSeq=[];autoIdx=0;}
+
+function finishAuto(){
+  stopAutoSolve(); stopTimer();
+  document.getElementById('pause-btn').disabled=true;
+  gameOver=true;
+  setMsg('🤖 Auto-solve complete! No coins for auto-solve.');
+  SoundEngine.play('success');
+  draw();
+}
+
+/* ── Win check ── */
+function checkWin(){
+  if(pegs[2].length!==numDiscs)return;
+  stopTimer(); stopAutoSolve(); gameOver=true;
+  document.getElementById('pause-btn').disabled=true;
+  var opt=(1<<numDiscs)-1;
+  var isPerfect=moves===opt;
+  var reward=usedAuto||usedUndo?0:(isPerfect?numDiscs*12:numDiscs*4);
+  setBest(numDiscs,moves);
+  renderBestList();
+  SoundEngine.play('success');
+  var msg='🎉 Solved in '+moves+' moves'+(isPerfect?' (PERFECT! 🌟)':'')
+    +' · Time: '+formatTime(seconds);
+  if(reward>0){
+    CoinEngine.add(reward,'Tower of Hanoi '+(isPerfect?'perfect ':'')+'solve','🗼');
+    CoinEngine.recordGame('hanoi',reward,true,{discs:numDiscs,moves:moves,perfect:isPerfect});
+    CoinEngine.toast('+'+reward+' 🪙'+(isPerfect?' Perfect solve! 🌟':''),'success');
+    document.getElementById('hn-coins').textContent='+'+reward+' 🪙';
+  } else {
+    CoinEngine.recordGame('hanoi',0,true,{discs:numDiscs,moves:moves});
+    CoinEngine.toast('Solved! (no reward — undo/auto used)','info');
+  }
+  setMsg(msg);
+  draw();
+}
+
+function formatTime(s){var m=Math.floor(s/60);return m+':'+(s%60<10?'0':'')+s%60;}
+
+/* ── Drawing ── */
+/* Disc colour palette — vivid gradient per disc */
+var DISC_PALETTE=[
+  ['#ff2d78','#ff6090','#cc0050'], /* 1 - hot pink */
+  ['#ff6600','#ff9040','#cc4400'], /* 2 - orange */
+  ['#ffe135','#ffee80','#cc9900'], /* 3 - gold */
+  ['#00e676','#60ffb0','#009944'], /* 4 - green */
+  ['#00b0ff','#60d8ff','#0070cc'], /* 5 - cyan */
+  ['#c060ff','#d890ff','#7700cc'], /* 6 - purple */
+  ['#ff4060','#ff8090','#cc0020'], /* 7 - red */
+  ['#40ffee','#80fff8','#00aaaa'], /* 8 - teal */
+];
+
+function discGradient(discSize,x,y,w,h){
+  var pal=DISC_PALETTE[(discSize-1)%DISC_PALETTE.length];
+  var gr=ctx.createLinearGradient(x,y,x,y+h);
+  gr.addColorStop(0,pal[1]);
+  gr.addColorStop(0.45,pal[0]);
+  gr.addColorStop(1,pal[2]);
+  return gr;
+}
+
+function discW(size){ return MIN_DISC_W+(MAX_DISC_W-MIN_DISC_W)*((size-1)/(numDiscs-1||1)); }
+
+var winFlash=0;
 function draw(){
-  var sz=calcSize(), W=sz.w, H=sz.h;
   var isDark=CoinEngine.getTheme()==='dark';
   ctx.clearRect(0,0,W,H);
+
+  /* Background */
   ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
   ctx.fillRect(0,0,W,H);
 
-  /* base */
-  ctx.fillStyle=isDark?'#1a1a30':'#d0d0e8';
-  ctx.fillRect(0,H-18,W,18);
+  /* Subtle grid */
+  ctx.strokeStyle=isDark?'rgba(255,255,255,.03)':'rgba(0,0,0,.04)';
+  ctx.lineWidth=.5;
+  for(var gx=0;gx<W;gx+=32){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(var gy=0;gy<H;gy+=32){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
 
-  var pegW=8, pegH=H-22;
-  var maxDiscW=W/PEGS*0.82;
-  var discH=Math.max(14,Math.floor((pegH-20)/(N+1)));
+  /* Base platform */
+  var baseGrad=ctx.createLinearGradient(0,BASE_Y,0,BASE_Y+14);
+  baseGrad.addColorStop(0,isDark?'#3a3a5a':'#c0c0e0');
+  baseGrad.addColorStop(1,isDark?'#1a1a2e':'#9090c0');
+  ctx.fillStyle=baseGrad;
+  ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=10;
+  roundRect(ctx, W*0.05, BASE_Y, W*0.9, 14, 6);
+  ctx.fill(); ctx.shadowBlur=0;
 
-  for(var p=0;p<PEGS;p++){
-    var pegX=W/PEGS*(p+0.5);
-    /* peg rod */
-    ctx.fillStyle=selected===p?(isDark?'#ffe135':'#cc9900'):isDark?'rgba(255,255,255,.25)':'rgba(0,0,0,.25)';
-    if(selected===p){ctx.shadowColor='#ffe135';ctx.shadowBlur=12;}
-    ctx.fillRect(pegX-pegW/2, 14, pegW, pegH);
+  /* Pegs */
+  PEG_X.forEach(function(px,pi){
+    var pegGrad=ctx.createLinearGradient(px-PEG_W,0,px+PEG_W,0);
+    pegGrad.addColorStop(0,isDark?'#2a2a48':'#b0b0d8');
+    pegGrad.addColorStop(0.4,isDark?'#6060aa':'#e0e0ff');
+    pegGrad.addColorStop(1,isDark?'#2a2a48':'#b0b0d8');
+    ctx.fillStyle=pi===selected?(isDark?'#ffe135':'#cc8800'):pegGrad;
+    if(pi===selected){ctx.shadowColor='#ffe135';ctx.shadowBlur=16;}
+    else{ctx.shadowColor='rgba(0,0,0,.2)';ctx.shadowBlur=4;}
+    ctx.beginPath();
+    ctx.roundRect(px-PEG_W/2, BASE_Y-PEG_H, PEG_W, PEG_H, PEG_W/2);
+    ctx.fill();
     ctx.shadowBlur=0;
 
-    /* peg label */
-    ctx.fillStyle=selected===p?'#ffe135':isDark?'rgba(255,255,255,.3)':'rgba(0,0,0,.3)';
-    ctx.font='bold 11px monospace';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(p+1,pegX,8);
+    /* Peg label */
+    ctx.fillStyle=isDark?'rgba(255,255,255,.3)':'rgba(0,0,70,.35)';
+    ctx.font='bold '+(W*0.022)+'px monospace';
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText('PEG '+(pi+1), px, BASE_Y+16);
 
-    /* discs */
-    for(var d=0;d<pegs[p].length;d++){
-      var discIdx=pegs[p][d]; /* 0=smallest */
-      var w=((N-discIdx)/(N))*maxDiscW+discH;
-      var y=H-18-(d+1)*discH-2;
-      var r=discH/2;
-      var col=DISC_COLORS[discIdx%DISC_COLORS.length];
-
-      ctx.shadowColor=col; ctx.shadowBlur=6;
-      ctx.fillStyle=col;
-      roundRect(ctx,pegX-w/2,y,w,discH-3,r);
-      ctx.shadowBlur=0;
-
-      /* shine */
-      ctx.fillStyle='rgba(255,255,255,0.2)';
-      roundRect(ctx,pegX-w/2+4,y+2,w-8,Math.max(3,discH*0.3),2);
+    /* Shake animation */
+    if(pi===shakeTarget){
+      ctx.strokeStyle='#ff2d78';ctx.lineWidth=2;
+      ctx.strokeRect(px-MAX_DISC_W/2-4,BASE_Y-PEG_H-4,MAX_DISC_W+8,PEG_H+8);
     }
+  });
+
+  /* Discs — draw each peg's stack from bottom up */
+  var isWon=gameOver&&pegs[2].length===numDiscs;
+  pegs.forEach(function(peg,pi){
+    var px=PEG_X[pi];
+    peg.forEach(function(size,stackIdx){
+      var dw=discW(size), dh=DISC_H;
+      var dx=px-dw/2;
+      var dy=BASE_Y - (stackIdx+1)*dh - stackIdx*2;
+      var isTop=stackIdx===peg.length-1;
+      var isSelected=pi===selected&&isTop;
+
+      /* Lift selected disc */
+      if(isSelected) dy-=DISC_H*0.7;
+
+      /* Win flash */
+      if(isWon){
+        var flash=0.5+0.5*Math.sin(Date.now()/120+size);
+        ctx.globalAlpha=0.7+flash*0.3;
+      }
+
+      /* Shadow */
+      ctx.shadowColor='rgba(0,0,0,.45)';
+      ctx.shadowBlur=isSelected?16:6;
+      ctx.shadowOffsetY=isSelected?8:2;
+
+      /* Main disc body */
+      var grad=discGradient(size,dx,dy,dw,dh);
+      ctx.fillStyle=grad;
+      ctx.beginPath();
+      ctx.roundRect(dx,dy,dw,dh,Math.min(dh/2,10));
+      ctx.fill();
+      ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+
+      /* Highlight shine stripe */
+      var shineGrad=ctx.createLinearGradient(dx,dy,dx,dy+dh*0.45);
+      shineGrad.addColorStop(0,'rgba(255,255,255,0.38)');
+      shineGrad.addColorStop(1,'rgba(255,255,255,0.0)');
+      ctx.fillStyle=shineGrad;
+      ctx.beginPath();
+      ctx.roundRect(dx+2,dy+2,dw-4,dh*0.45,Math.min(dh/2,10));
+      ctx.fill();
+
+      /* Disc number */
+      ctx.globalAlpha=1;
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.font='bold '+(dh*0.55)+'px monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(size, px, dy+dh/2);
+
+      /* Selected glow ring */
+      if(isSelected){
+        ctx.strokeStyle='rgba(255,225,53,0.9)';
+        ctx.lineWidth=2.5;
+        ctx.shadowColor='#ffe135'; ctx.shadowBlur=12;
+        ctx.beginPath();ctx.roundRect(dx-2,dy-2,dw+4,dh+4,Math.min(dh/2+2,12));ctx.stroke();
+        ctx.shadowBlur=0;
+      }
+      ctx.globalAlpha=1;
+    });
+  });
+
+  /* Win overlay */
+  if(isWon){
+    winFlash=(winFlash+1)%60;
+    ctx.fillStyle='rgba(0,0,0,0.45)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(255,225,53,'+( 0.7+0.3*Math.sin(winFlash/5))+')';
+    ctx.font='bold '+(W*0.065)+'px monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowColor='#ffe135'; ctx.shadowBlur=30;
+    ctx.fillText('SOLVED! 🎉',W/2,H/2-W*0.025);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(255,255,255,0.8)';
+    ctx.font='bold '+(W*0.032)+'px monospace';
+    ctx.fillText(moves+' moves · '+formatTime(seconds),W/2,H/2+W*0.048);
+    requestAnimationFrame(draw);
   }
 
-  /* win highlight */
-  if(gameWon){
-    ctx.fillStyle='rgba(0,230,118,.08)';
+  /* Pause overlay */
+  if(paused){
+    ctx.fillStyle='rgba(0,0,0,0.55)';
     ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    ctx.font='bold '+(W*0.07)+'px monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⏸ PAUSED',W/2,H/2);
   }
 }
 
 function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(x,y,w,h,r);
+  else{
+    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  }
 }
 
+/* ── Input: tap peg ── */
+cv.addEventListener('click',function(e){
+  if(gameOver&&pegs[2].length!==numDiscs)return;
+  if(gameOver&&pegs[2].length===numDiscs)return; /* won, do nothing */
+  var rect=cv.getBoundingClientRect();
+  var x=(e.clientX-rect.left)/cv.offsetWidth*W;
+  /* Find closest peg */
+  var closest=-1, minD=W*0.2;
+  PEG_X.forEach(function(px,pi){
+    var d=Math.abs(x-px);
+    if(d<minD){minD=d;closest=pi;}
+  });
+  if(closest>=0) selectPeg(closest);
+});
+cv.addEventListener('touchend',function(e){
+  e.preventDefault();
+  if(gameOver)return;
+  var rect=cv.getBoundingClientRect();
+  var x=(e.changedTouches[0].clientX-rect.left)/cv.offsetWidth*W;
+  var closest=-1, minD=W*0.25;
+  PEG_X.forEach(function(px,pi){var d=Math.abs(x-px);if(d<minD){minD=d;closest=pi;}});
+  if(closest>=0) selectPeg(closest);
+},{passive:false});
+
 function doShare(){
-  var txt='🗼 I solved Tower of Hanoi ('+N+' discs) in '+moves+' moves on Arcade Zone!\nPlay free: '+window.location.origin;
+  var opt=(1<<numDiscs)-1;
+  var txt='🗼 Tower of Hanoi: solved '+numDiscs+' discs in '+moves+' moves (optimal: '+opt+') on Arcade Zone!\nPlay free: '+window.location.origin;
   if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
 }
 
-/* Load best */
-function loadBest(){
-  var v=localStorage.getItem('hanoi_best_'+N);
-  document.getElementById('h-best').textContent=v||'—';
-}
-
-setDiscs(4);
+renderBestList();
+newGame();
 </script>
 </body>
 </html>

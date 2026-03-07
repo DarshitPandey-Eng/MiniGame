@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Speed Math — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-c);}
+.sm-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:600px;padding:0 12px 20px;}
+
+/* Timer ring */
+.sm-timer-ring{position:relative;width:110px;height:110px;}
+.sm-timer-ring svg{transform:rotate(-90deg);}
+.sm-timer-ring .ring-bg{fill:none;stroke:var(--bg2);stroke-width:8;}
+.sm-timer-ring .ring-fill{fill:none;stroke:var(--neon-c);stroke-width:8;stroke-linecap:round;
+  stroke-dasharray:283;stroke-dashoffset:0;transition:stroke-dashoffset .5s linear,stroke .3s;}
+.sm-timer-ring .ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:2rem;color:var(--neon-c);line-height:1;}
+
+/* Question area */
+.sm-question{font-family:var(--font-display);font-size:clamp(2rem,10vw,4.5rem);
+  letter-spacing:.04em;color:var(--text);text-align:center;
+  background:var(--card-bg);border:2px solid var(--line2);border-radius:16px;
+  padding:20px 28px;width:100%;min-height:100px;display:flex;align-items:center;justify-content:center;
+  transition:border-color .15s,background .15s;position:relative;overflow:hidden;}
+.sm-question.correct{border-color:var(--neon-d);background:color-mix(in srgb,var(--neon-d) 8%,var(--card-bg));}
+.sm-question.wrong{border-color:var(--neon-b);background:color-mix(in srgb,var(--neon-b) 8%,var(--card-bg));animation:wrongShake .3s ease;}
+@keyframes wrongShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+/* Answer grid */
+.sm-answers{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;}
+.sm-ans{
+  font-family:var(--font-display);font-size:clamp(1.2rem,5vw,2rem);
+  letter-spacing:.04em;padding:clamp(14px,4vw,24px) 10px;
+  border-radius:12px;border:2px solid var(--line2);
+  background:var(--card-bg);color:var(--text);
+  cursor:pointer;text-align:center;transition:all .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.sm-ans:active,.sm-ans:hover{border-color:var(--neon-c);background:color-mix(in srgb,var(--neon-c) 10%,var(--card-bg));}
+.sm-ans.correct{background:color-mix(in srgb,var(--neon-d) 22%,var(--card-bg));border-color:var(--neon-d);color:var(--neon-d);pointer-events:none;}
+.sm-ans.wrong{background:color-mix(in srgb,var(--neon-b) 18%,var(--card-bg));border-color:var(--neon-b);color:var(--neon-b);pointer-events:none;}
+
+/* Streak */
+.sm-streak{font-family:var(--font-display);font-size:2rem;color:var(--neon-c);letter-spacing:.04em;
+  text-align:center;min-height:2rem;transition:transform .15s;}
+.sm-streak.bump{animation:streakBump .3s ease;}
+@keyframes streakBump{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+/* HUD stats */
+.sm-hud{display:flex;gap:8px;width:100%;}
+.sm-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:9px 8px;text-align:center;}
+.sm-stat .sv{font-family:var(--font-display);font-size:1.4rem;line-height:1;}
+.sm-stat .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.1em;}
+
+/* Difficulty */
+.sm-diff-row{display:flex;gap:6px;justify-content:center;}
+.sm-dbtn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:8px 16px;
+  border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .12s;}
+.sm-dbtn.on{border-color:var(--neon-c);color:var(--neon-c);background:color-mix(in srgb,var(--neon-c) 12%,transparent);}
+
+/* Multiplier flash */
+.sm-mult{font-family:var(--font-mono);font-size:.75rem;font-weight:800;color:var(--neon-f);
+  text-align:center;min-height:1.2rem;letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>SPEED MATH</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:12px;align-items:center;">
+<div class="sm-wrap">
+
+  <div class="sm-hud">
+    <div class="sm-stat"><div class="sv" id="sm-score" style="color:var(--neon-c)">0</div><div class="sl">SCORE</div></div>
+    <div class="sm-stat"><div class="sv" id="sm-correct" style="color:var(--neon-d)">0</div><div class="sl">CORRECT</div></div>
+    <div class="sm-stat"><div class="sv" id="sm-wrong" style="color:var(--neon-b)">0</div><div class="sl">WRONG</div></div>
+    <div class="sm-stat"><div class="sv" id="sm-best" style="color:var(--neon-e)">0</div><div class="sl">BEST</div></div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="sm-timer-ring" id="sm-timer-wrap">
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <circle class="ring-bg" cx="55" cy="55" r="45"/>
+        <circle class="ring-fill" id="ring-fill" cx="55" cy="55" r="45"/>
+      </svg>
+      <div class="ring-text" id="sm-timer">60</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="sm-streak" id="sm-streak">🔥 0×</div>
+      <div class="sm-mult" id="sm-mult"></div>
+    </div>
+  </div>
+
+  <div class="sm-diff-row">
+    <button class="sm-dbtn on" id="dz-easy"   onclick="setDiff('easy')">➕ EASY</button>
+    <button class="sm-dbtn"    id="dz-medium" onclick="setDiff('medium')">✖️ MEDIUM</button>
+    <button class="sm-dbtn"    id="dz-hard"   onclick="setDiff('hard')">🔥 HARD</button>
+  </div>
+
+  <div class="sm-question" id="sm-question">
+    <span id="sm-q-text" style="pointer-events:none">?</span>
+  </div>
+
+  <div class="sm-answers" id="sm-answers"></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-c)" id="sm-start-btn" onclick="startGame()">▶ START (FREE)</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="doShare()">📤 Share</button>
+  </div>
+
+  <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:1.8;">
+    🔥 Build a streak for a score multiplier — up to 5×!<br>
+    💡 Wrong answer resets streak · Timer stops on game over<br>
+    🪙 Earn coins based on final score
+  </div>
+</div>
+</div>
+
+<script>
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+/* ── Config ── */
+var DIFF='easy';
+var DIFF_CFG={
+  easy:  {ops:['+','-'],      maxA:12, maxB:12, time:60},
+  medium:{ops:['+','-','×'],  maxA:20, maxB:15, time:60},
+  hard:  {ops:['+','-','×','÷'],maxA:25,maxB:12,time:60},
+};
+var BEST_KEY='az_sm_best';
+var bestScore=+localStorage.getItem(BEST_KEY)||0;
+
+/* ── State ── */
+var score=0,correct=0,wrong=0,streak=0,timeLeft=0,running=false,gameOver=false;
+var timerInt=null, currentAnswer=0, answerLocked=false;
+var RING_CIRC=283; /* 2*PI*45 */
+
+function setDiff(d){
+  DIFF=d;
+  ['easy','medium','hard'].forEach(function(x){document.getElementById('dz-'+x).className='sm-dbtn'+(d===x?' on':'');});
+  if(!running) resetUI();
+}
+
+function resetUI(){
+  document.getElementById('sm-q-text').textContent='?';
+  document.getElementById('sm-answers').innerHTML='';
+  document.getElementById('sm-question').className='sm-question';
+  document.getElementById('sm-streak').textContent='🔥 0×';
+  document.getElementById('sm-mult').textContent='';
+  updateHUD();
+}
+
+function startGame(){
+  score=0;correct=0;wrong=0;streak=0;answerLocked=false;
+  timeLeft=DIFF_CFG[DIFF].time;
+  running=true;gameOver=false;
+  clearInterval(timerInt);
+  timerInt=setInterval(tick,1000);
+  document.getElementById('sm-start-btn').textContent='↺ RESTART';
+  SoundEngine.play('start');
+  nextQuestion();
+  updateHUD(); updateRing();
+}
+
+function tick(){
+  timeLeft--;
+  updateRing();
+  if(timeLeft<=0){
+    clearInterval(timerInt);
+    endGame();
+  }
+}
+
+function updateRing(){
+  var pct=Math.max(0,timeLeft/DIFF_CFG[DIFF].time);
+  var offset=RING_CIRC*(1-pct);
+  var fill=document.getElementById('ring-fill');
+  fill.style.strokeDashoffset=offset;
+  /* Color shifts red as time runs out */
+  if(pct>0.5) fill.style.stroke='var(--neon-c)';
+  else if(pct>0.25) fill.style.stroke='var(--neon-f)';
+  else fill.style.stroke='var(--neon-b)';
+  document.getElementById('sm-timer').textContent=timeLeft;
+  document.getElementById('sm-timer').style.color=
+    pct>0.5?'var(--neon-c)':pct>0.25?'var(--neon-f)':'var(--neon-b)';
+}
+
+function nextQuestion(){
+  if(!running)return;
+  answerLocked=false;
+  document.getElementById('sm-question').className='sm-question';
+  var cfg=DIFF_CFG[DIFF];
+  var op=cfg.ops[Math.floor(Math.random()*cfg.ops.length)];
+  var a,b,ans;
+  if(op==='÷'){
+    b=2+Math.floor(Math.random()*(cfg.maxB-1));
+    ans=1+Math.floor(Math.random()*(cfg.maxA));
+    a=b*ans;
+  } else if(op==='×'){
+    a=2+Math.floor(Math.random()*(cfg.maxA-1));
+    b=2+Math.floor(Math.random()*(cfg.maxB-1));
+    ans=a*b;
+  } else if(op==='-'){
+    a=Math.floor(Math.random()*cfg.maxA)+cfg.maxB;
+    b=Math.floor(Math.random()*cfg.maxB);
+    ans=a-b;
+  } else {
+    a=Math.floor(Math.random()*cfg.maxA)+1;
+    b=Math.floor(Math.random()*cfg.maxB)+1;
+    ans=a+b;
+  }
+  currentAnswer=ans;
+  document.getElementById('sm-q-text').textContent=a+' '+op+' '+b+' = ?';
+  /* Generate 4 choices */
+  var choices=generateChoices(ans,op);
+  var grid=document.getElementById('sm-answers');
+  grid.innerHTML='';
+  choices.forEach(function(c){
+    var btn=document.createElement('button');
+    btn.className='sm-ans';
+    btn.textContent=c;
+    btn.addEventListener('click',function(){answer(c,btn);});
+    grid.appendChild(btn);
+  });
+}
+
+function generateChoices(ans,op){
+  var choices=[ans];
+  var attempts=0;
+  while(choices.length<4&&attempts<50){
+    attempts++;
+    var offset=Math.floor(Math.random()*8)+1;
+    if(Math.random()<0.5) offset=-offset;
+    var candidate=ans+offset;
+    if(candidate>0&&choices.indexOf(candidate)<0) choices.push(candidate);
+  }
+  /* shuffle */
+  for(var i=choices.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=choices[i];choices[i]=choices[j];choices[j]=t;}
+  return choices;
+}
+
+function answer(val,btn){
+  if(answerLocked||!running)return;
+  answerLocked=true;
+  var isCorrect=(val===currentAnswer);
+  if(isCorrect){
+    correct++;streak++;
+    var mult=Math.min(5,1+Math.floor(streak/3));
+    var pts=10*mult+(DIFF==='medium'?5:DIFF==='hard'?10:0);
+    score+=pts;
+    btn.classList.add('correct');
+    document.getElementById('sm-question').classList.add('correct');
+    SoundEngine.play('pop');
+    /* Streak UI */
+    var streakEl=document.getElementById('sm-streak');
+    streakEl.textContent='🔥 '+streak+'×';
+    streakEl.classList.remove('bump');void streakEl.offsetWidth;streakEl.classList.add('bump');
+    if(mult>1){
+      var multEl=document.getElementById('sm-mult');
+      multEl.textContent=mult+'× MULTIPLIER! +'+pts+' pts';
+      setTimeout(function(){multEl.textContent='';},1200);
+    }
+    /* Bonus time on streak */
+    if(streak%5===0&&streak>0){timeLeft=Math.min(DIFF_CFG[DIFF].time,timeLeft+5);updateRing();CoinEngine.toast('+5s bonus!','info');}
+  } else {
+    wrong++;streak=0;
+    btn.classList.add('wrong');
+    /* Highlight correct answer */
+    document.querySelectorAll('.sm-ans').forEach(function(b){
+      if(parseInt(b.textContent)===currentAnswer||b.textContent==String(currentAnswer)) b.classList.add('correct');
+    });
+    document.getElementById('sm-question').classList.add('wrong');
+    document.getElementById('sm-streak').textContent='🔥 0×';
+    SoundEngine.play('error');
+  }
+  updateHUD();
+  setTimeout(nextQuestion,isCorrect?480:700);
+}
+
+function endGame(){
+  running=false;gameOver=true;
+  clearInterval(timerInt);
+  if(score>bestScore){bestScore=score;localStorage.setItem(BEST_KEY,bestScore);}
+  var accuracy=correct+wrong>0?Math.round(correct/(correct+wrong)*100):0;
+  var reward=Math.floor(score*0.05+correct*0.5);
+  if(reward>0){
+    CoinEngine.add(reward,'Speed Math — score '+score,'🧮');
+    CoinEngine.toast('+'+reward+' 🪙 · '+accuracy+'% accuracy!','success');
+  }
+  CoinEngine.recordGame('speedmath',score,score>0,{correct:correct,accuracy:accuracy});
+  document.getElementById('sm-q-text').textContent='DONE!';
+  document.getElementById('sm-answers').innerHTML='<div style="grid-column:1/-1;text-align:center;font-family:var(--font-mono);font-size:.78rem;color:var(--text2);padding:16px 0;">'
+    +'Score: <b style="color:var(--neon-c)">'+score+'</b>  ·  Correct: <b style="color:var(--neon-d)">'+correct+'</b>  ·  Accuracy: <b>'+accuracy+'%</b><br>Coins earned: <b style="color:var(--neon-c)">+'+reward+'</b></div>';
+  document.getElementById('sm-start-btn').textContent='▶ PLAY AGAIN';
+  updateHUD();
+}
+
+function updateHUD(){
+  document.getElementById('sm-score').textContent=score;
+  document.getElementById('sm-correct').textContent=correct;
+  document.getElementById('sm-wrong').textContent=wrong;
+  document.getElementById('sm-best').textContent=bestScore;
+}
+
+function doShare(){
+  var txt='🧮 Speed Math: scored '+score+' with '+correct+' correct answers on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+/* Keyboard support */
+document.addEventListener('keydown',function(e){
+  if(!running)return;
+  var idx={'1':0,'2':1,'3':2,'4':3}[e.key];
+  if(idx!==undefined){
+    var btns=document.querySelectorAll('.sm-ans');
+    if(btns[idx])btns[idx].click();
+  }
+});
+
+updateHUD(); resetUI();
+</script>
+</body>
+</html>

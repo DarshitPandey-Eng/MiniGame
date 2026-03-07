@@ -162,7 +162,8 @@ window.CoinEngine = (function () {
   var DAILY_POOL=[
     {id:'dq_play3',   label:'Play any 3 games',        target:3,  type:'plays', reward:12, icon:'🎮'},
     {id:'dq_earn20',  label:'Earn 20 coins from games', target:20, type:'earn',  reward:10, icon:'🪙'},
-    {id:'dq_snake30', label:'Score 30+ in Snake',       target:30, type:'score', game:'snake',  reward:15,icon:'🐍'},
+    {id:'dq_math50',  label:'Score 50+ in Speed Math',  target:50, type:'score', game:'speedmath',reward:15,icon:'🧮'},
+    {id:'dq_ast100', label:'Score 100+ in Asteroids',  target:100,type:'score', game:'asteroids',reward:16,icon:'🚀'},
     {id:'dq_tetris',  label:'Clear 3 lines in Tetris',  target:3,  type:'lines', game:'tetris', reward:18,icon:'🟦'},
     {id:'dq_flappy3', label:'Score 3 in Flappy Bird',   target:3,  type:'score', game:'flappy', reward:20,icon:'🐦'},
     {id:'dq_mole10',  label:'Score 10 in Whack-a-Mole', target:10, type:'score', game:'mole',   reward:12,icon:'🦔'},
@@ -174,7 +175,8 @@ window.CoinEngine = (function () {
   var WEEKLY_POOL=[
     {id:'wq_spend50', label:'Spend 50 coins on games',  target:50,  type:'spend', reward:60, icon:'💸'},
     {id:'wq_play10',  label:'Play 10 games this week',  target:10,  type:'plays', reward:50, icon:'🎮'},
-    {id:'wq_snake100',label:'Score 100+ in Snake',      target:100, type:'score', game:'snake',  reward:45,icon:'🐍'},
+    {id:'wq_ast500', label:'Score 500+ in Asteroids',  target:500, type:'score', game:'asteroids',reward:45,icon:'🚀'},
+    {id:'wq_math200',label:'Score 200+ in Speed Math',  target:200, type:'score', game:'speedmath',reward:40,icon:'🧮'},
     {id:'wq_tetris1k',label:'Score 1000+ in Tetris',    target:1000,type:'score', game:'tetris', reward:60,icon:'🟦'},
     {id:'wq_jackpot', label:'Hit the slots jackpot',    target:1,   type:'wins',  game:'slots',  reward:80,icon:'🎰'},
     {id:'wq_flappy10',label:'Score 10 in Flappy Bird',  target:10,  type:'score', game:'flappy', reward:70,icon:'🐦'},
@@ -382,32 +384,32 @@ window.CoinEngine = (function () {
 
   /* ══════════════════ REWARDS (lean economy) ══════════════════ */
   var REWARDS={
-    snake:       function(s){ return Math.floor(s*0.25); },
-    tetris:      function(s){ return Math.floor(s*0.012); },
-    breakout:    function(s){ return Math.floor(s*0.05); },
-    '2048':      function(s){ return Math.floor(s*0.003); },
-    flappy:      function(s){ return s*3; },
-    mole:        function(s){ return Math.floor(s*0.6); },
-    memory:      function(s,w){ return w?8:0; },
-    reaction:    function(s){ return s<200?8:s<300?3:0; },
-    typing:      function(s){ return Math.floor(s*0.15); },
-    simon:       function(s){ return s*2; },
-    casino:      function(s){ return s; },
-    /* New games */
-    tictactoe:   function(s){ return s; },        /* 12 win, 3 draw */
-    connect4:    function(s){ return s; },         /* 20 win, 3 draw */
-    snakesladders:function(s){ return s; },        /* 20 win */
-    ludo:        function(s){ return s; },         /* 30 win */
-    pong:        function(s){ return s; },         /* score*3 win */
-    wordguess:   function(s){ return s; },         /* up to 30 by tries */
-    sudoku:      function(s){ return s; },         /* 20-70 by diff */
-    hanoi:       function(s){ return s; },         /* disc*6 or *12 perfect */
-    minesweeper: function(s){ return s; },         /* 25-100 by diff */
+    tetris:       function(s){ return Math.floor(s*0.012); },
+    breakout:     function(s){ return Math.floor(s*0.05); },
+    '2048':       function(s){ return Math.floor(s*0.003); },
+    flappy:       function(s){ return s*3; },
+    asteroids:    function(s){ return Math.floor(s*0.08); },
+    mole:         function(s){ return Math.floor(s*0.6); },
+    memory:       function(s,w){ return w?8:0; },
+    reaction:     function(s){ return s<200?8:s<300?3:0; },
+    typing:       function(s){ return Math.floor(s*0.15); },
+    simon:        function(s){ return s*2; },
+    casino:       function(s){ return s; },
+    speedmath:    function(s){ return Math.floor(s*0.05); },
+    tictactoe:    function(s){ return s; },
+    connect4:     function(s){ return s; },
+    snakesladders:function(s){ return s; },
+    pong:         function(s){ return s; },
+    wordguess:    function(s){ return s; },
+    sudoku:       function(s){ return s; },
+    hanoi:        function(s){ return s; },
+    minesweeper:  function(s){ return s; },
   };
   var COSTS={
-    snake:10,tetris:10,breakout:10,'2048':10,flappy:10,
-    mole:5,memory:5,reaction:0,typing:0,simon:5,casino:0,
-    tictactoe:0,connect4:5,snakesladders:5,ludo:8,
+    tetris:10,breakout:10,'2048':10,flappy:10,asteroids:10,
+    mole:5,memory:5,simon:5,casino:0,
+    reaction:0,typing:0,speedmath:0,
+    tictactoe:0,connect4:5,snakesladders:5,
     pong:5,wordguess:0,sudoku:0,hanoi:0,minesweeper:0,
   };
 
@@ -508,5 +510,15 @@ window.CoinEngine = (function () {
     getTheme:getTheme, setTheme:setTheme, toggleTheme:toggleTheme, applyTheme:applyTheme,
     getSoundEnabled:getSoundEnabled, toggleSound:toggleSound,
     toast:toast,
+    isDailyBonusClaimed:function(){
+      try{var d=JSON.parse(localStorage.getItem('az_daily_bonus')||'{}');
+        return d.date===new Date().toISOString().slice(0,10);}catch(e){return false;}
+    },
+    claimDailyBonus:function(){
+      var streak=CoinEngine.getStreak().current;
+      var amt=Math.min(100,20+streak*4);
+      add(amt,'Daily bonus','🎁');
+      try{localStorage.setItem('az_daily_bonus',JSON.stringify({date:new Date().toISOString().slice(0,10)}));}catch(e){}
+    },
   };
 })();

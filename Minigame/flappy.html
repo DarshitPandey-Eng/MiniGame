@@ -78,7 +78,11 @@ const LW = 360, LH = 500;
 /* Physical canvas size (responsive) */
 let cw, ch;
 function resizeCanvas() {
-  const maxW = Math.min(window.innerWidth - 32, 400);
+  var vAvail = window.innerHeight - 56 - 100;
+  var hAvail = window.innerWidth - 32;
+  var maxH = Math.min(vAvail, 820);
+  var maxW = Math.min(hAvail, maxH * (LW/LH), 540);
+  maxW = Math.max(280, maxW);
   const scale = maxW / LW;
   cw = Math.round(LW * scale);
   ch = Math.round(LH * scale);
@@ -87,7 +91,7 @@ function resizeCanvas() {
   cv.width  = cw * DPR;
   cv.height = ch * DPR;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(DPR * scale, DPR * scale);  /* always draw in LW×LH logical space */
+  ctx.scale(DPR * scale, DPR * scale);
 }
 resizeCanvas();
 window.addEventListener('resize', () => { if (!gameState || gameState==='idle') resizeCanvas(); });

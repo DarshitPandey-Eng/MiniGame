@@ -348,11 +348,14 @@ var DPR  = Math.min(window.devicePixelRatio || 1, 2);
 function calcTileSize() {
   var isMobile = window.innerWidth < 640;
   if (isMobile) {
-    // Available width: screen - side panel (mini canvases ~72px) - gaps - page padding
     var available = Math.min(window.innerWidth, 480) - 72 - 8 - 16 - 8;
     return Math.max(20, Math.floor(available / COLS));
   }
-  return 28; // desktop default
+  /* Desktop / laptop: use available vertical space */
+  var vAvail = window.innerHeight - 56 - 40; /* nav + padding */
+  var hAvail = window.innerWidth - 200;       /* sidebar */
+  var side = Math.min(hAvail, vAvail, 900);
+  return Math.max(28, Math.min(48, Math.floor(side / ROWS)));
 }
 
 var T = calcTileSize();

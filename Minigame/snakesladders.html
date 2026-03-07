@@ -11,24 +11,32 @@
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-d);}
-.sl-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:440px;padding:0 8px 20px;}
-#sl-cv{display:block;border-radius:10px;border:2px solid var(--line2);}
-.sl-panel{display:flex;gap:8px;width:100%;align-items:stretch;}
-.sl-info{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
-.sl-dice-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.sl-dice{width:64px;height:64px;background:var(--card-bg);border:2px solid var(--line2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:2.4rem;transition:transform .15s;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.sl-dice:active{transform:scale(.9);}
-.sl-dice.rolling{animation:diceRoll .5s ease;}
-@keyframes diceRoll{0%{transform:rotate(0)scale(1)}25%{transform:rotate(-20deg)scale(1.1)}50%{transform:rotate(20deg)scale(0.9)}75%{transform:rotate(-10deg)scale(1.05)}100%{transform:rotate(0)scale(1)}}
-.sl-player{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:1.5px solid transparent;transition:all .2s;}
-.sl-player.active{border-color:var(--neon-a);background:color-mix(in srgb,var(--neon-a) 8%,transparent);}
-.sl-player .tok{font-size:1.4rem;}
-.sl-player .nm{font-family:var(--font-mono);font-size:.65rem;font-weight:700;color:var(--text2);}
-.sl-player .sq{font-family:var(--font-display);font-size:1rem;color:var(--neon-a);}
-.sl-status{font-family:var(--font-mono);font-size:.72rem;color:var(--text2);text-align:center;line-height:1.6;min-height:2.4rem;}
-.sl-btn{font-family:var(--font-mono);font-size:.72rem;font-weight:800;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .12s;}
-.sl-roll-btn{background:var(--neon-a);color:#000;}
-.sl-roll-btn:disabled{opacity:.4;cursor:default;}
+.sl-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:980px;}
+#slcv{display:block;border-radius:12px;cursor:default;touch-action:none;}
+
+/* Dice */
+.sl-dice{width:68px;height:68px;background:linear-gradient(135deg,#fff 60%,#e8e8e8);
+  border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:2.6rem;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 4px 16px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.8);
+  transition:transform .12s;border:2px solid rgba(255,255,255,.5);}
+.sl-dice:active{transform:scale(.88);}
+.sl-dice.rolling{animation:dRoll .55s ease;}
+@keyframes dRoll{
+  0%  {transform:rotate(0) scale(1)}
+  20% {transform:rotate(-25deg) scale(1.12)}
+  40% {transform:rotate(22deg) scale(0.88)}
+  60% {transform:rotate(-18deg) scale(1.08)}
+  80% {transform:rotate(10deg) scale(0.95)}
+  100%{transform:rotate(0) scale(1)}
+}
+
+/* Panel */
+.sl-panel{display:flex;flex-direction:column;gap:10px;}
+.sl-stat{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;text-align:center;}
+.sl-stat .sv{font-family:var(--font-display);font-size:1.4rem;line-height:1;}
+.sl-stat .sl2{font-family:var(--font-mono);font-size:.48rem;color:var(--muted);letter-spacing:.1em;}
+.sl-status{font-family:var(--font-mono);font-size:.72rem;color:var(--text2);text-align:center;min-height:2.4rem;line-height:1.6;font-weight:600;}
 </style>
 </head>
 <body>
@@ -39,96 +47,121 @@
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
-<div class="page" style="padding-top:12px;align-items:center;">
-<div class="sl-wrap">
+<div class="page" style="padding-top:10px;align-items:center;">
+<div class="sl-wrap game-scale-root">
 
-  <div class="sl-panel">
-    <canvas id="sl-cv"></canvas>
-    <div class="sl-info">
-      <div class="sl-player" id="p1-row">
-        <span class="tok">🔴</span>
-        <div><div class="nm">YOU</div><div class="sq" id="p1-sq">1</div></div>
+  <div class="game-desktop-layout" style="align-items:flex-start;">
+    <div class="game-canvas-col">
+      <canvas id="slcv"></canvas>
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="changeZoom(-1)">−</button>
+        <span class="zoom-label" id="zoom-lbl">100%</span>
+        <button class="zoom-btn" onclick="changeZoom(1)">+</button>
       </div>
-      <div class="sl-player" id="p2-row">
-        <span class="tok">🔵</span>
-        <div><div class="nm">CPU</div><div class="sq" id="p2-sq">1</div></div>
-      </div>
-      <div class="sl-dice-wrap">
-        <div class="sl-dice" id="sl-dice">🎲</div>
-        <button class="sl-btn sl-roll-btn" id="roll-btn" onclick="rollDice()">ROLL</button>
-      </div>
-      <div class="sl-status" id="sl-status">Tap ROLL to start!</div>
     </div>
-  </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-    <button class="btn filled" style="--c:var(--neon-d)" onclick="newGame()">▶ NEW GAME (🪙 5)</button>
-    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="doShare()">📤 Share</button>
-  </div>
-
-  <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:1.8;">
-    🪜 Climb ladders to jump ahead · 🐍 Land on snakes to slide back<br>First to reach square 100 wins!
+    <div class="sl-panel game-side-panel">
+      <div class="sl-stat">
+        <div class="sv" id="sl-sq1" style="color:#ff2d78">🔴 Sq 1</div>
+        <div class="sl2">YOUR POSITION</div>
+      </div>
+      <div class="sl-stat">
+        <div class="sv" id="sl-sq2" style="color:#3dd6ff">🔵 Sq 1</div>
+        <div class="sl2">CPU POSITION</div>
+      </div>
+      <div style="display:flex;justify-content:center;">
+        <div class="sl-dice" id="sl-dice" onclick="rollDice()">🎲</div>
+      </div>
+      <button class="btn filled" style="--c:var(--neon-d);width:100%" id="roll-btn" onclick="rollDice()">ROLL DICE</button>
+      <div class="sl-status" id="sl-status">Tap ROLL to begin!</div>
+      <div class="sl-stat">
+        <div class="sv" id="sl-wins" style="color:var(--neon-c)">0</div>
+        <div class="sl2">YOUR WINS</div>
+      </div>
+      <button class="btn filled" style="--c:var(--neon-a);width:100%" onclick="newGame()">▶ NEW (🪙 5)</button>
+      <button class="btn" style="--c:var(--neon-a);font-size:.72rem;width:100%" onclick="doShare()">📤 Share</button>
+      <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);line-height:1.8;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;">
+        🪜 Ladders → climb ahead<br>
+        🐍 Snakes → slide back<br>
+        🎯 First to 100 wins!<br>
+        🏆 Win = +20 🪙
+      </div>
+    </div>
   </div>
 
 </div>
 </div>
 <script>
-/* Theme */
 var _tb=document.getElementById('tb');
 function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
 _tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();drawBoard();}); _sT();
 
-/* ── Board definitions ── */
-var SNAKES={97:78,95:56,88:24,62:18,48:26,36:6,32:10};
-var LADDERS={1:38,4:14,9:31,20:38,28:84,40:59,51:67,63:81,71:91};
-/* alternate snake/ladder emoji sets */
-var SNAKE_FACES=['🐍','🐍','🐍','🐍','🐍','🐍'];
-var LADDER_FACE='🪜';
-
-var cv=document.getElementById('sl-cv');
+/* ── Canvas ── */
+var cv=document.getElementById('slcv');
 var ctx=cv.getContext('2d');
 var DPR=Math.min(window.devicePixelRatio||1,2);
-var CS; /* cell size */
+var CS, zoomIdx=2, zoomSteps=[0.6,0.8,1,1.2,1.5,1.8];
 
+function changeZoom(d){
+  zoomIdx=Math.max(0,Math.min(zoomSteps.length-1,zoomIdx+d));
+  document.getElementById('zoom-lbl').textContent=Math.round(zoomSteps[zoomIdx]*100)+'%';
+  initCanvas(); drawBoard();
+}
 function initCanvas(){
-  var maxW=Math.min(window.innerWidth-170,280);
-  CS=Math.max(20,Math.floor(maxW/10));
-  cv.style.width=(10*CS)+'px'; cv.style.height=(10*CS)+'px';
-  cv.width=10*CS*DPR; cv.height=10*CS*DPR;
+  var avW=Math.min(window.innerWidth-40, window.innerWidth>820?580:window.innerWidth-24);
+  var raw=Math.min(avW, window.innerHeight-300, 560)*zoomSteps[zoomIdx];
+  CS=Math.max(28,Math.floor(raw/10));
+  var sz=CS*10;
+  cv.style.width=sz+'px'; cv.style.height=sz+'px';
+  cv.width=sz*DPR; cv.height=sz*DPR;
   ctx.setTransform(DPR,0,0,DPR,0,0);
 }
 initCanvas();
 window.addEventListener('resize',function(){initCanvas();drawBoard();});
 
-/* ── State ── */
+/* ── Game data ── */
+var SNAKES={97:78,95:56,88:24,62:18,48:26,36:6,32:10};
+var LADDERS={1:38,4:14,9:31,20:38,28:84,40:59,51:67,63:81,71:91};
+
+/* Precomputed snake/ladder endpoints for drawing */
+var SNAKE_COLORS=['#ff2d78','#ff5533','#ff2040','#ff1060','#ee2055','#dd3366'];
+var LADDER_COLORS=['#ffd700','#ffaa00','#ffe135','#ffcc00','#ffbb11','#ffdd33'];
+
 var pos=[1,1],turn=0,rolling=false,gameOver=false,started=false;
-var wins=0,losses=0;
-var DICE_EMOJI=['⚀','⚁','⚂','⚃','⚄','⚅'];
-var lastRoll=0;
+var wins=0;
+var DICE_FACES=['⚀','⚁','⚂','⚃','⚄','⚅'];
+var DICE_NUMS=[1,2,3,4,5,6];
+var tokenAnim={active:false,player:0,from:1,to:1,cur:1};
+var phase=0; /* animation phase */
 
 function newGame(){
   if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
-  pos=[1,1];turn=0;rolling=false;gameOver=false;started=true;
-  setStatus('🎲 Your turn — roll the dice!');
-  setActive(0);
+  pos=[1,1];turn=0;rolling=false;gameOver=false;started=true;tokenAnim.active=false;
   document.getElementById('roll-btn').disabled=false;
+  setStatus('🎲 Your turn — ROLL!');
+  updateSqUI();
   drawBoard();
   SoundEngine.play('start');
 }
 
-function setStatus(msg){document.getElementById('sl-status').textContent=msg;}
-function setActive(p){
-  document.getElementById('p1-row').className='sl-player'+(p===0?' active':'');
-  document.getElementById('p2-row').className='sl-player'+(p===1?' active':'');
+function setStatus(s){document.getElementById('sl-status').textContent=s;}
+function updateSqUI(){
+  document.getElementById('sl-sq1').textContent='🔴 Sq '+pos[0];
+  document.getElementById('sl-sq2').textContent='🔵 Sq '+pos[1];
 }
 
-/* ── Square to row/col (zigzag board, 1=bottom-left) ── */
+/* ── Square → canvas position ── */
 function sqToXY(sq){
   var s=sq-1;
-  var row=Math.floor(s/10);    /* 0=bottom, 9=top */
-  var col=s%10;
-  if(row%2===1) col=9-col;    /* odd rows go right→left */
-  return {x:col,y:9-row};     /* y: 0=top, 9=bottom */
+  var row=Math.floor(s/10), col=s%10;
+  if(row%2===1) col=9-col;
+  return {x:col*CS+CS/2, y:(9-row)*CS+CS/2};
+}
+function sqToCell(sq){
+  var s=sq-1;
+  var row=Math.floor(s/10), col=s%10;
+  if(row%2===1) col=9-col;
+  return {col:col, row:9-row};
 }
 
 /* ── Roll ── */
@@ -139,183 +172,266 @@ function rollDice(){
   var btn=document.getElementById('roll-btn');
   rolling=true; btn.disabled=true;
   dice.classList.add('rolling');
-  /* animate dice */
-  var count=0, anim=setInterval(function(){
-    dice.textContent=DICE_EMOJI[Math.floor(Math.random()*6)];
-    count++;
-    if(count>=8){
+  var i=0;
+  var anim=setInterval(function(){
+    dice.textContent=DICE_FACES[Math.floor(Math.random()*6)];
+    if(++i>=10){
       clearInterval(anim);
-      lastRoll=Math.floor(Math.random()*6)+1;
-      dice.textContent=DICE_EMOJI[lastRoll-1];
       dice.classList.remove('rolling');
-      movePlayer(0,lastRoll,function(){
-        if(!gameOver) setTimeout(cpuTurn,700);
+      var roll=Math.floor(Math.random()*6)+1;
+      dice.textContent=DICE_FACES[roll-1];
+      setStatus('You rolled '+roll+'! Moving…');
+      SoundEngine.play('slide');
+      animateToken(0,pos[0],Math.min(100,pos[0]+roll),function(){
+        handleLanding(0,function(){
+          if(!gameOver) setTimeout(cpuTurn,700);
+        });
       });
     }
-  },60);
+  },55);
 }
 
-function movePlayer(player,steps,callback){
-  var from=pos[player];
-  var target=Math.min(100,from+steps);
-  SoundEngine.play('slide');
-  animateMove(player,from,target,function(){
-    var landed=pos[player];
-    /* check snake or ladder */
-    if(SNAKES[landed]!==undefined){
-      var dest=SNAKES[landed];
-      setStatus((player===0?'🐍 Snake!':'🐍 CPU hit a snake!')+'  '+landed+' → '+dest);
-      SoundEngine.play('die');
-      setTimeout(function(){animateMove(player,landed,dest,function(){checkWin(player,callback);});},400);
-    } else if(LADDERS[landed]!==undefined){
-      var dest=LADDERS[landed];
-      setStatus((player===0?'🪜 Ladder!':'🪜 CPU climbed a ladder!')+'  '+landed+' → '+dest);
-      SoundEngine.play('levelup');
-      setTimeout(function(){animateMove(player,landed,dest,function(){checkWin(player,callback);});},400);
-    } else {
-      checkWin(player,callback);
-    }
-  });
-}
-
-function animateMove(player,from,to,callback){
-  var step=from<to?1:-1;
-  var cur=from;
+function animateToken(player,from,to,callback){
+  var cur=from, step=from<to?1:-1;
   var interval=setInterval(function(){
     cur+=step;
     pos[player]=cur;
-    updateSqUI();
-    drawBoard();
+    updateSqUI(); drawBoard();
     if(cur===to){clearInterval(interval);callback();}
-  },80);
+  },85);
 }
 
-function updateSqUI(){
-  document.getElementById('p1-sq').textContent='Sq '+pos[0];
-  document.getElementById('p2-sq').textContent='Sq '+pos[1];
+function handleLanding(player,callback){
+  var sq=pos[player];
+  if(SNAKES[sq]!==undefined){
+    var dest=SNAKES[sq];
+    setStatus((player===0?'🐍 Snake! Sliding back to '+dest:'CPU 🐍 Snake! Slides to '+dest));
+    SoundEngine.play('die');
+    setTimeout(function(){
+      animateToken(player,sq,dest,function(){checkWin(player,callback);});
+    },500);
+  } else if(LADDERS[sq]!==undefined){
+    var dest=LADDERS[sq];
+    setStatus((player===0?'🪜 Ladder! Climbing to '+dest:'CPU 🪜 Ladder! Climbs to '+dest));
+    SoundEngine.play('levelup')||SoundEngine.play('score');
+    setTimeout(function(){
+      animateToken(player,sq,dest,function(){checkWin(player,callback);});
+    },500);
+  } else {
+    checkWin(player,callback);
+  }
 }
 
 function checkWin(player,callback){
   if(pos[player]>=100){
-    pos[player]=100; drawBoard(); updateSqUI();
+    pos[player]=100; updateSqUI(); drawBoard();
     gameOver=true; rolling=false;
     if(player===0){
-      wins++;
+      wins++; document.getElementById('sl-wins').textContent=wins;
       SoundEngine.play('success');
-      setStatus('🎉 You reached 100! You WIN!');
-      CoinEngine.add(20,'Snakes & Ladders — win','🎲');
+      setStatus('🎉 You reached 100! YOU WIN!');
+      CoinEngine.add(20,'Snakes & Ladders win','🎲');
       CoinEngine.recordGame('snakesladders',20,true,{});
       CoinEngine.toast('+20 🪙 You win!','success');
     } else {
-      losses++;
       SoundEngine.play('gameover');
-      setStatus('😔 CPU reached 100! Better luck next time.');
+      setStatus('😔 CPU wins! Try again.');
       CoinEngine.recordGame('snakesladders',0,false,{});
+      CoinEngine.toast('CPU wins!','warn');
     }
     document.getElementById('roll-btn').disabled=true;
-    if(callback)callback();
+    if(callback) callback();
     return;
   }
-  if(callback)callback();
+  if(callback) callback();
 }
 
 function cpuTurn(){
-  setActive(1);turn=1;
+  turn=1; rolling=true;
   var roll=Math.floor(Math.random()*6)+1;
-  document.getElementById('sl-dice').textContent=DICE_EMOJI[roll-1];
-  setStatus('🔵 CPU rolled '+roll+'...');
+  document.getElementById('sl-dice').textContent=DICE_FACES[roll-1];
+  setStatus('🔵 CPU rolled '+roll+'! Moving…');
   SoundEngine.play('slide');
-  movePlayer(1,roll,function(){
-    if(!gameOver){
-      turn=0; rolling=false;
-      setActive(0);
-      setStatus('🎲 Your turn — roll the dice!');
-      document.getElementById('roll-btn').disabled=false;
-    }
+  animateToken(1,pos[1],Math.min(100,pos[1]+roll),function(){
+    handleLanding(1,function(){
+      if(!gameOver){
+        turn=0; rolling=false;
+        document.getElementById('roll-btn').disabled=false;
+        setStatus('🎲 Your turn — ROLL!');
+      }
+    });
   });
 }
 
 /* ── Drawing ── */
-var CELL_COLORS_DARK =[['#12122a','#1a1a38'],['#1a1a38','#12122a']];
-var CELL_COLORS_LIGHT=[['#d8daf0','#eeeef8'],['#eeeef8','#d8daf0']];
+/* Vivid board colour scheme */
+var CELL_LIGHT=['#3a4a8a','#2e3e80','#455595','#374090','#3d4a8e','#4050a0'];
+var CELL_DARK =['#0d1240','#101440','#0c1038','#0e1244','#0f1342','#0c1038'];
+var CELL_ALT_L=['#5a6aaa','#4e5e9a','#5565a8','#4d5eaa','#5060ae','#5567b0'];
+var CELL_ALT_D=['#161e54','#141c52','#181e58','#141c56','#151d54','#1a2058'];
 
+phase=0;
 function drawBoard(){
   var isDark=CoinEngine.getTheme()==='dark';
-  var pal=isDark?CELL_COLORS_DARK:CELL_COLORS_LIGHT;
-  var W=10*CS,H=10*CS;
-  ctx.clearRect(0,0,W,H);
+  var SZ=CS*10;
+  ctx.clearRect(0,0,SZ,SZ);
 
-  /* cells */
-  for(var r=0;r<10;r++){
-    for(var c=0;c<10;c++){
-      ctx.fillStyle=pal[(r+c)%2][0];
-      ctx.fillRect(c*CS,r*CS,CS,CS);
+  /* Board background */
+  ctx.fillStyle=isDark?'#060818':'#dde0ff';
+  ctx.fillRect(0,0,SZ,SZ);
+
+  /* Cells */
+  for(var row=0;row<10;row++){
+    for(var col=0;col<10;col++){
+      var sq=sqFromCell(row,col);
+      var even=(row+col)%2===0;
+      /* Gradient colours based on row height */
+      var hue=200+row*12;
+      var sat=isDark?40:55;
+      var lgt=isDark?(even?14:18):(even?72:78);
+      ctx.fillStyle='hsl('+hue+','+sat+'%,'+lgt+'%)';
+      ctx.fillRect(col*CS,row*CS,CS,CS);
+
+      /* Square number */
+      ctx.fillStyle=isDark?'rgba(255,255,255,.35)':'rgba(10,20,100,.3)';
+      ctx.font='bold '+(CS*0.25)+'px monospace';
+      ctx.textAlign='left'; ctx.textBaseline='top';
+      ctx.fillText(sq,col*CS+3,row*CS+3);
     }
   }
 
-  /* numbers */
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillStyle=isDark?'rgba(255,255,255,.25)':'rgba(0,0,0,.22)';
-  ctx.font='bold '+(CS*0.32)+'px monospace';
-  for(var sq=1;sq<=100;sq++){
-    var xy=sqToXY(sq);
-    ctx.fillText(sq,xy.x*CS+CS/2,xy.y*CS+CS*0.2);
+  /* Grid lines */
+  ctx.strokeStyle=isDark?'rgba(255,255,255,.07)':'rgba(0,0,100,.1)';
+  ctx.lineWidth=1;
+  for(var i=0;i<=10;i++){
+    ctx.beginPath();ctx.moveTo(i*CS,0);ctx.lineTo(i*CS,SZ);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*CS);ctx.lineTo(SZ,i*CS);ctx.stroke();
   }
 
-  /* snakes */
-  ctx.lineWidth=CS*0.18; ctx.lineCap='round';
+  /* Snakes — vivid bezier curves */
+  var snIdx=0;
   Object.keys(SNAKES).forEach(function(from){
     var to=SNAKES[from];
     var a=sqToXY(parseInt(from)), b=sqToXY(to);
-    var x1=a.x*CS+CS/2,y1=a.y*CS+CS/2,x2=b.x*CS+CS/2,y2=b.y*CS+CS/2;
-    ctx.strokeStyle=isDark?'rgba(255,45,120,.55)':'rgba(200,0,80,.45)';
-    ctx.beginPath();ctx.moveTo(x1,y1);
-    ctx.bezierCurveTo(x1+CS,y1-CS,x2-CS,y2+CS,x2,y2);
-    ctx.stroke();
-    /* emoji */
-    ctx.font=CS*0.5+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('🐍',x1,y1);
+    var col=isDark?
+      ['rgba(255,40,100,.85)','rgba(220,0,60,.6)'][snIdx%2]:
+      ['rgba(200,0,60,.8)','rgba(180,0,40,.65)'][snIdx%2];
+    snIdx++;
+    /* Draw thick curved snake body */
+    ctx.strokeStyle=col;
+    ctx.lineWidth=CS*0.22;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    var cx1=a.x+(b.x-a.x)*0.3+(a.y>b.y?CS:-CS)*0.7;
+    var cy1=a.y+(b.y-a.y)*0.2;
+    var cx2=a.x+(b.x-a.x)*0.7+(a.y>b.y?-CS:CS)*0.5;
+    var cy2=a.y+(b.y-a.y)*0.7;
+    ctx.shadowColor=isDark?'rgba(255,0,80,.5)':'rgba(180,0,40,.4)';
+    ctx.shadowBlur=8;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.bezierCurveTo(cx1,cy1,cx2,cy2,b.x,b.y);ctx.stroke();
+    /* Snake highlight */
+    ctx.strokeStyle='rgba(255,255,255,0.25)';
+    ctx.lineWidth=CS*0.06;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.bezierCurveTo(cx1,cy1,cx2,cy2,b.x,b.y);ctx.stroke();
+    ctx.shadowBlur=0;
+    /* Emoji head & tail */
+    ctx.font=(CS*0.55)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🐍',a.x,a.y);
+    /* tail dot */
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(b.x,b.y,CS*0.1,0,Math.PI*2);ctx.fill();
   });
 
-  /* ladders */
-  ctx.lineWidth=CS*0.14;
+  /* Ladders — bright gold */
   Object.keys(LADDERS).forEach(function(from){
     var to=LADDERS[from];
     var a=sqToXY(parseInt(from)), b=sqToXY(to);
-    var x1=a.x*CS+CS/2,y1=a.y*CS+CS/2,x2=b.x*CS+CS/2,y2=b.y*CS+CS/2;
-    ctx.strokeStyle=isDark?'rgba(0,230,118,.5)':'rgba(0,160,70,.4)';
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-    ctx.font=CS*0.5+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('🪜',x2,y2);
+    var dx=(b.x-a.x), dy=(b.y-a.y), len=Math.sqrt(dx*dx+dy*dy);
+    var nx=-dy/len*CS*0.1, ny=dx/len*CS*0.1;
+    /* Two rails */
+    [[1,-1],[-1,1]].forEach(function(sign){
+      var grad=ctx.createLinearGradient(a.x,a.y,b.x,b.y);
+      grad.addColorStop(0,isDark?'#ffee55':'#cc8800');
+      grad.addColorStop(0.5,isDark?'#ffd700':'#ffaa00');
+      grad.addColorStop(1,isDark?'#ffcc00':'#cc6600');
+      ctx.strokeStyle=grad;
+      ctx.lineWidth=CS*0.09;
+      ctx.shadowColor=isDark?'rgba(255,220,0,.6)':'rgba(180,120,0,.4)';
+      ctx.shadowBlur=6;
+      ctx.beginPath();
+      ctx.moveTo(a.x+nx*sign[0],a.y+ny*sign[0]);
+      ctx.lineTo(b.x+nx*sign[1],b.y+ny*sign[1]);
+      ctx.stroke();
+    });
+    /* Rungs */
+    ctx.shadowBlur=0;
+    var steps=Math.max(2,Math.floor(len/CS*1.2));
+    for(var s=1;s<steps;s++){
+      var t=s/steps;
+      var rx=a.x+dx*t, ry=a.y+dy*t;
+      ctx.strokeStyle=isDark?'rgba(255,220,80,.7)':'rgba(160,100,0,.6)';
+      ctx.lineWidth=CS*0.07;
+      ctx.beginPath();ctx.moveTo(rx+nx*1.2,ry+ny*1.2);ctx.lineTo(rx-nx*1.2,ry-ny*1.2);ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    ctx.font=(CS*0.55)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🪜',b.x,b.y);
   });
 
-  /* grid */
-  ctx.strokeStyle=isDark?'rgba(255,255,255,.06)':'rgba(0,0,0,.08)';
-  ctx.lineWidth=1;
-  for(var i=0;i<=10;i++){ctx.beginPath();ctx.moveTo(i*CS,0);ctx.lineTo(i*CS,H);ctx.stroke();}
-  for(var j=0;j<=10;j++){ctx.beginPath();ctx.moveTo(0,j*CS);ctx.lineTo(W,j*CS);ctx.stroke();}
+  /* Player tokens */
+  function drawToken(sq,isP0,offset){
+    var p=sqToXY(sq);
+    var cx=p.x+(offset*CS*0.22);
+    var cy=p.y;
+    var r=CS*0.3;
+    /* Glow */
+    ctx.shadowColor=isP0?'#ff2d78':'#00ccff';
+    ctx.shadowBlur=18;
+    /* Gradient fill */
+    var gr=ctx.createRadialGradient(cx-r*0.3,cy-r*0.3,r*0.05,cx,cy,r);
+    if(isP0){
+      gr.addColorStop(0,'#ff9abb');
+      gr.addColorStop(0.5,'#ff2d78');
+      gr.addColorStop(1,'#aa0040');
+    } else {
+      gr.addColorStop(0,'#80eeff');
+      gr.addColorStop(0.5,'#00ccff');
+      gr.addColorStop(1,'#0060aa');
+    }
+    ctx.fillStyle=gr;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    /* Shine */
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.beginPath();ctx.ellipse(cx-r*0.28,cy-r*0.28,r*0.24,r*0.15,-0.5,0,Math.PI*2);ctx.fill();
+    /* Label */
+    ctx.font='bold '+(r*1.1)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(isP0?'🔴':'🔵',cx,cy);
+  }
 
-  /* players */
-  drawToken(pos[1],'🔵',pos[0]===pos[1]?1:0); /* CPU first so player goes on top */
-  drawToken(pos[0],'🔴',pos[0]===pos[1]?-1:0);
+  drawToken(pos[1],false,pos[0]===pos[1]?0.45:-0);
+  drawToken(pos[0],true, pos[0]===pos[1]?-0.45:0);
+
+  /* Start / end marker */
+  ctx.font=(CS*0.45)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  var startP=sqToXY(1); ctx.fillText('🏁',startP.x+CS*0.3,startP.y-CS*0.25);
+  var endP=sqToXY(100); ctx.fillText('👑',endP.x,endP.y-CS*0.32);
+
+  phase++;
 }
 
-function drawToken(sq,emoji,offset){
-  var xy=sqToXY(sq);
-  var cx=xy.x*CS+CS/2+(offset*CS*0.2);
-  var cy=xy.y*CS+CS*0.65;
-  ctx.font=CS*0.55+'px serif';
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(emoji,cx,cy);
+function sqFromCell(row,col){
+  var boardRow=9-row, idx;
+  if(boardRow%2===0) idx=boardRow*10+col+1;
+  else idx=boardRow*10+(9-col)+1;
+  return idx;
 }
 
 function doShare(){
-  var txt='🎲 I played Snakes & Ladders on Arcade Zone! '+wins+' wins vs CPU.\nPlay free: '+window.location.origin;
+  var txt='🎲 Playing Snakes & Ladders on Arcade Zone! '+wins+' win(s). Play free: '+window.location.origin;
   if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
 }
 
-/* init */
 initCanvas(); drawBoard();
 </script>
 </body>

@@ -77,8 +77,10 @@ var ctx=cv.getContext('2d');
 var DPR=Math.min(window.devicePixelRatio||1,2);
 
 function calcCS(){
-  var maxW=Math.min(window.innerWidth-20,520);
-  return Math.max(18,Math.min(36,Math.floor(maxW/cfg.cols)));
+  var vAvail = window.innerHeight - 56 - 160;
+  var hAvail = window.innerWidth > 820 ? Math.min(window.innerWidth - 40, 900) : window.innerWidth - 24;
+  var avail = Math.min(hAvail, vAvail * 1.15, 960);
+  return Math.max(22, Math.min(52, Math.floor(avail / cfg.cols)));
 }
 var CS=calcCS();
 

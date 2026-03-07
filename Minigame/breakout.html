@@ -63,7 +63,10 @@ var DPR=Math.min(window.devicePixelRatio||1,2);
 var BW=480,BH=360,W=BW,H=BH,sX=1,sY=1;
 
 function resize(){
-  var mw=Math.min(window.innerWidth-32,BW);
+  var vAvail = window.innerHeight - 56 - 120;
+  var hAvail = window.innerWidth - 32;
+  var mw = Math.min(hAvail, vAvail * (BW/BH), 820);
+  mw = Math.max(300, mw);
   W=mw; H=Math.round(mw*(BH/BW)); sX=W/BW; sY=H/BH;
   cv.style.width=W+'px'; cv.style.height=H+'px';
   cv.width=W*DPR; cv.height=H*DPR;

@@ -497,3 +497,193 @@ canvas { max-width: 100%; touch-action: none; }
 /* Toast: never too wide */
 /* (Already has max-width:90vw in JS) */
 
+
+/* ══ LAPTOP / DESKTOP GAME SIZING ══════════════════════════════════════════
+   Allow game canvases and wrappers to use available space on wider screens.
+   JS uses calcBoardSize() which respects these max sizes.                  */
+
+/* Game pages: centre with comfortable max-width on desktop */
+@media (min-width: 768px) {
+  .page { padding-top: 18px; }
+  /* Give game wrapper containers permission to grow */
+  .game-layout-center {
+    max-width: min(calc(100vw - 40px), 900px);
+    margin: 0 auto;
+    width: 100%;
+  }
+}
+
+/* On very wide screens, game canvases can breathe */
+@media (min-width: 1024px) {
+  canvas.responsive-canvas {
+    width: auto !important;
+    height: auto !important;
+  }
+}
+
+/* Resize handle: visual affordance on desktop game frames */
+@media (min-width: 768px) {
+  .game-frame-resizable {
+    resize: both;
+    overflow: hidden;
+    min-width: 300px;
+    min-height: 300px;
+  }
+}
+
+/* ══ CANVAS SIZING UTILITY ══════════════════════════════════════════════════
+   .canvas-scaler wraps canvas and scales it to fill its parent.            */
+.canvas-scaler {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ══ DESKTOP GAME LAYOUT — two-column when space allows ════════════════════
+   Games use .game-desktop-layout to show canvas + panel side by side.      */
+@media (min-width: 820px) {
+  .game-desktop-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .game-desktop-layout .game-side-panel {
+    min-width: 200px;
+    max-width: 260px;
+    flex: 0 0 220px;
+  }
+  .game-desktop-layout .game-canvas-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+/* ══ ZOOM CONTROLS — universal widget for canvas games ════════════════════ */
+.zoom-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.zoom-btn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line2);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.zoom-btn:hover { border-color: var(--neon-a); color: var(--neon-a); }
+.zoom-btn:active { transform: scale(.9); }
+.zoom-label {
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  color: var(--muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ══ GAME SCALE WRAPPER — wraps canvas with CSS scale on desktop ══════════ */
+.game-scale-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+@media (min-width: 820px) {
+  .page { gap: 10px; }
+}
+
+/* ══ GLOBAL HUB IMPROVEMENTS ═══════════════════════════════════════════════ */
+
+/* Hub hero headline fix */
+.hub-headline{font-family:var(--font-display);font-size:clamp(3.2rem,12vw,8rem);
+  letter-spacing:.06em;line-height:.92;text-align:center;}
+.hub-headline .a,.hub-headline span.a{color:var(--neon-a);
+  text-shadow:0 0 32px color-mix(in srgb,var(--neon-a) 45%,transparent);}
+.hub-headline .b,.hub-headline span.b{color:var(--neon-b);
+  text-shadow:0 0 32px color-mix(in srgb,var(--neon-b) 45%,transparent);}
+
+/* Quick action bar better spacing on desktop */
+@media(min-width:720px){
+  .quick-btn{font-size:.66rem;padding:10px 18px;}
+}
+
+/* ══ IMPROVED DESKTOP CANVAS SIZING ════════════════════════════════════════ */
+/* Games expand up to full available width on wide screens */
+@media(min-width:820px){
+  .page{padding-top:12px;padding-left:24px;padding-right:24px;}
+  .game-scale-root{max-width:min(calc(100vw - 48px), 1100px);margin:0 auto;}
+}
+@media(min-width:1200px){
+  .game-scale-root{max-width:1100px;}
+}
+
+/* ══ CARD HOVER: play count badge fade ══════════════════════════════════════*/
+.game-card .play-count-badge{
+  position:absolute;bottom:7px;right:8px;
+  font-family:var(--font-mono);font-size:.44rem;color:var(--muted);
+  opacity:0;transition:opacity .2s;pointer-events:none;
+}
+.game-card:hover .play-count-badge{opacity:.8;}
+
+/* ══ STREAK DOTS ════════════════════════════════════════════════════════════ */
+.streak-day{transition:all .25s;}
+.streak-day.today{
+  border-color:var(--neon-c)!important;
+  box-shadow:0 0 10px color-mix(in srgb,var(--neon-c) 35%,transparent);
+}
+
+/* ══ LEVEL BADGE / STREAK BADGE ════════════════════════════════════════════ */
+.level-badge,.streak-badge{
+  font-family:var(--font-mono);font-weight:700;
+  padding:4px 10px;border-radius:7px;
+  background:var(--bg2);border:1px solid var(--line2);
+  transition:border-color .2s;white-space:nowrap;
+}
+.level-badge:hover{border-color:var(--neon-e);}
+.streak-badge:hover{border-color:var(--neon-f);}
+
+/* ══ HUB STATS ROW ══════════════════════════════════════════════════════════ */
+.hub-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+.hub-stat .n{font-family:var(--font-display);font-size:2.4rem;color:var(--neon-c);line-height:1;}
+.hub-stat .t{font-size:.58rem;color:var(--muted);letter-spacing:.15em;font-family:var(--font-mono);margin-top:2px;}
+
+/* ══ ACTIVITY FEED ══════════════════════════════════════════════════════════ */
+#activity-feed{max-height:320px;overflow-y:auto;}
+#activity-feed::-webkit-scrollbar{width:4px;}
+#activity-feed::-webkit-scrollbar-track{background:var(--bg2);border-radius:2px;}
+#activity-feed::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+
+/* ══ SETTINGS PAGE TOGGLE THUMB POSITION FIX ═══════════════════════════════ */
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;
+  background:#fff;border-radius:50%;transition:transform .2s;
+  box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:none;}
+.toggle input:checked ~ .toggle-thumb{transform:translateX(24px);}
+
+/* ══ LEADERBOARD TABLE SCROLLABLE ON MOBILE ═════════════════════════════════*/
+@media(max-width:600px){
+  .lb-table-wrap{overflow-x:auto;}
+  .lb-table{min-width:460px;}
+}
+
+/* ══ ASTEROIDS CANVAS FULL WIDTH ═══════════════════════════════════════════ */
+#astcv{max-width:100%;}
+
+/* ══ PONG / CONNECT4 wider on desktop ══════════════════════════════════════ */
+@media(min-width:900px){
+  .c4-wrap,#pongcv{max-width:900px;}
+}

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCADE ZONE — Minigames</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon-pink: #ff006e;
+    --neon-cyan: #00f5ff;
+    --neon-yellow: #ffbe0b;
+    --neon-green: #06d6a0;
+    --neon-purple: #8338ec;
+    --bg: #050510;
+    --panel: #0a0a1a;
+    --border: #1a1a3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: #eee;
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Stars background */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--d) ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  .logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(1.8rem, 5vw, 3.5rem);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 30px var(--neon-cyan), 0 0 60px var(--neon-cyan);
+    letter-spacing: 0.05em;
+    animation: flicker 6s infinite;
+  }
+  .logo span { color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink), 0 0 30px var(--neon-pink), 0 0 60px var(--neon-pink); }
+  @keyframes flicker {
+    0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; }
+    20%,24%,55% { opacity: 0.7; }
+  }
+  .subtitle {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-yellow);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    margin-top: 10px;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  /* ─── GAME HUB ─── */
+  #hub {
+    position: relative;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 24px;
+  }
+
+  .game-card {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .game-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, var(--accent) 200%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .game-card:hover::before { opacity: 0.08; }
+  .game-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent), 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .card-icon { font-size: 3rem; margin-bottom: 14px; display: block; }
+  .card-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    text-shadow: 0 0 8px var(--accent);
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .card-desc { font-size: 0.75rem; color: #888; line-height: 1.6; }
+  .card-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    font-size: 0.5rem;
+    font-family: 'Press Start 2P', monospace;
+    background: var(--accent);
+    color: #000;
+    padding: 3px 6px;
+    border-radius: 2px;
+    opacity: 0.9;
+  }
+
+  /* ─── GAME OVERLAY ─── */
+  #game-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5,5,16,0.97);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  #game-overlay.active { display: flex; }
+
+  .game-topbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .game-title-bar {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.8rem;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px var(--neon-cyan);
+    flex: 1;
+  }
+  .score-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    color: var(--neon-yellow);
+    background: rgba(255,190,11,0.1);
+    border: 1px solid var(--neon-yellow);
+    padding: 6px 14px;
+    border-radius: 2px;
+  }
+  .btn-back {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.55rem;
+    background: transparent;
+    color: var(--neon-pink);
+    border: 2px solid var(--neon-pink);
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+  .btn-back:hover { background: var(--neon-pink); color: #000; box-shadow: 0 0 12px var(--neon-pink); }
+
+  .game-area {
+    background: #070712;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ─── GENERIC BTN ─── */
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.6rem;
+    padding: 12px 20px;
+    border: 2px solid;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    text-transform: uppercase;
+    margin: 6px;
+  }
+  .btn-cyan { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+  .btn-cyan:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
+  .btn-green { color: var(--neon-green); border-color: var(--neon-green); }
+  .btn-green:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
+  .btn-yellow { color: var(--neon-yellow); border-color: var(--neon-yellow); }
+  .btn-yellow:hover { background: var(--neon-yellow); color: #000; box-shadow: 0 0 15px var(--neon-yellow); }
+
+  /* ─── GAME SCREENS ─── */
+  .game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 30px;
+    text-align: center;
+    min-height: 200px;
+  }
+  .game-screen.active { display: flex; }
+  .screen-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  .screen-msg { color: #888; font-size: 0.85rem; line-height: 1.8; }
+
+  /* ════════════════════════════
+     GAME 1: SNAKE
+  ════════════════════════════ */
+  #snake-canvas {
+    display: block;
+    background: #050510;
+  }
+  #snake-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
+    gap: 4px;
+    margin-top: 16px;
+  }
+  .dpad-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #333;
+    color: #aaa;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s;
+    user-select: none;
+  }
+  .dpad-btn:active { background: rgba(0,245,255,0.2); }
+  .dpad-center { opacity: 0; pointer-events: none; }
+
+  /* ════════════════════════════
+     GAME 2: WHACK-A-MOLE
+  ════════════════════════════ */
+  #mole-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 24px;
+  }
+  .mole-hole {
+    width: 90px; height: 90px;
+    background: #0d0d20;
+    border: 2px solid #1a1a3a;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    transition: transform 0.1s, border-color 0.1s, box-shadow 0.1s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .mole-hole .mole-inner {
+    transform: translateY(100%);
+    transition: transform 0.15s ease-out;
+    line-height: 1;
+  }
+  .mole-hole.active .mole-inner { transform: translateY(0); }
+  .mole-hole.hit { border-color: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink); }
+  #mole-timer-bar {
+    width: 100%;
+    height: 6px;
+    background: #1a1a3a;
+    margin: 0 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  #mole-timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+    transition: width 0.1s linear;
+    box-shadow: 0 0 8px var(--neon-cyan);
+  }
+
+  /* ════════════════════════════
+     GAME 3: MEMORY CARDS
+  ════════════════════════════ */
+  #memory-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 20px;
+  }
+  .mem-card {
+    width: 75px; height: 75px;
+    cursor: pointer;
+    perspective: 600px;
+    user-select: none;
+  }
+  .mem-card-inner {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.4s;
+  }
+  .mem-card.flipped .mem-card-inner { transform: rotateY(180deg); }
+  .mem-card-front, .mem-card-back {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    border: 2px solid #1a1a3a;
+  }
+  .mem-card-back {
+    background: #0d0d20;
+    color: #333;
+    font-size: 1.2rem;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .mem-card-front {
+    background: #050520;
+    transform: rotateY(180deg);
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 8px var(--neon-purple);
+  }
+  .mem-card.matched .mem-card-front {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 12px var(--neon-green);
+    background: rgba(6,214,160,0.08);
+  }
+
+  /* ════════════════════════════
+     GAME 4: BREAKOUT
+  ════════════════════════════ */
+  #breakout-canvas {
+    display: block;
+    background: #050510;
+  }
+
+  /* ════════════════════════════
+     GAME 5: REACTION TEST
+  ════════════════════════════ */
+  #reaction-area {
+    width: 340px; height: 260px;
+    border: 2px solid #1a1a3a;
+    border-radius: 8px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+    font-size: 0.85rem;
+    gap: 14px;
+  }
+  #reaction-area.waiting { background: #1a0030; border-color: var(--neon-purple); }
+  #reaction-area.ready { background: #003015; border-color: var(--neon-green); }
+  #reaction-area.early { background: #300015; border-color: var(--neon-pink); }
+  #reaction-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    line-height: 1.8;
+  }
+  #reaction-time-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--neon-yellow);
+    text-shadow: 0 0 20px var(--neon-yellow);
+  }
+  #reaction-history {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    margin-top: 12px;
+  }
+  .reaction-chip {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    background: rgba(255,190,11,0.1);
+    border: 1px solid var(--neon-yellow);
+    border-radius: 2px;
+    color: var(--neon-yellow);
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  /* ════════════════════════════
+     GAME 6: TYPING SPEED
+  ════════════════════════════ */
+  #typing-area {
+    max-width: 560px;
+    width: 100%;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+  #typing-text-display {
+    font-size: 1.05rem;
+    line-height: 2;
+    letter-spacing: 0.05em;
+    color: #444;
+    text-align: left;
+    background: #080818;
+    padding: 16px 20px;
+    border: 2px solid #1a1a3a;
+    border-radius: 4px;
+    width: 100%;
+    word-break: break-word;
+  }
+  .typing-char { color: #444; }
+  .typing-char.correct { color: var(--neon-green); }
+  .typing-char.wrong { color: var(--neon-pink); background: rgba(255,0,110,0.2); }
+  .typing-char.current {
+    color: #fff;
+    border-bottom: 2px solid var(--neon-cyan);
+    animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+  #typing-input {
+    width: 100%;
+    background: #080818;
+    border: 2px solid #1a1a3a;
+    color: #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    padding: 12px 16px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #typing-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,245,255,0.2); }
+  #typing-stats {
+    display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+  }
+  .typing-stat {
+    font-family: 'Orbitron', sans-serif;
+    text-align: center;
+  }
+  .typing-stat-val { font-size: 1.6rem; font-weight: 700; color: var(--neon-cyan); }
+  .typing-stat-lbl { font-size: 0.6rem; color: #666; margin-top: 2px; letter-spacing: 0.1em; }
+  #typing-progress {
+    width: 100%; height: 4px;
+    background: #1a1a3a;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #typing-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+    transition: width 0.1s;
+    box-shadow: 0 0 8px var(--neon-cyan);
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0a0a1a; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  /* footer */
+  footer {
+    text-align: center;
+    padding: 30px;
+    color: #333;
+    font-size: 0.7rem;
+    position: relative;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- Header -->
+<header>
+  <div class="logo">ARCADE <span>ZONE</span></div>
+  <div class="subtitle">★ 6 MINIGAMES • PLAY NOW ★</div>
+</header>
+
+<!-- Hub -->
+<div id="hub">
+  <div class="game-card" style="--accent: var(--neon-green)" onclick="openGame('snake')">
+    <span class="card-icon">🐍</span>
+    <div class="card-title">SNAKE</div>
+    <div class="card-desc">Classic snake game. Eat food, grow longer, don't crash!</div>
+    <span class="card-badge">CLASSIC</span>
+  </div>
+  <div class="game-card" style="--accent: var(--neon-yellow)" onclick="openGame('mole')">
+    <span class="card-icon">🦔</span>
+    <div class="card-title">WHACK-A-MOLE</div>
+    <div class="card-desc">Whack the moles as fast as you can before time runs out!</div>
+    <span class="card-badge">REFLEX</span>
+  </div>
+  <div class="game-card" style="--accent: var(--neon-purple)" onclick="openGame('memory')">
+    <span class="card-icon">🃏</span>
+    <div class="card-title">MEMORY MATCH</div>
+    <div class="card-desc">Flip cards and find all the matching emoji pairs!</div>
+    <span class="card-badge">MEMORY</span>
+  </div>
+  <div class="game-card" style="--accent: var(--neon-cyan)" onclick="openGame('breakout')">
+    <span class="card-icon">🧱</span>
+    <div class="card-title">BREAKOUT</div>
+    <div class="card-desc">Break all the bricks with your ball and paddle!</div>
+    <span class="card-badge">ACTION</span>
+  </div>
+  <div class="game-card" style="--accent: var(--neon-pink)" onclick="openGame('reaction')">
+    <span class="card-icon">⚡</span>
+    <div class="card-title">REACTION TEST</div>
+    <div class="card-desc">How fast are your reflexes? Click when the screen turns green!</div>
+    <span class="card-badge">SPEED</span>
+  </div>
+  <div class="game-card" style="--accent: #fff" onclick="openGame('typing')">
+    <span class="card-icon">⌨️</span>
+    <div class="card-title">TYPING SPEED</div>
+    <div class="card-desc">Type as fast and accurately as you can. Beat your WPM!</div>
+    <span class="card-badge">SKILL</span>
+  </div>
+</div>
+
+<footer>INSERT COIN TO CONTINUE &nbsp;•&nbsp; ALL RIGHTS RESERVED &nbsp;•&nbsp; © ARCADE ZONE 2026</footer>
+
+<!-- ═══════════════════════════════════════════
+     GAME OVERLAY
+═══════════════════════════════════════════ -->
+<div id="game-overlay">
+  <div class="game-topbar">
+    <button class="btn-back" onclick="closeGame()">← BACK</button>
+    <div class="game-title-bar" id="overlay-title">GAME</div>
+    <div class="score-display">SCORE: <span id="score-val">0</span></div>
+  </div>
+
+  <!-- ── SNAKE ── -->
+  <div id="game-snake" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+    <div class="game-area">
+      <canvas id="snake-canvas" width="360" height="360"></canvas>
+    </div>
+    <div id="snake-start-screen" class="game-screen active">
+      <div class="screen-title" style="color:var(--neon-green)">SNAKE</div>
+      <div class="screen-msg">Use arrow keys or WASD to move.<br>Eat 🍎 to grow and earn points.</div>
+      <button class="btn btn-green" onclick="startSnake()">START GAME</button>
+    </div>
+    <div id="snake-over-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-pink)">GAME OVER</div>
+      <div class="screen-msg">Score: <span id="snake-final-score" style="color:var(--neon-green)">0</span></div>
+      <button class="btn btn-green" onclick="startSnake()">PLAY AGAIN</button>
+    </div>
+    <div class="dpad" id="snake-dpad">
+      <div></div><div class="dpad-btn" ontouchstart="snakeDir(0,-1)" onclick="snakeDir(0,-1)">▲</div><div></div>
+      <div class="dpad-btn" ontouchstart="snakeDir(-1,0)" onclick="snakeDir(-1,0)">◀</div>
+      <div class="dpad-center"></div>
+      <div class="dpad-btn" ontouchstart="snakeDir(1,0)" onclick="snakeDir(1,0)">▶</div>
+      <div></div><div class="dpad-btn" ontouchstart="snakeDir(0,1)" onclick="snakeDir(0,1)">▼</div><div></div>
+    </div>
+  </div>
+
+  <!-- ── WHACK A MOLE ── -->
+  <div id="game-mole" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+    <div id="mole-timer-bar" style="width:340px"><div id="mole-timer-fill" style="width:100%"></div></div>
+    <div class="game-area" style="width:340px">
+      <div id="mole-grid"></div>
+    </div>
+    <div id="mole-start-screen" class="game-screen active">
+      <div class="screen-title" style="color:var(--neon-yellow)">WHACK-A-MOLE</div>
+      <div class="screen-msg">Click the moles as they pop up!<br>You have 30 seconds.</div>
+      <button class="btn btn-yellow" onclick="startMole()">START GAME</button>
+    </div>
+    <div id="mole-over-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-pink)">TIME'S UP!</div>
+      <div class="screen-msg">You whacked <span id="mole-final-score" style="color:var(--neon-yellow)">0</span> moles!</div>
+      <button class="btn btn-yellow" onclick="startMole()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- ── MEMORY ── -->
+  <div id="game-memory" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+    <div class="game-area" style="width:380px">
+      <div id="memory-grid"></div>
+    </div>
+    <div id="memory-start-screen" class="game-screen active">
+      <div class="screen-title" style="color:var(--neon-purple)">MEMORY MATCH</div>
+      <div class="screen-msg">Flip cards to find all pairs.<br>Fewest moves wins!</div>
+      <button class="btn" style="color:var(--neon-purple);border-color:var(--neon-purple)" onclick="startMemory()">START GAME</button>
+    </div>
+    <div id="memory-win-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-green)">YOU WIN! 🎉</div>
+      <div class="screen-msg">Completed in <span id="mem-final-moves" style="color:var(--neon-purple)">0</span> moves!</div>
+      <button class="btn" style="color:var(--neon-purple);border-color:var(--neon-purple)" onclick="startMemory()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- ── BREAKOUT ── -->
+  <div id="game-breakout" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+    <div class="game-area">
+      <canvas id="breakout-canvas" width="420" height="360"></canvas>
+    </div>
+    <div id="breakout-start-screen" class="game-screen active">
+      <div class="screen-title" style="color:var(--neon-cyan)">BREAKOUT</div>
+      <div class="screen-msg">Move mouse or touch to control the paddle.<br>Break all the bricks!</div>
+      <button class="btn btn-cyan" onclick="startBreakout()">START GAME</button>
+    </div>
+    <div id="breakout-over-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-pink)">GAME OVER</div>
+      <div class="screen-msg">Score: <span id="breakout-final-score" style="color:var(--neon-cyan)">0</span></div>
+      <button class="btn btn-cyan" onclick="startBreakout()">PLAY AGAIN</button>
+    </div>
+    <div id="breakout-win-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-green)">YOU WIN! 🎉</div>
+      <div class="screen-msg">Score: <span id="breakout-win-score" style="color:var(--neon-cyan)">0</span></div>
+      <button class="btn btn-cyan" onclick="startBreakout()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- ── REACTION ── -->
+  <div id="game-reaction" style="display:none; flex-direction:column; align-items:center; gap:16px;">
+    <div id="reaction-area" onclick="reactionClick()">
+      <div id="reaction-label">CLICK TO START</div>
+      <div id="reaction-time-display" style="display:none"></div>
+    </div>
+    <div id="reaction-history"></div>
+    <button class="btn btn-cyan" onclick="reactionReset()">RESET</button>
+  </div>
+
+  <!-- ── TYPING ── -->
+  <div id="game-typing" style="display:none; flex-direction:column; align-items:center; gap:16px; padding-bottom: 20px; width:100%; max-width:600px;">
+    <div id="typing-stats">
+      <div class="typing-stat"><div class="typing-stat-val" id="typing-wpm">0</div><div class="typing-stat-lbl">WPM</div></div>
+      <div class="typing-stat"><div class="typing-stat-val" id="typing-acc">100%</div><div class="typing-stat-lbl">ACCURACY</div></div>
+      <div class="typing-stat"><div class="typing-stat-val" id="typing-time">60</div><div class="typing-stat-lbl">SECONDS</div></div>
+    </div>
+    <div id="typing-progress"><div id="typing-progress-fill" style="width:0%"></div></div>
+    <div id="typing-area">
+      <div id="typing-text-display"></div>
+      <input id="typing-input" type="text" placeholder="Start typing..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled />
+    </div>
+    <div id="typing-start-screen" class="game-screen active">
+      <div class="screen-title" style="color:#fff">TYPING SPEED</div>
+      <div class="screen-msg">Type the words shown above as fast as you can.<br>60 second challenge!</div>
+      <button class="btn btn-cyan" onclick="startTyping()">START GAME</button>
+    </div>
+    <div id="typing-over-screen" class="game-screen">
+      <div class="screen-title" style="color:var(--neon-cyan)">TIME'S UP!</div>
+      <div class="screen-msg"><span id="typing-final-wpm" style="color:var(--neon-cyan); font-size:1.5rem">0</span> WPM &nbsp;|&nbsp; <span id="typing-final-acc" style="color:var(--neon-green)">100%</span> accuracy</div>
+      <button class="btn btn-cyan" onclick="startTyping()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+</div><!-- end overlay -->
+
+<script>
+// ═══════════════════════════════════════
+// STARS
+// ═══════════════════════════════════════
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 120; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s`;
+  starsEl.appendChild(s);
+}
+
+// ═══════════════════════════════════════
+// HUB NAV
+// ═══════════════════════════════════════
+let currentGame = null;
+const overlay = document.getElementById('game-overlay');
+const scoreVal = document.getElementById('score-val');
+
+function openGame(name) {
+  currentGame = name;
+  overlay.classList.add('active');
+  document.querySelectorAll('[id^=game-]').forEach(el => el.style.display = 'none');
+  document.getElementById('game-' + name).style.display = 'flex';
+  setScore(0);
+  const titles = {snake:'SNAKE',mole:'WHACK-A-MOLE',memory:'MEMORY MATCH',breakout:'BREAKOUT',reaction:'REACTION TEST',typing:'TYPING SPEED'};
+  document.getElementById('overlay-title').textContent = titles[name] || name.toUpperCase();
+}
+
+function closeGame() {
+  overlay.classList.remove('active');
+  stopSnake(); stopMole(); stopBreakout(); stopTyping();
+  currentGame = null;
+}
+
+function setScore(v) { scoreVal.textContent = v; }
+
+function showScreen(id) {
+  document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ═══════════════════════════════════════
+// SNAKE
+// ═══════════════════════════════════════
+const snakeCanvas = document.getElementById('snake-canvas');
+const sCtx = snakeCanvas.getContext('2d');
+const TILE = 20, COLS = 18, ROWS = 18;
+let snake, dir, nextDir, food, snakeScore, snakeInterval, snakeRunning;
+
+function startSnake() {
+  showScreen(null);
+  document.getElementById('snake-start-screen').classList.remove('active');
+  document.getElementById('snake-over-screen').classList.remove('active');
+  snake = [{x:9,y:9},{x:8,y:9},{x:7,y:9}];
+  dir = {x:1,y:0}; nextDir = {x:1,y:0};
+  snakeScore = 0; setScore(0);
+  placeFood();
+  snakeRunning = true;
+  clearInterval(snakeInterval);
+  snakeInterval = setInterval(snakeTick, 130);
+  drawSnake();
+}
+function stopSnake() { clearInterval(snakeInterval); snakeRunning = false; }
+
+function placeFood() {
+  do { food = {x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS)}; }
+  while (snake.some(s=>s.x===food.x&&s.y===food.y));
+}
+
+function snakeTick() {
+  dir = nextDir;
+  const head = {x: snake[0].x+dir.x, y: snake[0].y+dir.y};
+  if (head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS||snake.some(s=>s.x===head.x&&s.y===head.y)) {
+    stopSnake();
+    document.getElementById('snake-final-score').textContent = snakeScore;
+    document.getElementById('snake-over-screen').classList.add('active');
+    return;
+  }
+  snake.unshift(head);
+  if (head.x===food.x && head.y===food.y) {
+    snakeScore += 10; setScore(snakeScore); placeFood();
+  } else { snake.pop(); }
+  drawSnake();
+}
+
+function drawSnake() {
+  sCtx.fillStyle = '#050510';
+  sCtx.fillRect(0,0,snakeCanvas.width,snakeCanvas.height);
+  // grid
+  sCtx.strokeStyle = 'rgba(26,26,58,0.4)';
+  sCtx.lineWidth = 0.5;
+  for (let x=0;x<=COLS;x++){sCtx.beginPath();sCtx.moveTo(x*TILE,0);sCtx.lineTo(x*TILE,ROWS*TILE);sCtx.stroke();}
+  for (let y=0;y<=ROWS;y++){sCtx.beginPath();sCtx.moveTo(0,y*TILE);sCtx.lineTo(COLS*TILE,y*TILE);sCtx.stroke();}
+  // food
+  sCtx.font = `${TILE-2}px serif`;
+  sCtx.fillText('🍎', food.x*TILE+1, food.y*TILE+TILE-2);
+  // snake
+  snake.forEach((s,i) => {
+    const alpha = 1 - (i / snake.length) * 0.5;
+    sCtx.fillStyle = i===0 ? `rgba(0,245,255,${alpha})` : `rgba(6,214,160,${alpha})`;
+    sCtx.shadowColor = i===0 ? '#00f5ff' : '#06d6a0';
+    sCtx.shadowBlur = i===0 ? 12 : 4;
+    sCtx.fillRect(s.x*TILE+1, s.y*TILE+1, TILE-2, TILE-2);
+  });
+  sCtx.shadowBlur = 0;
+}
+
+function snakeDir(x, y) {
+  if (!snakeRunning) return;
+  if (x===1&&dir.x===-1) return; if (x===-1&&dir.x===1) return;
+  if (y===1&&dir.y===-1) return; if (y===-1&&dir.y===1) return;
+  nextDir = {x,y};
+}
+
+document.addEventListener('keydown', e => {
+  if (currentGame !== 'snake') return;
+  const map = {ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+               w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
+  const d = map[e.key];
+  if (d) { e.preventDefault(); snakeDir(d[0],d[1]); }
+});
+
+// ═══════════════════════════════════════
+// WHACK-A-MOLE
+// ═══════════════════════════════════════
+const MOLES = 9;
+let moleScore=0, moleActive=[], moleIntervals=[], moleTimer, moleTime=30, moleRunning=false;
+
+// Build grid
+const moleGrid = document.getElementById('mole-grid');
+for (let i=0;i<MOLES;i++){
+  const h=document.createElement('div');
+  h.className='mole-hole';
+  h.innerHTML='<span class="mole-inner">🦔</span>';
+  h.dataset.i=i;
+  h.addEventListener('click',()=>whack(i));
+  moleGrid.appendChild(h);
+}
+
+function startMole(){
+  document.getElementById('mole-start-screen').classList.remove('active');
+  document.getElementById('mole-over-screen').classList.remove('active');
+  moleScore=0; moleTime=30; setScore(0); moleRunning=true;
+  document.getElementById('mole-timer-fill').style.width='100%';
+  moleIntervals.forEach(clearTimeout);
+  moleIntervals=[];
+  document.querySelectorAll('.mole-hole').forEach(h=>h.classList.remove('active','hit'));
+  moleTimer = setInterval(()=>{
+    moleTime--;
+    document.getElementById('mole-timer-fill').style.width=(moleTime/30*100)+'%';
+    if(moleTime<=0){endMole();}
+  },1000);
+  scheduleNextMole();
+}
+
+function scheduleNextMole(){
+  if(!moleRunning) return;
+  const i = Math.floor(Math.random()*MOLES);
+  const holes = document.querySelectorAll('.mole-hole');
+  if(!holes[i].classList.contains('active')){
+    holes[i].classList.add('active');
+    const t = setTimeout(()=>{ holes[i].classList.remove('active'); },900);
+    moleIntervals.push(t);
+  }
+  const t2 = setTimeout(scheduleNextMole, 500+Math.random()*400);
+  moleIntervals.push(t2);
+}
+
+function whack(i){
+  if(!moleRunning) return;
+  const h=document.querySelectorAll('.mole-hole')[i];
+  if(!h.classList.contains('active')) return;
+  h.classList.remove('active'); h.classList.add('hit');
+  setTimeout(()=>h.classList.remove('hit'),300);
+  moleScore+=1; setScore(moleScore);
+}
+
+function endMole(){
+  moleRunning=false;
+  clearInterval(moleTimer);
+  moleIntervals.forEach(clearTimeout); moleIntervals=[];
+  document.querySelectorAll('.mole-hole').forEach(h=>h.classList.remove('active'));
+  document.getElementById('mole-final-score').textContent=moleScore;
+  document.getElementById('mole-over-screen').classList.add('active');
+}
+function stopMole(){ moleRunning=false; clearInterval(moleTimer); moleIntervals.forEach(clearTimeout); }
+
+// ═══════════════════════════════════════
+// MEMORY MATCH
+// ═══════════════════════════════════════
+const EMOJIS = ['🦊','🐸','🦋','🐙','🌈','🎸','🍕','🚀'];
+let memCards=[], memFlipped=[], memMatched=0, memMoves=0, memLocked=false;
+
+function startMemory(){
+  document.getElementById('memory-start-screen').classList.remove('active');
+  document.getElementById('memory-win-screen').classList.remove('active');
+  memMatched=0; memMoves=0; setScore(0); memLocked=false;
+  const pairs=[...EMOJIS,...EMOJIS].sort(()=>Math.random()-0.5);
+  const grid=document.getElementById('memory-grid');
+  grid.innerHTML='';
+  memCards=[];
+  pairs.forEach((em,i)=>{
+    const card=document.createElement('div');
+    card.className='mem-card';
+    card.innerHTML=`<div class="mem-card-inner"><div class="mem-card-back">?</div><div class="mem-card-front">${em}</div></div>`;
+    card.dataset.em=em; card.dataset.i=i;
+    card.addEventListener('click',()=>flipCard(card));
+    grid.appendChild(card);
+    memCards.push(card);
+  });
+}
+
+function flipCard(card){
+  if(memLocked||card.classList.contains('flipped')||card.classList.contains('matched')) return;
+  card.classList.add('flipped');
+  memFlipped.push(card);
+  if(memFlipped.length===2){
+    memMoves++; setScore(memMoves);
+    memLocked=true;
+    setTimeout(checkMemory,700);
+  }
+}
+
+function checkMemory(){
+  const [a,b]=memFlipped;
+  if(a.dataset.em===b.dataset.em){
+    a.classList.add('matched'); b.classList.add('matched');
+    memMatched++;
+    if(memMatched===EMOJIS.length){
+      document.getElementById('mem-final-moves').textContent=memMoves;
+      document.getElementById('memory-win-screen').classList.add('active');
+    }
+  } else {
+    a.classList.remove('flipped'); b.classList.remove('flipped');
+  }
+  memFlipped=[]; memLocked=false;
+}
+
+// ═══════════════════════════════════════
+// BREAKOUT
+// ═══════════════════════════════════════
+const bCanvas=document.getElementById('breakout-canvas');
+const bCtx=bCanvas.getContext('2d');
+const BW=420,BH=360;
+let bBall,bPaddle,bBricks,bScore,bRAF,bRunning;
+const BRICK_ROWS=5,BRICK_COLS=8,BRICK_W=44,BRICK_H=16,BRICK_PAD=6,BRICK_TOP=40;
+const BCOLORS=['#ff006e','#ff7900','#ffbe0b','#06d6a0','#00f5ff'];
+
+function startBreakout(){
+  document.getElementById('breakout-start-screen').classList.remove('active');
+  document.getElementById('breakout-over-screen').classList.remove('active');
+  document.getElementById('breakout-win-screen').classList.remove('active');
+  bScore=0; setScore(0);
+  bPaddle={x:BW/2-40,y:BH-24,w:80,h:12};
+  const angle=(Math.random()*60-30)*Math.PI/180;
+  bBall={x:BW/2,y:BH/2,vx:4*Math.sin(angle),vy:-4,r:7};
+  bBricks=[];
+  for(let r=0;r<BRICK_ROWS;r++){
+    for(let c=0;c<BRICK_COLS;c++){
+      bBricks.push({x:c*(BRICK_W+BRICK_PAD)+36,y:r*(BRICK_H+BRICK_PAD)+BRICK_TOP,alive:true,row:r});
+    }
+  }
+  bRunning=true;
+  cancelAnimationFrame(bRAF);
+  bCanvas.onmousemove=e=>{
+    const rect=bCanvas.getBoundingClientRect();
+    bPaddle.x=e.clientX-rect.left-bPaddle.w/2;
+    bPaddle.x=Math.max(0,Math.min(BW-bPaddle.w,bPaddle.x));
+  };
+  bCanvas.ontouchmove=e=>{
+    e.preventDefault();
+    const rect=bCanvas.getBoundingClientRect();
+    bPaddle.x=e.touches[0].clientX-rect.left-bPaddle.w/2;
+    bPaddle.x=Math.max(0,Math.min(BW-bPaddle.w,bPaddle.x));
+  };
+  breakoutLoop();
+}
+function stopBreakout(){ bRunning=false; cancelAnimationFrame(bRAF); }
+
+function breakoutLoop(){
+  if(!bRunning) return;
+  updateBreakout(); drawBreakout();
+  bRAF=requestAnimationFrame(breakoutLoop);
+}
+
+function updateBreakout(){
+  bBall.x+=bBall.vx; bBall.y+=bBall.vy;
+  if(bBall.x-bBall.r<0){bBall.x=bBall.r; bBall.vx*=-1;}
+  if(bBall.x+bBall.r>BW){bBall.x=BW-bBall.r; bBall.vx*=-1;}
+  if(bBall.y-bBall.r<0){bBall.y=bBall.r; bBall.vy*=-1;}
+  if(bBall.y+bBall.r>BH){
+    stopBreakout();
+    document.getElementById('breakout-final-score').textContent=bScore;
+    document.getElementById('breakout-over-screen').classList.add('active');
+    return;
+  }
+  // paddle collision
+  if(bBall.y+bBall.r>bPaddle.y && bBall.y-bBall.r<bPaddle.y+bPaddle.h &&
+     bBall.x>bPaddle.x && bBall.x<bPaddle.x+bPaddle.w && bBall.vy>0){
+    const rel=(bBall.x-(bPaddle.x+bPaddle.w/2))/(bPaddle.w/2);
+    const speed=Math.sqrt(bBall.vx**2+bBall.vy**2);
+    bBall.vx=rel*speed*1.1;
+    bBall.vy=-Math.abs(bBall.vy);
+  }
+  // brick collisions
+  let allDead=true;
+  for(const brick of bBricks){
+    if(!brick.alive) continue;
+    allDead=false;
+    if(bBall.x+bBall.r>brick.x && bBall.x-bBall.r<brick.x+BRICK_W &&
+       bBall.y+bBall.r>brick.y && bBall.y-bBall.r<brick.y+BRICK_H){
+      brick.alive=false;
+      bBall.vy*=-1;
+      bScore+=(BRICK_ROWS-brick.row)*10; setScore(bScore);
+    }
+  }
+  if(allDead){
+    stopBreakout();
+    document.getElementById('breakout-win-score').textContent=bScore;
+    document.getElementById('breakout-win-screen').classList.add('active');
+  }
+}
+
+function drawBreakout(){
+  bCtx.fillStyle='#050510'; bCtx.fillRect(0,0,BW,BH);
+  // bricks
+  bBricks.forEach(br=>{
+    if(!br.alive) return;
+    bCtx.fillStyle=BCOLORS[br.row];
+    bCtx.shadowColor=BCOLORS[br.row]; bCtx.shadowBlur=6;
+    bCtx.fillRect(br.x,br.y,BRICK_W,BRICK_H);
+    bCtx.shadowBlur=0;
+  });
+  // paddle
+  bCtx.fillStyle='#00f5ff';
+  bCtx.shadowColor='#00f5ff'; bCtx.shadowBlur=14;
+  bCtx.beginPath();
+  bCtx.roundRect(bPaddle.x,bPaddle.y,bPaddle.w,bPaddle.h,6);
+  bCtx.fill(); bCtx.shadowBlur=0;
+  // ball
+  bCtx.fillStyle='#fff';
+  bCtx.shadowColor='#fff'; bCtx.shadowBlur=16;
+  bCtx.beginPath(); bCtx.arc(bBall.x,bBall.y,bBall.r,0,Math.PI*2); bCtx.fill();
+  bCtx.shadowBlur=0;
+}
+
+// ═══════════════════════════════════════
+// REACTION TEST
+// ═══════════════════════════════════════
+let reactionState='idle', reactionStart, reactionTimeout, reactionTimes=[];
+
+function reactionClick(){
+  const area=document.getElementById('reaction-area');
+  const label=document.getElementById('reaction-label');
+  const display=document.getElementById('reaction-time-display');
+  if(reactionState==='idle'||reactionState==='result'){
+    // start waiting
+    reactionState='waiting';
+    area.className=''; area.classList.add('waiting');
+    label.textContent='WAIT FOR GREEN...';
+    display.style.display='none';
+    const delay=1500+Math.random()*3000;
+    reactionTimeout=setTimeout(()=>{
+      reactionState='ready';
+      area.className=''; area.classList.add('ready');
+      label.textContent='CLICK NOW!';
+      reactionStart=performance.now();
+    },delay);
+  } else if(reactionState==='waiting'){
+    clearTimeout(reactionTimeout);
+    reactionState='early';
+    area.className=''; area.classList.add('early');
+    label.textContent='TOO EARLY! Try again.';
+    setTimeout(()=>{reactionState='idle'; area.className=''; label.textContent='CLICK TO START';},1500);
+  } else if(reactionState==='ready'){
+    const elapsed=Math.round(performance.now()-reactionStart);
+    reactionTimes.push(elapsed);
+    if(reactionTimes.length>5) reactionTimes.shift();
+    reactionState='result';
+    area.className='';
+    display.style.display='block';
+    display.textContent=elapsed+'ms';
+    label.textContent=elapsed<200?'LIGHTNING FAST!':elapsed<300?'GREAT!':elapsed<450?'GOOD':elapsed<600?'AVERAGE':'TOO SLOW';
+    // history
+    const hist=document.getElementById('reaction-history');
+    hist.innerHTML='';
+    reactionTimes.forEach(t=>{
+      const c=document.createElement('div');
+      c.className='reaction-chip'; c.textContent=t+'ms';
+      hist.appendChild(c);
+    });
+    setScore(elapsed);
+    setTimeout(()=>{
+      if(reactionState==='result'){reactionState='idle'; area.className=''; label.textContent='CLICK TO START AGAIN';}
+    },2000);
+  }
+}
+function reactionReset(){
+  clearTimeout(reactionTimeout);
+  reactionState='idle'; reactionTimes=[];
+  const area=document.getElementById('reaction-area');
+  area.className='';
+  document.getElementById('reaction-label').textContent='CLICK TO START';
+  document.getElementById('reaction-time-display').style.display='none';
+  document.getElementById('reaction-history').innerHTML='';
+  setScore(0);
+}
+
+// ═══════════════════════════════════════
+// TYPING SPEED
+// ═══════════════════════════════════════
+const TYPING_WORDS = 'the quick brown fox jumps over the lazy dog pack my box with five dozen liquor jugs how vexingly quick daft zebras jump sphinx of black quartz judge my vow two driven jocks help fax my big quiz fix cents jazz funk vibe squad help the quick zephyr blows hard rocks across the fog'.split(' ');
+
+function generateTypingText(){ return shuffle([...TYPING_WORDS]).slice(0,60).join(' '); }
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+let typingText='', typingPos=0, typingErrors=0, typingCorrect=0, typingTimer, typingTimeLeft=60, typingActive=false;
+
+function startTyping(){
+  document.getElementById('typing-start-screen').classList.remove('active');
+  document.getElementById('typing-over-screen').classList.remove('active');
+  typingText=generateTypingText();
+  typingPos=0; typingErrors=0; typingCorrect=0; typingTimeLeft=60; typingActive=false;
+  renderTypingText(-1);
+  const inp=document.getElementById('typing-input');
+  inp.value=''; inp.disabled=false; inp.focus();
+  document.getElementById('typing-wpm').textContent='0';
+  document.getElementById('typing-acc').textContent='100%';
+  document.getElementById('typing-time').textContent='60';
+  document.getElementById('typing-progress-fill').style.width='0%';
+  inp.oninput=handleTyping;
+  clearInterval(typingTimer);
+}
+function stopTyping(){ clearInterval(typingTimer); typingActive=false; }
+
+function renderTypingText(current){
+  const disp=document.getElementById('typing-text-display');
+  disp.innerHTML=typingText.split('').map((ch,i)=>{
+    let cls='typing-char';
+    if(i<current) cls+=' correct'; // simplified, actual tracks errors
+    if(i===current) cls+=' current';
+    return `<span class="${cls}">${ch==' '?'&nbsp;':ch}</span>`;
+  }).join('');
+}
+
+function handleTyping(e){
+  const inp=e.target;
+  const val=inp.value;
+  if(!typingActive && val.length>0){
+    typingActive=true;
+    typingTimer=setInterval(()=>{
+      typingTimeLeft--;
+      document.getElementById('typing-time').textContent=typingTimeLeft;
+      updateTypingStats();
+      if(typingTimeLeft<=0) endTyping();
+    },1000);
+  }
+  // Re-render
+  const chars=typingText.split('');
+  const typed=val.split('');
+  let correct=0, errors=0;
+  const disp=document.getElementById('typing-text-display');
+  disp.innerHTML=chars.map((ch,i)=>{
+    let cls='typing-char';
+    if(i<typed.length){
+      if(typed[i]===ch){cls+=' correct';correct++;}
+      else{cls+=' wrong';errors++;}
+    } else if(i===typed.length) cls+=' current';
+    return `<span class="${cls}">${ch===' '?'&nbsp;':ch}</span>`;
+  }).join('');
+  typingCorrect=correct; typingErrors=errors;
+  typingPos=typed.length;
+  document.getElementById('typing-progress-fill').style.width=(typingPos/chars.length*100)+'%';
+  updateTypingStats();
+  // auto complete
+  if(typed.length>=chars.length) endTyping();
+}
+
+function updateTypingStats(){
+  const elapsed=60-typingTimeLeft;
+  const wpm=elapsed>0?Math.round((typingCorrect/5)/(elapsed/60)):0;
+  const acc=typingPos>0?Math.round(typingCorrect/typingPos*100):100;
+  document.getElementById('typing-wpm').textContent=wpm;
+  document.getElementById('typing-acc').textContent=acc+'%';
+  setScore(wpm);
+}
+
+function endTyping(){
+  stopTyping();
+  document.getElementById('typing-input').disabled=true;
+  const elapsed=60-typingTimeLeft||1;
+  const wpm=Math.round((typingCorrect/5)/(elapsed/60));
+  const acc=typingPos>0?Math.round(typingCorrect/typingPos*100):100;
+  document.getElementById('typing-final-wpm').textContent=wpm;
+  document.getElementById('typing-final-acc').textContent=acc+'%';
+  document.getElementById('typing-over-screen').classList.add('active');
+}
+
+// Init typing text display
+document.getElementById('typing-text-display').textContent='Click START GAME to begin...';
+</script>
+</body>
+</html>

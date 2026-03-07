@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Asteroids — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-a);}
+.ast-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:0 8px 16px;}
+#astcv{display:block;border-radius:12px;border:2px solid var(--line2);touch-action:none;background:#000;}
+.ast-hud{display:flex;gap:8px;width:100%;max-width:820px;}
+.ast-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:9px 8px;text-align:center;}
+.ast-stat .sv{font-family:var(--font-display);font-size:1.5rem;line-height:1;}
+.ast-stat .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.1em;}
+/* Mobile touch buttons */
+.ast-controls{display:flex;flex-direction:column;gap:6px;width:100%;max-width:380px;}
+.ast-ctrl-row{display:flex;gap:6px;justify-content:center;}
+.ast-btn{width:60px;height:60px;border-radius:12px;border:2px solid var(--line2);background:var(--card-bg);
+  color:var(--text);font-size:1.4rem;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:all .08s;display:flex;align-items:center;justify-content:center;user-select:none;}
+.ast-btn:active,.ast-btn.held{background:var(--neon-a);color:#000;border-color:var(--neon-a);}
+.ast-btn.fire-btn{width:140px;background:color-mix(in srgb,var(--neon-b) 15%,var(--card-bg));border-color:var(--neon-b);}
+.ast-btn.fire-btn:active,.ast-btn.fire-btn.held{background:var(--neon-b);color:#fff;}
+@media(min-width:720px){.ast-controls{display:none;}}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>ASTEROIDS</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:10px;align-items:center;">
+<div class="ast-wrap">
+
+  <div class="ast-hud" id="ast-hud">
+    <div class="ast-stat"><div class="sv" id="a-score" style="color:var(--neon-a)">0</div><div class="sl">SCORE</div></div>
+    <div class="ast-stat"><div class="sv" id="a-level" style="color:var(--neon-c)">1</div><div class="sl">LEVEL</div></div>
+    <div class="ast-stat"><div class="sv" id="a-lives" style="color:var(--neon-b)">♥♥♥</div><div class="sl">LIVES</div></div>
+    <div class="ast-stat"><div class="sv" id="a-high"  style="color:var(--neon-e)">0</div><div class="sl">BEST</div></div>
+  </div>
+
+  <canvas id="astcv"></canvas>
+
+  <!-- Mobile virtual controls -->
+  <div class="ast-controls">
+    <div class="ast-ctrl-row">
+      <div class="ast-btn" id="btn-up"    data-key="ArrowUp">▲</div>
+    </div>
+    <div class="ast-ctrl-row">
+      <div class="ast-btn" id="btn-left"  data-key="ArrowLeft">◀</div>
+      <div class="ast-btn fire-btn" id="btn-fire"  data-key=" ">💥 FIRE</div>
+      <div class="ast-btn" id="btn-right" data-key="ArrowRight">▶</div>
+    </div>
+    <div class="ast-ctrl-row">
+      <div class="ast-btn" id="btn-hyper" data-key="ArrowDown">⚡ HYPER</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-a)" onclick="startGame()">▶ START (🪙 10)</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="doShare()">📤 Share</button>
+  </div>
+
+  <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:1.8;">
+    🖥 Arrow keys / WASD — rotate &amp; thrust &nbsp;·&nbsp; Space — shoot &nbsp;·&nbsp; Shift — hyperspace<br>
+    💥 Large rock = 20pts &nbsp;·&nbsp; Medium = 50pts &nbsp;·&nbsp; Small = 100pts &nbsp;·&nbsp; 🛸 UFO = 200pts
+  </div>
+</div>
+</div>
+
+<script>
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+/* ── Canvas ── */
+var cv=document.getElementById('astcv');
+var ctx=cv.getContext('2d');
+var DPR=Math.min(window.devicePixelRatio||1,2);
+var W,H;
+
+function initCanvas(){
+  var avW=Math.min(window.innerWidth-20, 900);
+  var avH=Math.max(360, window.innerHeight-320);
+  W=avW; H=Math.min(avH, W*0.65);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+initCanvas();
+window.addEventListener('resize',function(){initCanvas();if(!alive)drawIdle();});
+
+/* ── Constants ── */
+var TAU=Math.PI*2;
+var SHIP_SIZE=14;
+var BULLET_SPEED=8;
+var ROCK_SPEEDS=[0.9,1.5,2.5];  /* large, med, small */
+var ROCK_SIZES=[42,22,11];
+var ROCK_PTS=[20,50,100];
+var UFO_PTS=200;
+var LIVES_MAX=5;
+var INVINCIBLE_MS=2500;
+var HYPER_COOLDOWN=6000;
+
+/* ── State ── */
+var ship, bullets, rocks, particles, ufo, ufoBullets;
+var score=0, highScore=+localStorage.getItem('az_ast_hs')||0;
+var level=0, lives=3, alive=false, gameOver=false, paused=false;
+var invincible=0, hyperCooldown=0;
+var rafId, lastTime=0;
+var stars=[];
+
+/* ── Keys ── */
+var keys={};
+document.addEventListener('keydown',function(e){
+  keys[e.key]=true;
+  if(e.key===' '||e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();
+  if(e.key===' '&&alive&&!paused) tryShoot();
+  if((e.key==='Shift'||e.key==='ArrowDown')&&alive&&!paused) hyperspace();
+  if(e.key==='p'||e.key==='P') togglePause();
+});
+document.addEventListener('keyup',function(e){keys[e.key]=false;});
+
+/* Mobile buttons */
+document.querySelectorAll('.ast-btn').forEach(function(btn){
+  var k=btn.dataset.key;
+  btn.addEventListener('touchstart',function(e){e.preventDefault();keys[k]=true;
+    if(k===' ')tryShoot(); if(k==='ArrowDown')hyperspace(); btn.classList.add('held');},{passive:false});
+  btn.addEventListener('touchend',function(e){e.preventDefault();keys[k]=false;btn.classList.remove('held');},{passive:false});
+  btn.addEventListener('mousedown',function(){keys[k]=true;if(k===' ')tryShoot();if(k==='ArrowDown')hyperspace();btn.classList.add('held');});
+  btn.addEventListener('mouseup',function(){keys[k]=false;btn.classList.remove('held');});
+});
+
+/* ── Stars ── */
+function initStars(){
+  stars=[];
+  for(var i=0;i<120;i++) stars.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+0.2,b:Math.random()});
+}
+
+/* ── Ship ── */
+function createShip(){
+  return {x:W/2,y:H/2,vx:0,vy:0,angle:-Math.PI/2,thrusting:false,shootCooldown:0};
+}
+
+/* ── Rocks ── */
+function createRock(x,y,size){
+  var angle=Math.random()*TAU;
+  var speed=ROCK_SPEEDS[size]*(0.7+Math.random()*0.7)*(1+level*0.06);
+  var verts=Math.floor(Math.random()*5)+8;
+  var shape=[];
+  for(var i=0;i<verts;i++){
+    var a=i/verts*TAU;
+    var r=ROCK_SIZES[size]*(0.7+Math.random()*0.55);
+    shape.push({x:Math.cos(a)*r,y:Math.sin(a)*r});
+  }
+  return {x:x,y:y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,size:size,shape:shape,rot:0,rotSpeed:(Math.random()-0.5)*0.04};
+}
+
+function spawnRocks(){
+  rocks=[];
+  var count=3+level;
+  for(var i=0;i<count;i++){
+    /* Spawn away from ship */
+    var angle=Math.random()*TAU;
+    var dist=Math.min(W,H)*0.35+Math.random()*Math.min(W,H)*0.15;
+    var x=W/2+Math.cos(angle)*dist;
+    var y=H/2+Math.sin(angle)*dist;
+    rocks.push(createRock(x,y,0));
+  }
+}
+
+/* ── UFO ── */
+var ufoTimer=0,UFO_INTERVAL=12000;
+function spawnUFO(){
+  ufo={x:Math.random()<0.5?-30:W+30,y:H*0.2+Math.random()*H*0.6,
+    vx:0,vy:0,shootTimer:0,size:20};
+  ufo.vx=ufo.x<0?2.2:-2.2;
+  ufoBullets=[];
+}
+function tryShootUFO(){
+  if(!ufo||!ship||Date.now()<invincible)return;
+  var dx=ship.x-ufo.x, dy=ship.y-ufo.y;
+  var len=Math.sqrt(dx*dx+dy*dy);
+  var spd=4.5;
+  /* slight random aim error */
+  var err=(Math.random()-0.5)*0.6;
+  var ang=Math.atan2(dy,dx)+err;
+  ufoBullets.push({x:ufo.x,y:ufo.y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:80});
+}
+
+/* ── Bullets ── */
+var shootTimer=0,SHOOT_RATE=180;
+function tryShoot(){
+  if(!alive||!ship||Date.now()-shootTimer<SHOOT_RATE)return;
+  shootTimer=Date.now();
+  var spd=BULLET_SPEED;
+  bullets.push({x:ship.x+Math.cos(ship.angle)*SHIP_SIZE,y:ship.y+Math.sin(ship.angle)*SHIP_SIZE,
+    vx:ship.vx+Math.cos(ship.angle)*spd,vy:ship.vy+Math.sin(ship.angle)*spd,life:55});
+  SoundEngine.play('pop');
+}
+
+/* ── Hyperspace ── */
+function hyperspace(){
+  if(Date.now()<hyperCooldown)return;
+  ship.x=Math.random()*W; ship.y=Math.random()*H;
+  ship.vx=0; ship.vy=0;
+  hyperCooldown=Date.now()+HYPER_COOLDOWN;
+  invincible=Date.now()+1200;
+  spawnParticles(ship.x,ship.y,12,'#bf5af2');
+  SoundEngine.play('levelup')||SoundEngine.play('start');
+}
+
+/* ── Particles ── */
+function spawnParticles(x,y,n,color){
+  for(var i=0;i<n;i++){
+    var a=Math.random()*TAU;
+    var spd=1+Math.random()*3;
+    particles.push({x:x,y:y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:40+Math.random()*30,color:color||'#fff',r:1.5+Math.random()*2});
+  }
+}
+
+/* ── Wrap ── */
+function wrap(obj){
+  if(obj.x<-50)obj.x=W+50; if(obj.x>W+50)obj.x=-50;
+  if(obj.y<-50)obj.y=H+50; if(obj.y>H+50)obj.y=-50;
+}
+
+/* ── Collision ── */
+function dist(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
+
+/* ── Start / loop ── */
+function startGame(){
+  if(!CoinEngine.spend(10)){CoinEngine.toast('Not enough coins!','warn');return;}
+  score=0; level=0; lives=3; gameOver=false; alive=true; paused=false;
+  ship=createShip(); bullets=[]; rocks=[]; particles=[]; ufo=null; ufoBullets=[];
+  ufoTimer=Date.now()+UFO_INTERVAL; hyperCooldown=0; invincible=Date.now()+1500;
+  initStars(); spawnRocks();
+  updateHUD(); SoundEngine.play('start'); SoundEngine.playBGM('reaction');
+  cancelAnimationFrame(rafId); lastTime=performance.now();
+  rafId=requestAnimationFrame(loop);
+}
+
+function loop(ts){
+  var dt=Math.min(ts-lastTime,50); lastTime=ts;
+  if(!paused) update(dt);
+  render();
+  if(alive||gameOver) rafId=requestAnimationFrame(loop);
+}
+
+function update(dt){
+  /* Ship controls */
+  var ROT=0.058, THRUST=0.22, DRAG=0.985;
+  if((keys['ArrowLeft']||keys['a']||keys['A']))ship.angle-=ROT;
+  if((keys['ArrowRight']||keys['d']||keys['D']))ship.angle+=ROT;
+  ship.thrusting=keys['ArrowUp']||keys['w']||keys['W'];
+  if(ship.thrusting){ship.vx+=Math.cos(ship.angle)*THRUST;ship.vy+=Math.sin(ship.angle)*THRUST;}
+  var maxSpd=8+level*0.3;
+  var sp=Math.sqrt(ship.vx*ship.vx+ship.vy*ship.vy);
+  if(sp>maxSpd){ship.vx=ship.vx/sp*maxSpd;ship.vy=ship.vy/sp*maxSpd;}
+  ship.vx*=DRAG; ship.vy*=DRAG;
+  ship.x+=ship.vx; ship.y+=ship.vy;
+  wrap(ship);
+
+  /* Bullets */
+  bullets=bullets.filter(function(b){b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0;});
+
+  /* Rocks */
+  rocks.forEach(function(r){r.x+=r.vx;r.y+=r.vy;r.rot+=r.rotSpeed;wrap(r);});
+
+  /* Particles */
+  particles=particles.filter(function(p){p.x+=p.vx;p.y+=p.vy;p.vx*=0.96;p.vy*=0.96;p.life--;return p.life>0;});
+
+  /* UFO */
+  if(ufo){
+    ufo.x+=ufo.vx; ufo.y+=ufo.vy*(0.8+0.4*Math.sin(Date.now()/800));
+    ufo.shootTimer-=dt;
+    if(ufo.shootTimer<=0){tryShootUFO();ufo.shootTimer=2200-level*120;}
+    if(ufo.x<-80||ufo.x>W+80) ufo=null;
+  } else if(Date.now()>ufoTimer&&level>=2){spawnUFO();ufoTimer=Date.now()+UFO_INTERVAL;}
+
+  if(ufoBullets){
+    ufoBullets=ufoBullets.filter(function(b){b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0;});
+  }
+
+  /* Check bullet→rock */
+  var toRemove=[];
+  bullets.forEach(function(b,bi){
+    rocks.forEach(function(r,ri){
+      if(dist(b,r)<ROCK_SIZES[r.size]*0.9){
+        toRemove.push({b:bi,r:ri});
+      }
+    });
+    /* bullet → ufo */
+    if(ufo&&dist(b,ufo)<ufo.size+4){
+      addScore(UFO_PTS); spawnParticles(ufo.x,ufo.y,20,'#ffe135');
+      SoundEngine.play('die'); ufo=null; ufoBullets=[];
+      toRemove.push({b:bi,r:-1});
+    }
+  });
+  /* Deduplicate and remove */
+  var removedRocks={}, removedBullets={};
+  toRemove.forEach(function(item){
+    if(removedBullets[item.b]||item.r>=0&&removedRocks[item.r])return;
+    removedBullets[item.b]=true;
+    if(item.r>=0){
+      removedRocks[item.r]=true;
+      var r=rocks[item.r];
+      addScore(ROCK_PTS[r.size]);
+      spawnParticles(r.x,r.y,8+(2-r.size)*5,r.size===0?'#ff6b35':r.size===1?'#ffe135':'#00e5ff');
+      SoundEngine.play('die');
+      if(r.size<2){rocks.push(createRock(r.x,r.y,r.size+1));rocks.push(createRock(r.x,r.y,r.size+1));}
+    }
+  });
+  rocks=rocks.filter(function(_,i){return!removedRocks[i];});
+  bullets=bullets.filter(function(_,i){return!removedBullets[i];});
+
+  /* Ship→rock collision */
+  if(Date.now()>invincible){
+    var hit=rocks.some(function(r){return dist(ship,r)<ROCK_SIZES[r.size]*0.75+SHIP_SIZE*0.7;});
+    var ufoHit=ufo&&dist(ship,ufo)<ufo.size+SHIP_SIZE;
+    var ufoBHit=ufoBullets&&ufoBullets.some(function(b){return dist(ship,b)<SHIP_SIZE;});
+    if(hit||ufoHit||ufoBHit){
+      loseLife();
+    }
+  }
+
+  /* Level clear */
+  if(rocks.length===0&&!gameOver){
+    level++;
+    spawnRocks();
+    ufoTimer=Date.now()+UFO_INTERVAL*0.8;
+    invincible=Date.now()+2000;
+    CoinEngine.toast('🚀 Level '+level+'!','info');
+    updateHUD();
+  }
+
+  updateHUD();
+}
+
+function addScore(pts){
+  score+=pts;
+  if(score>highScore){highScore=score;localStorage.setItem('az_ast_hs',highScore);}
+}
+
+function loseLife(){
+  lives--;
+  spawnParticles(ship.x,ship.y,20,'#ff2d78');
+  SoundEngine.play('gameover');
+  invincible=Date.now()+INVINCIBLE_MS;
+  ship={x:W/2,y:H/2,vx:0,vy:0,angle:-Math.PI/2,thrusting:false};
+  if(lives<=0) endGame();
+  updateHUD();
+}
+
+function endGame(){
+  alive=false; gameOver=true;
+  SoundEngine.stopBGM(); SoundEngine.play('gameover');
+  var reward=Math.floor(score*0.08);
+  if(reward>0){CoinEngine.add(reward,'Asteroids score '+score,'🚀');CoinEngine.toast('+'+reward+' 🪙','success');}
+  CoinEngine.recordGame('asteroids',score,score>0,{level:level});
+}
+
+function updateHUD(){
+  document.getElementById('a-score').textContent=score;
+  document.getElementById('a-level').textContent=level+1;
+  document.getElementById('a-lives').textContent='♥'.repeat(Math.max(0,lives));
+  document.getElementById('a-high').textContent=highScore;
+}
+
+function togglePause(){paused=!paused;}
+
+/* ── Render ── */
+function render(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,W,H);
+
+  /* Stars */
+  stars.forEach(function(s){
+    ctx.fillStyle='rgba(255,255,255,'+(0.3+s.b*0.5)+')';
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,TAU);ctx.fill();
+  });
+
+  if(paused){
+    ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.font='bold '+(W*0.07)+'px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('⏸ PAUSED',W/2,H/2);
+    return;
+  }
+
+  /* Particles */
+  particles.forEach(function(p){
+    ctx.globalAlpha=p.life/60;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,TAU);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  /* Rocks */
+  rocks.forEach(function(r){
+    ctx.save();ctx.translate(r.x,r.y);ctx.rotate(r.rot);
+    ctx.strokeStyle=r.size===0?'#ff6b35':r.size===1?'#ffe135':'#00e5ff';
+    ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=8;
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    r.shape.forEach(function(v,i){if(i===0)ctx.moveTo(v.x,v.y);else ctx.lineTo(v.x,v.y);});
+    ctx.closePath();ctx.stroke();
+    ctx.shadowBlur=0;ctx.restore();
+  });
+
+  /* UFO */
+  if(ufo){
+    ctx.save();ctx.translate(ufo.x,ufo.y);
+    ctx.strokeStyle='#ffe135';ctx.shadowColor='#ffe135';ctx.shadowBlur=12;ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.ellipse(0,0,ufo.size,ufo.size*0.45,0,0,TAU);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(0,-ufo.size*0.3,ufo.size*0.55,ufo.size*0.4,0,Math.PI,TAU);ctx.stroke();
+    ctx.shadowBlur=0;ctx.restore();
+    /* UFO bullets */
+    ufoBullets.forEach(function(b){
+      ctx.fillStyle='#ff2d78';ctx.shadowColor='#ff2d78';ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(b.x,b.y,3.5,0,TAU);ctx.fill();ctx.shadowBlur=0;
+    });
+  }
+
+  /* Bullets */
+  bullets.forEach(function(b){
+    ctx.fillStyle='#00e5ff';ctx.shadowColor='#00e5ff';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(b.x,b.y,3,0,TAU);ctx.fill();ctx.shadowBlur=0;
+  });
+
+  /* Ship */
+  if(ship&&(Date.now()<invincible?Math.floor(Date.now()/80)%2===0:true)){
+    ctx.save();ctx.translate(ship.x,ship.y);ctx.rotate(ship.angle);
+    var sz=SHIP_SIZE;
+    /* Thruster flame */
+    if(ship.thrusting&&Math.random()>0.3){
+      ctx.fillStyle='rgba(255,107,53,'+(0.5+Math.random()*0.5)+')';
+      ctx.shadowColor='#ff6b35';ctx.shadowBlur=16;
+      ctx.beginPath();
+      ctx.moveTo(-sz*0.7,sz*0.4);ctx.lineTo(-sz*(1.4+Math.random()*0.8),0);ctx.lineTo(-sz*0.7,-sz*0.4);
+      ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+    }
+    /* Ship body */
+    ctx.strokeStyle='#00e5ff';ctx.shadowColor='#00e5ff';ctx.shadowBlur=12;ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(sz,0);ctx.lineTo(-sz*0.7,sz*0.55);ctx.lineTo(-sz*0.35,0);ctx.lineTo(-sz*0.7,-sz*0.55);
+    ctx.closePath();ctx.stroke();ctx.shadowBlur=0;ctx.restore();
+  }
+
+  /* Game over overlay */
+  if(gameOver){
+    ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#ff2d78';ctx.font='bold '+(W*0.08)+'px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.shadowColor='#ff2d78';ctx.shadowBlur=20;
+    ctx.fillText('GAME OVER',W/2,H/2-W*0.06);ctx.shadowBlur=0;
+    ctx.fillStyle='#fff';ctx.font='bold '+(W*0.038)+'px monospace';
+    ctx.fillText('Score: '+score+' · Level: '+(level+1),W/2,H/2+W*0.01);
+    ctx.fillStyle='var(--neon-a)';ctx.font=(W*0.03)+'px monospace';
+    ctx.fillText('Press START to play again',W/2,H/2+W*0.06);
+  }
+
+  /* Idle screen */
+  if(!alive&&!gameOver){drawIdle();}
+}
+
+function drawIdle(){
+  ctx.fillStyle='rgba(0,229,255,0.12)';
+  ctx.font='bold '+(W*0.06)+'px monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('PRESS START',W/2,H/2);
+  ctx.font=(W*0.025)+'px monospace';ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.fillText('Arrow keys + Space to play',W/2,H/2+W*0.06);
+  /* Draw some decorative rocks */
+  ctx.strokeStyle='rgba(255,107,53,0.3)';ctx.lineWidth=2;
+  [
+    {x:W*0.2,y:H*0.25,r:30},{x:W*0.78,y:H*0.7,r:50},{x:W*0.6,y:H*0.2,r:20}
+  ].forEach(function(d){ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,TAU);ctx.stroke();});
+}
+
+function doShare(){
+  var txt='🚀 Asteroids score: '+score+' (Level '+(level+1)+') on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+initStars(); initCanvas(); drawIdle();
+</script>
+</body>
+</html>

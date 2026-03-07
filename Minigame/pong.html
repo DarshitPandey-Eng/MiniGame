@@ -70,17 +70,21 @@ var DPR=Math.min(window.devicePixelRatio||1,2);
 var W,H,alive=false,rafId;
 
 function initCanvas(){
-  var maxW=Math.min(window.innerWidth-20,480);
-  W=maxW; H=Math.round(W*0.65);
+  var vAvail = window.innerHeight - 56 - 160;
+  var hAvail = window.innerWidth > 820 ? Math.min(window.innerWidth - 40, 980) : window.innerWidth - 20;
+  W = Math.min(hAvail, 1000, vAvail * 1.7);
+  W = Math.max(320, W);
+  H = Math.round(W * 0.55);
   cv.style.width=W+'px'; cv.style.height=H+'px';
   cv.width=W*DPR; cv.height=H*DPR;
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  PH = H * 0.18;
 }
 initCanvas();
 window.addEventListener('resize',function(){initCanvas();if(!alive)drawIdle();});
 
 /* ── Game objects ── */
-var PH=H*0.18, PW=10, BALL_R=7;
+var PH, PW=10, BALL_R=7;
 var p1={y:H/2-PH/2, score:0};
 var p2={y:H/2-PH/2, score:0};
 var ball={x:W/2,y:H/2,vx:3.5,vy:2.5};

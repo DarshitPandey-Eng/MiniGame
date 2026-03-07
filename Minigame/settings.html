@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-e);}
+.cfg-wrap{width:100%;max-width:640px;display:flex;flex-direction:column;gap:20px;padding:0 14px 40px;}
+
+/* Section card */
+.cfg-section{background:var(--card-bg);border:1px solid var(--line2);border-radius:14px;overflow:hidden;}
+.cfg-section-title{font-family:var(--font-mono);font-size:.58rem;font-weight:800;letter-spacing:.2em;
+  color:var(--muted);padding:13px 18px 11px;border-bottom:1px solid var(--line);text-transform:uppercase;}
+
+/* Row */
+.cfg-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 18px;border-bottom:1px solid var(--line);transition:background .1s;}
+.cfg-row:last-child{border-bottom:none;}
+.cfg-row:hover{background:var(--card-hover);}
+.cfg-row-label{display:flex;flex-direction:column;gap:3px;}
+.cfg-row-title{font-family:var(--font-ui);font-size:.88rem;font-weight:600;color:var(--text);}
+.cfg-row-sub{font-family:var(--font-mono);font-size:.56rem;color:var(--muted);line-height:1.4;}
+
+/* Toggle switch */
+.toggle{position:relative;width:50px;height:26px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{position:absolute;inset:0;background:var(--bg2);border-radius:26px;
+  border:1.5px solid var(--line2);transition:background .2s,border-color .2s;cursor:pointer;}
+.toggle input:checked+.toggle-track{background:var(--neon-e);border-color:var(--neon-e);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;
+  background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.3);}
+.toggle input:checked~.toggle-thumb{transform:translateX(24px);}
+
+/* Slider */
+.cfg-slider{width:140px;accent-color:var(--neon-e);}
+
+/* Select */
+.cfg-select{font-family:var(--font-mono);font-size:.72rem;padding:7px 10px;
+  background:var(--bg2);border:1.5px solid var(--line2);border-radius:8px;
+  color:var(--text);cursor:pointer;outline:none;transition:border-color .15s;}
+.cfg-select:focus{border-color:var(--neon-e);}
+
+/* Action buttons */
+.cfg-btn{font-family:var(--font-mono);font-size:.68rem;font-weight:700;
+  padding:9px 18px;border-radius:9px;border:1.5px solid var(--line2);
+  background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .12s;}
+.cfg-btn:hover{border-color:var(--neon-e);color:var(--neon-e);}
+.cfg-btn.danger{color:var(--neon-b);}
+.cfg-btn.danger:hover{border-color:var(--neon-b);background:color-mix(in srgb,var(--neon-b) 8%,transparent);}
+.cfg-btn.primary{background:var(--neon-e);color:#000;border-color:var(--neon-e);}
+
+/* About card */
+.cfg-about{background:linear-gradient(135deg,color-mix(in srgb,var(--neon-a) 6%,var(--card-bg)),var(--card-bg));
+  border:1px solid var(--line2);border-radius:14px;padding:22px 20px;text-align:center;}
+.cfg-version{font-family:var(--font-display);font-size:2.5rem;color:var(--neon-a);letter-spacing:.1em;}
+.cfg-tagline{font-family:var(--font-mono);font-size:.58rem;color:var(--muted);margin-top:4px;letter-spacing:.12em;}
+
+/* Stat pill row */
+.cfg-stat-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
+.cfg-pill{background:var(--bg2);border:1px solid var(--line2);border-radius:8px;padding:8px 14px;
+  text-align:center;min-width:80px;}
+.cfg-pill .pv{font-family:var(--font-display);font-size:1.3rem;color:var(--neon-c);}
+.cfg-pill .pl{font-family:var(--font-mono);font-size:.44rem;color:var(--muted);letter-spacing:.08em;}
+
+/* Reset confirm modal */
+.rst-modal{position:fixed;inset:0;background:rgba(7,7,15,.88);backdrop-filter:blur(18px);
+  display:flex;align-items:center;justify-content:center;z-index:900;padding:20px;display:none;}
+.rst-modal.open{display:flex;}
+.rst-card{background:var(--card-bg);border:1px solid var(--line2);border-radius:14px;
+  padding:28px 24px;max-width:380px;width:100%;text-align:center;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-e);box-shadow:0 0 8px var(--neon-e)"></span>SETTINGS</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px;align-items:center;">
+<div class="cfg-wrap">
+
+  <!-- Appearance -->
+  <div class="cfg-section">
+    <div class="cfg-section-title">🎨 Appearance</div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Dark Mode</div>
+        <div class="cfg-row-sub">Easier on the eyes at night</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-dark" onchange="toggleDarkMode(this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Scanline Effect</div>
+        <div class="cfg-row-sub">Retro CRT noise overlay (dark mode only)</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-scanlines" onchange="setSetting('scanlines',this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Reduced Motion</div>
+        <div class="cfg-row-sub">Disable non-essential animations</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-motion" onchange="setSetting('reducedMotion',this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Accent Color</div>
+        <div class="cfg-row-sub">Hub neon tint</div>
+      </div>
+      <select class="cfg-select" id="sel-accent" onchange="setAccent(this.value)">
+        <option value="cyan">Cyan</option>
+        <option value="pink">Hot Pink</option>
+        <option value="gold">Gold</option>
+        <option value="green">Green</option>
+        <option value="purple">Purple</option>
+        <option value="orange">Orange</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Sound -->
+  <div class="cfg-section">
+    <div class="cfg-section-title">🔊 Audio</div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Sound Effects</div>
+        <div class="cfg-row-sub">Game SFX and UI sounds</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-sfx" onchange="setSetting('sfx',this.checked);SoundEngine&&SoundEngine.setMute(!this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Background Music</div>
+        <div class="cfg-row-sub">In-game looping tracks</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-bgm" onchange="setSetting('bgm',this.checked);SoundEngine&&SoundEngine.setBGMMute(!this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Volume</div>
+        <div class="cfg-row-sub">Master volume level</div>
+      </div>
+      <input type="range" class="cfg-slider" id="vol-slider" min="0" max="100" value="80"
+        oninput="setVolume(this.value)">
+    </div>
+  </div>
+
+  <!-- Gameplay -->
+  <div class="cfg-section">
+    <div class="cfg-section-title">🎮 Gameplay</div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Show Coin Popups</div>
+        <div class="cfg-row-sub">Floating +coin animations when you earn</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-coinpop" onchange="setSetting('coinPopups',this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Auto-Confirm Purchases</div>
+        <div class="cfg-row-sub">Skip the coin spend prompt in games</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-autoconfirm" onchange="setSetting('autoConfirm',this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Vibration (Mobile)</div>
+        <div class="cfg-row-sub">Haptic feedback on key events</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="tog-haptic" onchange="setSetting('haptic',this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div class="cfg-section">
+    <div class="cfg-section-title">💾 Data & Privacy</div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Export Save Data</div>
+        <div class="cfg-row-sub">Download your game stats and coins as JSON</div>
+      </div>
+      <button class="cfg-btn" onclick="exportData()">⬇ Export</button>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Import Save Data</div>
+        <div class="cfg-row-sub">Restore from a previously exported file</div>
+      </div>
+      <button class="cfg-btn" onclick="document.getElementById('import-file').click()">⬆ Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Reset Game Stats</div>
+        <div class="cfg-row-sub">Clears all scores and play history — keeps coins</div>
+      </div>
+      <button class="cfg-btn danger" onclick="openReset('stats')">🗑 Reset Stats</button>
+    </div>
+
+    <div class="cfg-row">
+      <div class="cfg-row-label">
+        <div class="cfg-row-title">Reset Everything</div>
+        <div class="cfg-row-sub">Wipe all data including coins, level, and streaks</div>
+      </div>
+      <button class="cfg-btn danger" onclick="openReset('all')">⚠ Full Reset</button>
+    </div>
+  </div>
+
+  <!-- About -->
+  <div class="cfg-about">
+    <div class="cfg-version">ARCADE<em style="color:var(--neon-b);font-style:normal">ZONE</em></div>
+    <div class="cfg-tagline">V2.0 · 18 GAMES · NO ADS · NO TRACKING · JUST FUN</div>
+    <div class="cfg-stat-row" id="about-stats"></div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <a href="https://buymeacoffee.com/arcadezone" target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:6px;background:#FFDD00;color:#1a1000;
+         font-family:var(--font-mono);font-weight:800;font-size:.65rem;padding:8px 16px;
+         border-radius:8px;text-decoration:none;">☕ Buy Me a Coffee</a>
+      <button class="cfg-btn primary" onclick="location.href='index.html'">🎮 Back to Hub</button>
+    </div>
+    <p style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted);margin-top:12px;line-height:1.7;">
+      All data stored locally in your browser · No account needed<br>
+      Made with ♥ · No ads, no tracking, no nonsense
+    </p>
+  </div>
+
+</div>
+</div>
+
+<!-- Reset confirm modal -->
+<div class="rst-modal" id="rst-modal">
+  <div class="rst-card">
+    <div style="font-size:2.5rem;margin-bottom:12px;" id="rst-icon">⚠️</div>
+    <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--neon-b);margin-bottom:8px;" id="rst-title">CONFIRM RESET</div>
+    <p style="font-family:var(--font-mono);font-size:.68rem;color:var(--text2);margin-bottom:20px;line-height:1.7;" id="rst-body"></p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="cfg-btn" onclick="closeReset()">Cancel</button>
+      <button class="cfg-btn danger" id="rst-confirm" onclick="doReset()">Confirm Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();loadSettings();}); _sT();
+
+/* ── Settings storage ── */
+var SETTINGS_KEY='az_settings';
+var DEFAULTS={sfx:true,bgm:true,volume:80,scanlines:true,reducedMotion:false,
+  accentColor:'cyan',coinPopups:true,autoConfirm:false,haptic:true};
+
+function loadSettings(){
+  var s=getSettings();
+  document.getElementById('tog-dark').checked=CoinEngine.getTheme()==='dark';
+  document.getElementById('tog-sfx').checked=s.sfx;
+  document.getElementById('tog-bgm').checked=s.bgm;
+  document.getElementById('tog-scanlines').checked=s.scanlines;
+  document.getElementById('tog-motion').checked=s.reducedMotion;
+  document.getElementById('tog-coinpop').checked=s.coinPopups;
+  document.getElementById('tog-autoconfirm').checked=s.autoConfirm;
+  document.getElementById('tog-haptic').checked=s.haptic;
+  document.getElementById('vol-slider').value=s.volume;
+  document.getElementById('sel-accent').value=s.accentColor||'cyan';
+}
+
+function getSettings(){
+  try{var v=localStorage.getItem(SETTINGS_KEY);return v?Object.assign({},DEFAULTS,JSON.parse(v)):Object.assign({},DEFAULTS);}
+  catch(e){return Object.assign({},DEFAULTS);}
+}
+
+function setSetting(key,val){
+  var s=getSettings();s[key]=val;
+  localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));
+}
+
+function toggleDarkMode(dark){CoinEngine.setTheme&&CoinEngine.setTheme(dark?'dark':'light');_sT();}
+
+function setAccent(val){
+  setSetting('accentColor',val);
+  /* Preview in page */
+  var map={cyan:'#00e5ff',pink:'#ff2d78',gold:'#ffe135',green:'#00e676',purple:'#bf5af2',orange:'#ff6b35'};
+  document.documentElement.style.setProperty('--neon-a',map[val]||map.cyan);
+}
+
+function setVolume(val){
+  setSetting('volume',parseInt(val));
+  if(SoundEngine&&SoundEngine.setVolume) SoundEngine.setVolume(val/100);
+}
+
+/* ── Export / Import ── */
+function exportData(){
+  var data={version:'2.0',exported:new Date().toISOString()};
+  ['az_balance','az_streak','az_xp','az_stats','az_hist','az_quests','az_achieve',
+   'az_chall','az_spin','az_settings'].forEach(function(k){
+    var v=localStorage.getItem(k);if(v)data[k]=JSON.parse(v);
+  });
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='arcadezone_save_'+Date.now()+'.json';
+  a.click();URL.revokeObjectURL(url);
+  CoinEngine.toast('Save exported!','success');
+}
+
+function importData(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      var keys=['az_balance','az_streak','az_xp','az_stats','az_hist','az_quests','az_achieve','az_chall','az_spin','az_settings'];
+      keys.forEach(function(k){if(data[k]!==undefined)localStorage.setItem(k,JSON.stringify(data[k]));});
+      CoinEngine.toast('Save imported! Refreshing…','success');
+      setTimeout(function(){location.reload();},1200);
+    }catch(err){CoinEngine.toast('Invalid save file.','warn');}
+  };
+  reader.readAsText(file);
+}
+
+/* ── Reset ── */
+var _resetType='';
+function openReset(type){
+  _resetType=type;
+  var modal=document.getElementById('rst-modal');
+  var isAll=type==='all';
+  document.getElementById('rst-icon').textContent=isAll?'💥':'🗑️';
+  document.getElementById('rst-title').textContent=isAll?'FULL RESET':'RESET STATS';
+  document.getElementById('rst-body').textContent=isAll
+    ?'This will permanently delete ALL data: coins, level, XP, streaks, stats, achievements, and quests. This cannot be undone.'
+    :'This will clear all game stats, scores, and play history. Your coins, level, and streak will be kept.';
+  modal.classList.add('open');
+}
+function closeReset(){document.getElementById('rst-modal').classList.remove('open');}
+function doReset(){
+  if(_resetType==='stats'){
+    localStorage.removeItem('az_stats');
+    localStorage.removeItem('az_hist');
+    localStorage.removeItem('az_chall');
+    localStorage.removeItem('az_quests');
+    CoinEngine.toast('Stats reset!','info');
+  } else {
+    var keep=['az_settings'];
+    var keys=[];
+    for(var k in localStorage){if(k.startsWith('az_')&&keep.indexOf(k)<0)keys.push(k);}
+    keys.forEach(function(k){localStorage.removeItem(k);});
+    CoinEngine.toast('Full reset complete.','info');
+  }
+  closeReset();
+  setTimeout(function(){location.reload();},800);
+}
+
+/* ── About stats ── */
+function renderAbout(){
+  var stats=CoinEngine.getStats();
+  var totalPlays=0;Object.keys(stats).forEach(function(k){totalPlays+=(stats[k].plays||0);});
+  var xp=CoinEngine.getXPData();
+  var streak=CoinEngine.getStreak();
+  var items=[
+    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
+    {v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
+    {v:streak.current,l:'STREAK',c:'var(--neon-f)'},
+    {v:totalPlays,l:'PLAYS',c:'var(--neon-a)'},
+  ];
+  document.getElementById('about-stats').innerHTML=items.map(function(s){
+    return '<div class="cfg-pill"><div class="pv" style="color:'+s.c+'">'+s.v+'</div><div class="pl">'+s.l+'</div></div>';
+  }).join('');
+}
+
+loadSettings();
+renderAbout();
+</script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-c);}
+.lb-wrap{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;padding:0 12px 24px;}
+.lb-header{font-family:var(--font-display);font-size:clamp(2rem,8vw,4rem);color:var(--neon-c);
+  text-shadow:0 0 24px color-mix(in srgb,var(--neon-c) 40%,transparent);
+  letter-spacing:.06em;margin-bottom:4px;}
+
+/* Filter tabs */
+.lb-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.lb-tab{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 14px;
+  border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .12s;}
+.lb-tab.on{border-color:var(--neon-c);color:var(--neon-c);background:color-mix(in srgb,var(--neon-c) 10%,transparent);}
+
+/* Table */
+.lb-table{width:100%;border-collapse:separate;border-spacing:0 4px;}
+.lb-table th{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.14em;
+  text-align:left;padding:6px 10px;}
+.lb-table td{padding:0;}
+.lb-row{background:var(--card-bg);transition:background .1s;}
+.lb-row:hover{background:var(--card-hover);}
+.lb-row td:first-child{border-radius:10px 0 0 10px;}
+.lb-row td:last-child{border-radius:0 10px 10px 0;}
+.lb-row td{padding:11px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.lb-row td:first-child{border-left:1px solid var(--line);}
+.lb-row td:last-child{border-right:1px solid var(--line);}
+.lb-rank{font-family:var(--font-display);font-size:1.1rem;color:var(--muted);width:40px;text-align:center;}
+.lb-rank.top1{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5);}
+.lb-rank.top2{color:#c0c0c0;}
+.lb-rank.top3{color:#cd7f32;}
+.lb-game-name{font-family:var(--font-ui);font-size:.82rem;font-weight:700;color:var(--text);}
+.lb-game-icon{font-size:1.2rem;margin-right:8px;}
+.lb-val{font-family:var(--font-display);font-size:1.1rem;text-align:right;}
+.lb-sub{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.08em;}
+/* Win bar */
+.win-bar-wrap{width:100px;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-top:3px;}
+.win-bar-fill{height:100%;background:var(--neon-d);border-radius:3px;transition:width .6s ease;}
+
+/* Empty state */
+.lb-empty{text-align:center;padding:48px 20px;font-family:var(--font-mono);font-size:.78rem;color:var(--muted);line-height:2;}
+
+/* Sort controls */
+.lb-sort-row{display:flex;gap:6px;align-items:center;}
+.lb-sort-label{font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.1em;}
+.lb-sort-btn{font-family:var(--font-mono);font-size:.58rem;padding:5px 10px;border-radius:6px;
+  border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .1s;}
+.lb-sort-btn.on{border-color:var(--neon-a);color:var(--neon-a);}
+
+/* Personal summary */
+.lb-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+.lb-sum-card{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:12px 10px;text-align:center;}
+.lb-sum-card .sv{font-family:var(--font-display);font-size:1.6rem;color:var(--neon-c);line-height:1;}
+.lb-sum-card .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.1em;margin-top:3px;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-c);box-shadow:0 0 8px var(--neon-c)"></span>LEADERBOARD</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:12px;align-items:center;">
+<div class="lb-wrap">
+
+  <div class="lb-header">MY SCORES</div>
+
+  <!-- Summary cards -->
+  <div class="lb-summary" id="lb-summary"></div>
+
+  <!-- Category tabs -->
+  <div class="lb-tabs" id="lb-tabs">
+    <button class="lb-tab on" onclick="setCategory('all',this)">ALL GAMES</button>
+    <button class="lb-tab" onclick="setCategory('classic',this)">🕹 CLASSIC</button>
+    <button class="lb-tab" onclick="setCategory('board',this)">🎲 BOARD</button>
+    <button class="lb-tab" onclick="setCategory('puzzle',this)">🧩 PUZZLE</button>
+    <button class="lb-tab" onclick="setCategory('skill',this)">⚡ SKILL</button>
+  </div>
+
+  <!-- Sort row -->
+  <div class="lb-sort-row">
+    <span class="lb-sort-label">SORT:</span>
+    <button class="lb-sort-btn on" id="sort-score" onclick="setSort('score',this)">HIGH SCORE</button>
+    <button class="lb-sort-btn" id="sort-plays" onclick="setSort('plays',this)">PLAYS</button>
+    <button class="lb-sort-btn" id="sort-win"   onclick="setSort('win',this)">WIN RATE</button>
+  </div>
+
+  <!-- Table -->
+  <div id="lb-table-wrap">
+    <table class="lb-table" id="lb-table">
+      <thead>
+        <tr>
+          <th style="width:44px">#</th>
+          <th>GAME</th>
+          <th style="text-align:right">BEST SCORE</th>
+          <th style="text-align:right">PLAYS</th>
+          <th style="text-align:right">WIN RATE</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body"></tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<script>
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+var ALL_GAMES=[
+  {id:'asteroids', icon:'🚀', name:'Asteroids',       cat:'classic'},
+  {id:'tetris',    icon:'🟦', name:'Tetris',           cat:'classic'},
+  {id:'breakout',  icon:'🟠', name:'Breakout',         cat:'classic'},
+  {id:'flappy',    icon:'🐦', name:'Flappy Bird',      cat:'classic'},
+  {id:'pong',      icon:'🏓', name:'Pong',             cat:'classic'},
+  {id:'tictactoe', icon:'❎', name:'Tic Tac Toe',      cat:'board'},
+  {id:'connect4',  icon:'🟡', name:'Connect Four',     cat:'board'},
+  {id:'snakesladders',icon:'🎲',name:'Snakes & Ladders',cat:'board'},
+  {id:'2048',      icon:'🔢', name:'2048',             cat:'puzzle'},
+  {id:'sudoku',    icon:'🔷', name:'Sudoku',           cat:'puzzle'},
+  {id:'wordguess', icon:'📝', name:'Word Guess',       cat:'puzzle'},
+  {id:'hanoi',     icon:'🗼', name:'Tower of Hanoi',   cat:'puzzle'},
+  {id:'minesweeper',icon:'💣',name:'Minesweeper',      cat:'puzzle'},
+  {id:'memory',    icon:'🃏', name:'Memory Match',     cat:'puzzle'},
+  {id:'speedmath', icon:'🧮', name:'Speed Math',       cat:'skill'},
+  {id:'mole',      icon:'🦔', name:'Whack-a-Mole',    cat:'skill'},
+  {id:'reaction',  icon:'⚡', name:'Reaction Test',    cat:'skill'},
+  {id:'typing',    icon:'⌨️', name:'Typing Speed',     cat:'skill'},
+  {id:'simon',     icon:'🔴', name:'Simon Says',       cat:'skill'},
+];
+
+var currentCat='all', currentSort='score';
+
+function getGameData(id){
+  var stats=CoinEngine.getStats();
+  var s=stats[id]||{};
+  return {
+    plays:s.plays||0,
+    wins:s.wins||0,
+    bestScore:s.best||0,
+    winRate: s.plays>0?Math.round((s.wins||0)/s.plays*100):0
+  };
+}
+
+function setCategory(cat,el){
+  currentCat=cat;
+  document.querySelectorAll('.lb-tab').forEach(function(t){t.classList.remove('on');});
+  el.classList.add('on');
+  render();
+}
+
+function setSort(s,el){
+  currentSort=s;
+  document.querySelectorAll('.lb-sort-btn').forEach(function(t){t.classList.remove('on');});
+  el.classList.add('on');
+  render();
+}
+
+function render(){
+  var games=ALL_GAMES.filter(function(g){return currentCat==='all'||g.cat===currentCat;});
+  var data=games.map(function(g){return Object.assign({},g,getGameData(g.id));});
+  /* Sort */
+  if(currentSort==='score') data.sort(function(a,b){return b.bestScore-a.bestScore;});
+  else if(currentSort==='plays') data.sort(function(a,b){return b.plays-a.plays;});
+  else data.sort(function(a,b){return b.winRate-a.winRate;});
+  /* Filter to played games only if any played, otherwise show all */
+  var played=data.filter(function(d){return d.plays>0;});
+  var toShow=played.length>0?played:data;
+  var tbody=document.getElementById('lb-body');
+  if(played.length===0){
+    tbody.innerHTML='';
+    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">🎮 No games played yet!<br>Head to the Hub and start playing.<br><a href="index.html" style="color:var(--neon-c);font-weight:700;">→ Go to Hub</a></div>';
+    return;
+  }
+  /* restore table if needed */
+  if(!document.getElementById('lb-body')){
+    document.getElementById('lb-table-wrap').innerHTML='<table class="lb-table" id="lb-table"><thead><tr><th style="width:44px">#</th><th>GAME</th><th style="text-align:right">BEST SCORE</th><th style="text-align:right">PLAYS</th><th style="text-align:right">WIN RATE</th></tr></thead><tbody id="lb-body"></tbody></table>';
+  }
+  document.getElementById('lb-body').innerHTML=toShow.map(function(g,i){
+    var rankClass=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    var rankText=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var winPct=g.winRate;
+    return '<tr class="lb-row">'+
+      '<td class="lb-rank '+rankClass+'">'+rankText+'</td>'+
+      '<td><span class="lb-game-icon">'+g.icon+'</span><a href="'+g.id+'.html" style="color:inherit;text-decoration:none;" class="lb-game-name">'+g.name+'</a></td>'+
+      '<td class="lb-val" style="color:var(--neon-c)">'+g.bestScore.toLocaleString()+'<div class="lb-sub">BEST</div></td>'+
+      '<td class="lb-val" style="color:var(--neon-a)">'+g.plays+'<div class="lb-sub">PLAYS</div></td>'+
+      '<td><div style="text-align:right;"><span style="font-family:var(--font-display);font-size:1.1rem;color:'+(winPct>=60?'var(--neon-d)':winPct>=40?'var(--neon-c)':'var(--muted)')+'">'+winPct+'%</span></div>'+
+      '<div class="win-bar-wrap"><div class="win-bar-fill" style="width:'+winPct+'%;background:'+(winPct>=60?'var(--neon-d)':winPct>=40?'var(--neon-c)':'var(--neon-b)')+'"></div></div></td>'+
+      '</tr>';
+  }).join('');
+}
+
+function renderSummary(){
+  var stats=CoinEngine.getStats();
+  var totalPlays=0,totalWins=0,totalScore=0,gamesPlayed=0;
+  ALL_GAMES.forEach(function(g){
+    var s=stats[g.id]||{};
+    totalPlays+=(s.plays||0);
+    totalWins+=(s.wins||0);
+    totalScore+=(s.best||0);
+    if((s.plays||0)>0)gamesPlayed++;
+  });
+  var overallWR=totalPlays>0?Math.round(totalWins/totalPlays*100):0;
+  var xpData=CoinEngine.getXPData();
+  document.getElementById('lb-summary').innerHTML=[
+    {v:totalPlays,l:'TOTAL PLAYS'},
+    {v:totalWins,l:'TOTAL WINS'},
+    {v:overallWR+'%',l:'WIN RATE'},
+    {v:gamesPlayed,l:'GAMES TRIED'},
+    {v:'Lv.'+xpData.level,l:'LEVEL',c:'var(--neon-e)'},
+    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
+  ].map(function(s){
+    return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';
+  }).join('');
+}
+
+renderSummary(); render();
+</script>
+</body>
+</html>
