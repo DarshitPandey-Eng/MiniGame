@@ -407,3 +407,93 @@ site-footer {
   cursor:pointer; transition:all .15s; -webkit-tap-highlight-color:transparent;
 }
 .bet-chip.selected { transform:scale(1.15); box-shadow:0 0 14px currentColor; }
+
+/* ══════════════════════════════════════════
+   MOBILE-FIRST GLOBAL IMPROVEMENTS
+══════════════════════════════════════════ */
+
+/* Nav: tighter on small screens */
+@media (max-width:480px){
+  .nav { padding:0 10px; gap:6px; }
+  .nav-logo { font-size:1rem; }
+  .coin-nav { font-size:.72rem; padding:5px 8px; gap:4px; }
+  .level-badge, .streak-badge { font-size:.6rem; padding:4px 8px; }
+  .theme-btn { width:30px; height:30px; font-size:.8rem; }
+  .sound-btn { width:30px; height:30px; font-size:.8rem; }
+}
+
+/* Page: safer horizontal padding */
+.page {
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: max(76px, calc(56px + env(safe-area-inset-bottom)));
+  box-sizing: border-box;
+}
+
+/* Game canvas: never overflow on mobile */
+canvas { max-width: 100%; touch-action: none; }
+
+/* Buttons: comfortable tap targets */
+.btn { min-height: 42px; }
+@media (max-width:480px){
+  .btn { font-size: .72rem; padding: 10px 16px; }
+}
+
+/* Hub game grid: single column on tiny phones */
+@media (max-width:360px){
+  .games-grid { grid-template-columns: 1fr; }
+}
+
+/* Hub quick links: wrap nicely */
+.hub-quick-links { flex-wrap: wrap; gap: 8px; }
+@media (max-width:480px){
+  .hub-quick-links { gap: 6px; }
+  .quick-link { font-size: .62rem; padding: 7px 12px; }
+}
+
+/* Hub hero stats: scale on narrow */
+@media (max-width:400px){
+  .hub-stat .n { font-size: 1.8rem; }
+  .hub-headline .a, .hub-headline .b { font-size: clamp(2.8rem, 14vw, 5rem); }
+}
+
+/* Section titles: slightly smaller on mobile */
+@media (max-width:480px){
+  .section-title { font-size: .58rem; }
+}
+
+/* Bottom nav safe area */
+.az-bnav {
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(56px + env(safe-area-inset-bottom));
+}
+
+/* Wallet earn cards: full-width, stack properly */
+@media (max-width:560px){
+  .earn-card { padding: 14px 12px; }
+  .earn-icon { font-size: 1.6rem; }
+  .earn-info .title { font-size: .88rem; }
+}
+
+/* Score pills: prevent overflow */
+.score-pill { min-width: 0; }
+.score-pill .val { word-break: break-all; }
+
+/* Game overlays: full-width on mobile */
+.game-overlay {
+  padding: 20px 16px;
+  box-sizing: border-box;
+}
+@media (max-width:480px){
+  .game-overlay { border-radius: 12px; margin: 0 8px; }
+}
+
+/* Ach grid: 2 cols on tiny screens */
+@media (max-width:360px){
+  .ach-grid { grid-template-columns: 1fr 1fr; }
+  .ach-icon { font-size: 1.5rem; }
+}
+
+/* Toast: never too wide */
+/* (Already has max-width:90vw in JS) */
+

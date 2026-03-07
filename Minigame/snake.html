@@ -132,7 +132,8 @@ function startGame() {
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
 
-  snake    = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  SoundEngine.playBGM('snake');
+  SoundEngine.play('start');  snake    = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
   dir      = {x:1, y:0};
   nextDir  = {x:1, y:0};
   score    = 0;
@@ -191,6 +192,7 @@ function loop(ts) {
 
   if (hit) {
     running = false;
+    SoundEngine.stopBGM();
     SoundEngine.play('gameover');
     var earned = CoinEngine.REWARDS.snake(score);
     if (earned > 0) {

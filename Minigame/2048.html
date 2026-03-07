@@ -83,6 +83,7 @@ var tx,ty;
 function newGame(){
   if(!CoinEngine.spend(10)){CoinEngine.toast('Not enough coins!','warn');return;}
   CoinEngine.addHistory('🔢','2048 — started',-10);
+  SoundEngine.playBGM('2048'); SoundEngine.play('start');
   ['ov-win','ov-over'].forEach(function(id){document.getElementById(id).classList.add('hidden');});
   grid=[];
   for(var r=0;r<SZ;r++){var row=[];for(var c=0;c<SZ;c++)row.push(0);grid.push(row);}
@@ -150,7 +151,7 @@ function checkWin(){
       CoinEngine.add(earned,'2048 — WIN!','🔢');
       CoinEngine.recordGame('2048',score,true,{earned:earned});
       document.getElementById('w-earned').textContent=earned;
-      document.getElementById('ov-win').classList.remove('hidden');
+      SoundEngine.stopBGM(); SoundEngine.play('success'); document.getElementById('ov-win').classList.remove('hidden');
       return;
     }
   }
@@ -162,7 +163,7 @@ function endGame(){
   CoinEngine.recordGame('2048',score,false,{earned:earned});
   document.getElementById('ov-score').textContent=score+' pts';
   document.getElementById('o-earned').textContent=earned;
-  document.getElementById('ov-over').classList.remove('hidden');
+  SoundEngine.stopBGM(); SoundEngine.play('gameover'); document.getElementById('ov-over').classList.remove('hidden');
 }
 
 function setScore(v){

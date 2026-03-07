@@ -171,6 +171,7 @@ function startGame(){
     return;
   }
   CoinEngine.addHistory('🟦', 'Tetris — started', -10);
+  SoundEngine.playBGM('tetris'); SoundEngine.play('start');
 
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
@@ -220,6 +221,7 @@ function tryMove(dx,dy){
   return false;
 }
 function inp_rotate(){
+  SoundEngine.play('rotate');
   if (!alive||clearing) return;
   var r = rotateCells(cur.cells);
   var kicks = [0,-1,1,-2,2];
@@ -231,12 +233,14 @@ function inp_left()  { if(!clearing) tryMove(-1,0); }
 function inp_right() { if(!clearing) tryMove(1,0);  }
 function inp_down()  { if(!clearing&&tryMove(0,1)){ score+=1; setHUD(); } }
 function inp_hard(){
+  SoundEngine.play('drop');
   if (!alive||clearing) return;
   var d=0;
   while (canPlace(cur.cells, cur.x, cur.y+d+1)) d++;
   cur.y+=d; score+=d*2; setHUD(); lock();
 }
 function inp_hold(){
+  SoundEngine.play('hold');
   if (!alive||!canHold||clearing) return;
   canHold=false;
   if (!held){
@@ -269,7 +273,7 @@ function clearLines(){
     if (full) cleared.push(r);
   }
   if (!cleared.length){ spawn(); return; } /* no lines — spawn immediately */
-  SoundEngine.play('success');
+  SoundEngine.play('line');
   clearAnim=cleared.slice();
   clearing=true;
   setTimeout(function(){
@@ -387,7 +391,7 @@ function setHUD(){
 
 function endGame(){
   alive=false;
-  SoundEngine.play('gameover');
+  SoundEngine.stopBGM(); SoundEngine.play('gameover');
   var earned=CoinEngine.REWARDS.tetris(score);
   if(earned>0){ CoinEngine.add(earned,'Tetris — score '+score,'🟦'); }
   CoinEngine.recordGame('tetris', score, false, {lines:lines, earned:earned});

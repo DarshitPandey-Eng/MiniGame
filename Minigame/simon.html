@@ -119,6 +119,7 @@ async function playSequence(){
 function startGame(){
   if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
   CoinEngine.addHistory('🔴','Simon Says — started',-5);
+  SoundEngine.playBGM('simon'); SoundEngine.play('start');
   sequence=[];playerIdx=0;round=0;
   setRound(0);updateDots();
   nextRound();
@@ -147,7 +148,7 @@ function press(idx){
 }
 
 function fail(){
-  accepting=false;busy=true;SoundEngine.play("buzz");
+  accepting=false;busy=true;SoundEngine.stopBGM();SoundEngine.play("buzz");
   var btn=document.getElementById('b'+(sequence[playerIdx]||0));
   btn.style.filter='brightness(2.5) hue-rotate(180deg)';
   setTimeout(function(){btn.style.filter='';},500);

@@ -87,6 +87,7 @@ for(var i=0;i<HOLES;i++){
 function startGame(){
   if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
   CoinEngine.addHistory('🦔','Whack-a-Mole — started',-5);
+  SoundEngine.playBGM('mole'); SoundEngine.play('start');
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
   score=0;combo=0;timeLeft=30;running=true;
@@ -136,8 +137,8 @@ function bonk(i){
   clearTimeout(h.tid);h.active=false;
   h.mole.className='mole bonked';
   setTimeout(function(){h.mole.className='mole';},300);
-  SoundEngine.play('pop');
-  combo++;clearTimeout(comboTm);
+  
+  combo++; if(combo>=3) SoundEngine.play('combo'); else SoundEngine.play('bonk');clearTimeout(comboTm);
   comboTm=setTimeout(function(){combo=0;},1100);
   var pts=combo>=4?5:combo>=3?3:combo>=2?2:1;
   score+=pts;document.getElementById('sc').textContent=score;
@@ -149,7 +150,7 @@ function bonk(i){
 }
 
 function endGame(){
-  running=false;clearInterval(countdown);spawnTms.forEach(clearTimeout);spawnTms=[];
+  running=false;SoundEngine.stopBGM();clearInterval(countdown);spawnTms.forEach(clearTimeout);spawnTms=[];
   holes.forEach(function(h){clearTimeout(h.tid);h.active=false;h.mole.className='mole';});
   var earned=CoinEngine.REWARDS.mole(score);
   if(earned>0){CoinEngine.add(earned,'Whack-a-Mole — score '+score,'🦔');}

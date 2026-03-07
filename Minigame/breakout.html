@@ -90,6 +90,7 @@ function mkBall(){
 function startGame(){
   if(!CoinEngine.spend(10)){CoinEngine.toast('Not enough coins!','warn');return;}
   CoinEngine.addHistory('🟠','Breakout — started',-10);
+  SoundEngine.playBGM('breakout'); SoundEngine.play('start');
   ['ov-start','ov-over','ov-win'].forEach(function(id){document.getElementById(id).classList.add('hidden');});
   resize();
   score=0;lives=3;particles=[];
@@ -188,6 +189,7 @@ function draw(){
 
 function endGame(won){
   running=false;
+  SoundEngine.stopBGM();
   var earned=won?CoinEngine.REWARDS.breakout(score):Math.floor(CoinEngine.REWARDS.breakout(score)*0.3);
   if(won) earned+=80; /* clear bonus */
   if(earned>0){CoinEngine.add(earned,'Breakout — score '+score,'🟠');}

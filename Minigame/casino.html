@@ -284,6 +284,7 @@ function recordResult(won,coinsWon,coinsLost){
 }
 
 // ─ Tabs ─
+function _stopBGMOnTabSwitch(){ SoundEngine.stopBGM(); }
 function switchTab(id,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
@@ -323,6 +324,7 @@ function updateFlipDisplay(){
 updateFlipDisplay();
 
 function flipCoin(){
+  SoundEngine.playBGM('casino');
   if(flipBusy) return;
   if(CoinEngine.getBalance()<flipBet){ showToast('Not enough coins! Visit the Wallet.','warn'); return; }
 

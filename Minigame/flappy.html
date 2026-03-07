@@ -122,6 +122,7 @@ function startGame() {
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
 
+  SoundEngine.playBGM('flappy'); SoundEngine.play('start');
   bird      = makeBird();
   pipes     = [];
   score     = 0;
@@ -173,7 +174,7 @@ function update(dt) {
     /* Score */
     if (!pipes[i].scored && pipes[i].x + PIPE_W < bird.x) {
       pipes[i].scored = true;
-      score++;
+      score++; SoundEngine.play('score');
       setScore(score);
       spawnParticles(bird.x, bird.y, '#ffe135');
     }
@@ -217,6 +218,8 @@ function circleRect(cx, cy, cr, rx, ry, rw, rh) {
 
 function die() {
   gameState = 'dead';
+  SoundEngine.stopBGM();
+  SoundEngine.play('gameover');
   if (score > hi) hi = score;
 
   // reward coins: 8 per pipe cleared

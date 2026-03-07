@@ -95,6 +95,7 @@ var box=document.getElementById('words-box');
 var inp=document.getElementById('ty-input');
 
 function newGame(){
+  SoundEngine.playBGM('typing'); SoundEngine.play('start');
   words=shuffle(BANK).slice(0,180);
   curIdx=0;correctWords=0;errorWords=0;correctChars=0;
   timeLeft=DURATION;started=false;finished=false;
@@ -201,6 +202,7 @@ function updateHUD(){
 }
 
 function endGame(){
+  SoundEngine.stopBGM();
   finished=true;clearInterval(tmr);inp.disabled=true;
   var wpm=Math.round((correctWords/DURATION)*60);
   var tot=correctWords+errorWords,acc=tot>0?Math.round(correctWords/tot*100):100;

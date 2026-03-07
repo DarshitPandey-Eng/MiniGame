@@ -84,7 +84,7 @@ function click_(){
 }
 
 function beginWait(){
-  setState(WAITING,'waiting');
+  SoundEngine.playBGM('reaction'); setState(WAITING,'waiting');
   document.getElementById('z-icon').textContent='⏳';
   document.getElementById('z-msg').textContent='WAIT FOR GREEN…';
   clearTimeout(waitTm);
@@ -98,7 +98,7 @@ function beginWait(){
 
 function tooEarly(){
   clearTimeout(waitTm);
-  setState(EARLY,'early');
+  SoundEngine.play('early'); setState(EARLY,'early');
   document.getElementById('z-icon').textContent='❌';
   document.getElementById('z-msg').textContent='TOO EARLY! Click to try again.';
   setTimeout(function(){if(state===EARLY)reset_state();},1400);
@@ -114,7 +114,7 @@ function reset_state(){
 function measure(){
   var ms=Math.round(performance.now()-readyAt);
   times.push(ms);
-  setState(RESULT,'result');
+  SoundEngine.stopBGM(); setState(RESULT,'result');
   document.getElementById('z-icon').textContent='⚡';
   document.getElementById('z-time').textContent=ms+'ms';
   document.getElementById('z-msg').textContent='';
