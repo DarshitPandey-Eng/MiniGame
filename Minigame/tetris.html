@@ -2,59 +2,274 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Tetris — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root { --accent: var(--neon-a); }
-#cv, #next-cv, #hold-cv { display:block; background:var(--bg0); }
-.layout { display:flex; gap:16px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
-.sidebar { display:flex; flex-direction:column; gap:10px; min-width:120px; }
-.sbox {
-  background:var(--card-bg); border:1px solid var(--line2);
-  border-radius:var(--radius); padding:12px;
+
+/* ── Overall page layout ── */
+.tetris-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 10px 8px 0;
+  width: 100%;
+  box-sizing: border-box;
 }
-.slabel { font-family:var(--font-mono); font-size:.55rem; color:var(--muted); letter-spacing:.12em; margin-bottom:6px; }
-.sval   { font-family:var(--font-display); font-size:1.8rem; letter-spacing:.04em; color:var(--neon-a); }
-.ctrl   { font-family:var(--font-mono); font-size:.58rem; color:var(--muted); line-height:2; }
-.ctrl b { color:var(--neon-a); }
-.mob-btns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+/* ── Top stat strip (mobile) / sidebar toggle ── */
+.stats-strip {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 8px;
+}
+.stat-chip {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+}
+.stat-chip .lbl {
+  font-family: var(--font-mono);
+  font-size: .46rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  display: block;
+}
+.stat-chip .val {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--neon-a);
+  line-height: 1.1;
+}
+
+/* ── Play area: canvas + mini panels ── */
+.play-area {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* ── The board canvas wrapper ── */
+.board-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+#cv {
+  display: block;
+  touch-action: none;
+  border-radius: 4px;
+}
+
+/* ── Side panel (NEXT + HOLD + desktop stats) ── */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.mini-box {
+  background: var(--card-bg);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 7px;
+}
+.mini-box .mlbl {
+  font-family: var(--font-mono);
+  font-size: .46rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  margin-bottom: 4px;
+  display: block;
+}
+#next-cv, #hold-cv { display: block; }
+
+/* Desktop stats inside side panel */
+.side-stat {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--neon-a);
+  line-height: 1;
+}
+.side-stat-lbl {
+  font-family: var(--font-mono);
+  font-size: .46rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+}
+
+/* ── Overlays ── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(7,7,15,.92);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 4px;
+  padding: 16px;
+  z-index: 10;
+}
+.overlay.hidden { display: none; }
+.ov-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 7vw, 2.4rem);
+  letter-spacing: .08em;
+  color: var(--neon-a);
+  text-align: center;
+}
+.ov-score {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 9vw, 3rem);
+  color: var(--neon-c);
+  letter-spacing: .04em;
+}
+.ov-sub {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--text2);
+  text-align: center;
+  line-height: 1.9;
+}
+.ov-sub b { color: var(--neon-a); }
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Mobile D-pad controls ── */
+.dpad-wrap {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.dpad-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
 .mb {
-  font-family:var(--font-mono); font-size:.72rem; font-weight:700;
-  padding:10px 14px; border-radius:6px;
-  border:1px solid var(--line2); background:var(--bg2); color:var(--text);
-  cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
-  transition:all .1s;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1.5px solid var(--line2);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background .08s, border-color .08s, transform .06s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* min touch target */
+  min-height: 52px;
 }
-.mb:active { background:rgba(0,229,255,.15); border-color:var(--neon-a); }
+.mb:active, .mb.pressed {
+  background: color-mix(in srgb, var(--neon-a) 18%, var(--card-bg));
+  border-color: var(--neon-a);
+  transform: scale(.94);
+}
+/* Size variants */
+.mb-md { flex: 1; max-width: 90px; }
+.mb-lg { flex: 1.4; max-width: 120px; }
+.mb-sm { flex: 0.8; max-width: 70px; }
+.mb-xl { flex: 2; max-width: 200px; }
+
+/* Desktop: hide dpad, show keyboard hint in sidebar */
+@media (min-width: 640px) {
+  .dpad-wrap { display: none; }
+  .stats-strip { display: none; }
+  .side-panel .desktop-only { display: flex !important; }
+  .tetris-page { padding-top: 14px; }
+}
+@media (max-width: 639px) {
+  .side-panel .desktop-only { display: none !important; }
+}
+
+/* Swipe hint */
+.swipe-hint {
+  font-family: var(--font-mono);
+  font-size: .56rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 2px;
+  opacity: .7;
+}
 </style>
 </head>
 <body>
-<nav class="nav" id="main-nav"></nav>
 
-<div class="page" style="padding-top:16px;">
-  <div class="layout">
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>TETRIS
+  </div>
+  <div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>
+  <div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="tetris-page" id="tetris-page">
+
+  <!-- Mobile top stats -->
+  <div class="stats-strip" id="stats-strip">
+    <div class="stat-chip"><span class="lbl">LEVEL</span><span class="val" id="lv-m">1</span></div>
+    <div class="stat-chip"><span class="lbl">LINES</span><span class="val" id="ln-m">0</span></div>
+    <div class="stat-chip"><span class="lbl">SCORE</span><span class="val" id="sc-m">0</span></div>
+    <div class="stat-chip"><span class="lbl">BEST</span><span class="val" id="hi-m">0</span></div>
+  </div>
+
+  <!-- Play area -->
+  <div class="play-area">
 
     <!-- Board -->
-    <div class="game-frame" style="position:relative;">
-      <canvas id="cv"></canvas>
+    <div class="board-wrap" id="board-wrap">
+      <canvas id="cv" style="touch-action:none;"></canvas>
+
+      <!-- Start overlay -->
       <div class="overlay" id="ov-start">
         <div class="ov-title">TETRIS</div>
-        <div class="ov-sub">
-          <b>← →</b> Move &nbsp; <b>↑ / Z</b> Rotate<br>
-          <b>↓</b> Soft drop &nbsp; <b>Space</b> Hard drop<br>
-          <b>C</b> Hold piece<br><br>
-          Cost: <b>🪙 10</b>
+        <div class="ov-sub" id="start-sub">
+          <!-- filled by JS based on device -->
         </div>
-        <button class="btn filled" style="--c:var(--neon-a)" onclick="startGame()">▶ START (🪙 10)</button>
+        <button class="btn filled" style="--c:var(--neon-a);font-size:.9rem;padding:12px 24px;" onclick="startGame()">
+          ▶ START (🪙 10)
+        </button>
       </div>
+
+      <!-- Game Over overlay -->
       <div class="overlay hidden" id="ov-over">
         <div class="ov-title" style="color:var(--neon-b)">GAME OVER</div>
         <div class="ov-score" id="sc-final">0</div>
-        <div class="ov-sub">Lines: <b id="ln-final">0</b> · Level: <b id="lv-final">1</b><br>Earned: <b id="earned">0</b> 🪙</div>
+        <div class="ov-sub">
+          Lines: <b id="ln-final">0</b> · Level: <b id="lv-final">1</b><br>
+          Earned: <b id="earned">0</b> 🪙
+        </div>
         <div class="btn-row">
           <button class="btn filled" style="--c:var(--neon-a)" onclick="startGame()">▶ RETRY (🪙 10)</button>
           <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="shareScore('Tetris',score)">📤 Share</button>
@@ -63,69 +278,130 @@
       </div>
     </div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="sbox"><div class="slabel">NEXT</div><canvas id="next-cv" width="100" height="100"></canvas></div>
-      <div class="sbox"><div class="slabel">HOLD</div><canvas id="hold-cv" width="100" height="100"></canvas></div>
-      <div class="sbox"><div class="slabel">LEVEL</div><div class="sval" id="lv">1</div></div>
-      <div class="sbox"><div class="slabel">LINES</div><div class="sval" id="ln">0</div></div>
-      <div class="sbox ctrl"><b>←→</b> Move<br><b>↑/Z</b> Rotate<br><b>↓</b> Soft<br><b>SPC</b> Drop<br><b>C</b> Hold</div>
+    <!-- Side panel -->
+    <div class="side-panel" id="side-panel">
+      <!-- Next piece -->
+      <div class="mini-box">
+        <span class="mlbl">NEXT</span>
+        <canvas id="next-cv"></canvas>
+      </div>
+      <!-- Hold piece -->
+      <div class="mini-box">
+        <span class="mlbl">HOLD</span>
+        <canvas id="hold-cv"></canvas>
+      </div>
+
+      <!-- Desktop stats + controls (hidden on mobile) -->
+      <div class="desktop-only" style="flex-direction:column;gap:6px;display:none;">
+        <div class="mini-box">
+          <span class="side-stat-lbl">LEVEL</span>
+          <div class="side-stat" id="lv">1</div>
+        </div>
+        <div class="mini-box">
+          <span class="side-stat-lbl">LINES</span>
+          <div class="side-stat" id="ln">0</div>
+        </div>
+        <div class="mini-box" style="font-family:var(--font-mono);font-size:.55rem;color:var(--muted);line-height:2.1;">
+          <b style="color:var(--neon-a)">← →</b> Move<br>
+          <b style="color:var(--neon-a)">↑ / Z</b> Rotate<br>
+          <b style="color:var(--neon-a)">↓</b> Soft drop<br>
+          <b style="color:var(--neon-a)">Space</b> Hard drop<br>
+          <b style="color:var(--neon-a)">C</b> Hold
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Mobile buttons -->
-  <div class="mob-btns">
-    <button class="mb" onclick="inp_left()">◀</button>
-    <button class="mb" onclick="inp_rotate()">↻</button>
-    <button class="mb" onclick="inp_down()">▼</button>
-    <button class="mb" onclick="inp_right()">▶</button>
-    <button class="mb" onclick="inp_hard()">⬇ DROP</button>
-    <button class="mb" onclick="inp_hold()">HOLD</button>
+  <!-- Mobile D-pad -->
+  <div class="dpad-wrap" id="dpad-wrap">
+    <!-- Row 1: Move + Rotate -->
+    <div class="dpad-row">
+      <button class="mb mb-md" id="btn-left"  ontouchstart="mbPress(event,'left')"  ontouchend="mbRelease('left')"  onclick="inp_left()">◀</button>
+      <button class="mb mb-lg" id="btn-rot"   ontouchstart="mbPress(event,'rot')"   ontouchend="mbRelease('rot')"   onclick="inp_rotate()">↻ ROTATE</button>
+      <button class="mb mb-md" id="btn-right" ontouchstart="mbPress(event,'right')" ontouchend="mbRelease('right')" onclick="inp_right()">▶</button>
+    </div>
+    <!-- Row 2: Soft drop + Hard drop + Hold -->
+    <div class="dpad-row">
+      <button class="mb mb-md" id="btn-down" ontouchstart="mbPress(event,'down')"  ontouchend="mbRelease('down')"  onclick="inp_down()">▼</button>
+      <button class="mb mb-xl" id="btn-drop" ontouchstart="mbPress(event,'drop')"  ontouchend="mbRelease('drop')"  onclick="inp_hard()">⬇ HARD DROP</button>
+      <button class="mb mb-sm" id="btn-hold" ontouchstart="mbPress(event,'hold')"  ontouchend="mbRelease('hold')"  onclick="inp_hold()">📦<br><span style="font-size:.52rem;font-family:var(--font-mono)">HOLD</span></button>
+    </div>
+    <div class="swipe-hint">Tap canvas to rotate · Swipe left/right to move · Swipe down to drop</div>
   </div>
-</div>
+
+</div><!-- /tetris-page -->
 
 <script>
-/* ── Nav ── */
-(function(){
-  var nav = document.getElementById('main-nav');
-  nav.innerHTML =
-    '<a class="nav-back" href="index.html">← Hub</a>' +
-    '<div class="nav-sep"></div>' +
-    '<div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>TETRIS</div>' +
-    '<div class="score-pill"><span class="val" id="sc">0</span><span class="lbl">SCORE</span></div>' +
-    '<div class="score-pill"><span class="val" id="hi">0</span><span class="lbl">BEST</span></div>' +
-    '<a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>' +
-    '<button class="theme-btn" id="tb">☀️</button>';
-  var tb = document.getElementById('tb');
-  function sync(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
-  tb.addEventListener('click',function(){ CoinEngine.toggleTheme(); sync(); }); sync();
-  document.addEventListener('az:balance',function(e){
-    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent=e.detail; });
-  });
-})();
+/* ── Theme ── */
+var tb = document.getElementById('tb');
+function syncTheme(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); syncTheme(); drawBoard && drawBoard(); });
+syncTheme();
+document.addEventListener('az:balance', function(e){
+  document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+});
 
-/* ── Canvas ── */
-var cv   = document.getElementById('cv');
-var ctx  = cv.getContext('2d');
-var ncv  = document.getElementById('next-cv');
-var nctx = ncv.getContext('2d');
-var hcv  = document.getElementById('hold-cv');
-var hctx = hcv.getContext('2d');
-var DPR  = Math.min(window.devicePixelRatio||1, 2);
+/* ── Responsive tile size ── */
+var COLS = 10, ROWS = 20;
+var DPR  = Math.min(window.devicePixelRatio || 1, 2);
 
-var COLS=10, ROWS=20, T=28;
+function calcTileSize() {
+  var isMobile = window.innerWidth < 640;
+  if (isMobile) {
+    // Available width: screen - side panel (mini canvases ~72px) - gaps - page padding
+    var available = Math.min(window.innerWidth, 480) - 72 - 8 - 16 - 8;
+    return Math.max(20, Math.floor(available / COLS));
+  }
+  return 28; // desktop default
+}
+
+var T = calcTileSize();
+var MINI_SIZE = T * 4; // next/hold canvas size
 
 function setupCanvas(c, w, h) {
   c.style.width  = w + 'px';
   c.style.height = h + 'px';
   c.width  = w * DPR;
   c.height = h * DPR;
-  var x = c.getContext('2d');
-  x.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.getContext('2d').setTransform(DPR, 0, 0, DPR, 0, 0);
 }
-setupCanvas(cv,  COLS*T, ROWS*T);
-setupCanvas(ncv, 100, 100);
-setupCanvas(hcv, 100, 100);
+
+var cv   = document.getElementById('cv');
+var ctx  = cv.getContext('2d');
+var ncv  = document.getElementById('next-cv');
+var nctx = ncv.getContext('2d');
+var hcv  = document.getElementById('hold-cv');
+var hctx = hcv.getContext('2d');
+
+function initCanvases() {
+  T = calcTileSize();
+  MINI_SIZE = Math.max(64, T * 4);
+  setupCanvas(cv,  COLS*T, ROWS*T);
+  setupCanvas(ncv, MINI_SIZE, MINI_SIZE);
+  setupCanvas(hcv, MINI_SIZE, MINI_SIZE);
+}
+initCanvases();
+
+/* ── Orientation/resize handler ── */
+window.addEventListener('resize', function() {
+  initCanvases();
+  if (typeof drawBoard === 'function') {
+    drawMini(nctx, next, MINI_SIZE);
+    drawMini(hctx, held, MINI_SIZE);
+    drawBoard();
+  }
+});
+
+/* ── Start hint based on device ── */
+(function(){
+  var isMobile = window.innerWidth < 640;
+  var el = document.getElementById('start-sub');
+  if (isMobile) {
+    el.innerHTML = 'Tap <b>↻ ROTATE</b> to rotate<br>Use <b>◀ ▶</b> to move · <b>⬇</b> to hard drop<br><b>HOLD</b> to save a piece<br><br>Cost: <b>🪙 10</b>';
+  } else {
+    el.innerHTML = '<b>← →</b> Move &nbsp; <b>↑ / Z</b> Rotate<br><b>↓</b> Soft drop &nbsp; <b>Space</b> Hard drop<br><b>C</b> Hold piece<br><br>Cost: <b>🪙 10</b>';
+  }
+})();
 
 /* ── Piece definitions ── */
 var PIECES = {
@@ -140,94 +416,85 @@ var PIECES = {
 var PKEYS = ['I','O','T','S','Z','J','L'];
 
 function rotateCells(cells) {
-  var cx = 0, cy = 0;
-  for (var i=0;i<cells.length;i++){ cx+=cells[i][0]; cy+=cells[i][1]; }
-  cx /= cells.length; cy /= cells.length;
+  var cx=0, cy=0, n=cells.length;
+  for (var i=0;i<n;i++){ cx+=cells[i][0]; cy+=cells[i][1]; }
+  cx /= n; cy /= n;
   return cells.map(function(c){
     return [ Math.round(cy - c[1] + cx), Math.round(c[0] - cx + cy) ];
   });
 }
-function clonePiece(p){ return { cells:p.cells.map(function(c){return [c[0],c[1]];}), color:p.color, key:p.key }; }
 
 /* ── State ── */
 var board, cur, next, held, canHold;
 var score, hi=0, level, lines;
-var dropMs, lastDrop, rafId, alive;
-var clearAnim = [], clearing = false;
-var bag = [];
+var dropMs, lastDrop, rafId, alive=false;
+var clearAnim=[], clearing=false, bag=[];
 
 function nextFromBag(){
-  if (!bag.length) {
-    bag = PKEYS.slice().sort(function(){ return Math.random()-.5; });
-  }
-  var k = bag.pop();
-  var base = PIECES[k];
+  if (!bag.length) bag = PKEYS.slice().sort(function(){ return Math.random()-.5; });
+  var k=bag.pop(), base=PIECES[k];
   return { cells:base.cells.map(function(c){return [c[0],c[1]];}), color:base.color, key:k };
 }
 
-/* ── Start ── */
+/* ── Game start ── */
 function startGame(){
-  if (!CoinEngine.spend(10)) {
-    CoinEngine.toast('Not enough coins! Visit the Wallet.', 'warn');
+  if (!CoinEngine.spend(10)){
+    CoinEngine.toast('Not enough coins! Visit the Wallet.','warn');
     return;
   }
-  CoinEngine.addHistory('🟦', 'Tetris — started', -10);
+  CoinEngine.addHistory('🟦','Tetris — started',-10);
   SoundEngine.playBGM('tetris'); SoundEngine.play('start');
-
   document.getElementById('ov-start').classList.add('hidden');
   document.getElementById('ov-over').classList.add('hidden');
-
-  board = [];
-  for (var r=0;r<ROWS;r++) { var row=[]; for(var c=0;c<COLS;c++) row.push(null); board.push(row); }
-
+  board=[];
+  for (var r=0;r<ROWS;r++){ var row=[]; for(var c=0;c<COLS;c++) row.push(null); board.push(row); }
   score=0; level=1; lines=0; canHold=true; held=null; bag=[]; clearAnim=[]; clearing=false;
-  alive = true;
+  alive=true;
   setHUD();
-  next = nextFromBag();
+  next=nextFromBag();
   spawn();
-  dropMs = 800; lastDrop = performance.now();
+  dropMs=800; lastDrop=performance.now();
   cancelAnimationFrame(rafId);
-  rafId = requestAnimationFrame(loop);
+  rafId=requestAnimationFrame(loop);
 }
 
 function spawn(){
-  cur = next; next = nextFromBag();
-  cur.x = Math.floor(COLS/2) - 2;
-  cur.y = 0;
-  drawMini(nctx, next, 100);
-  if (!canPlace(cur.cells, cur.x, cur.y)) endGame();
+  cur=next; next=nextFromBag();
+  cur.x=Math.floor(COLS/2)-2; cur.y=0;
+  drawMini(nctx,next,MINI_SIZE);
+  if (!canPlace(cur.cells,cur.x,cur.y)) endGame();
 }
 
 /* ── Loop ── */
 function loop(ts){
   if (!alive) return;
-  rafId = requestAnimationFrame(loop);
-  if (!clearing && ts - lastDrop >= dropMs) { lastDrop = ts; if (!tryMove(0,1)) lock(); }
+  rafId=requestAnimationFrame(loop);
+  if (!clearing && ts-lastDrop>=dropMs){ lastDrop=ts; if (!tryMove(0,1)) lock(); }
   drawBoard();
 }
 
-/* ── Movement helpers ── */
-function canPlace(cells, ox, oy){
+/* ── Movement ── */
+function canPlace(cells,ox,oy){
   for (var i=0;i<cells.length;i++){
     var nx=ox+cells[i][0], ny=oy+cells[i][1];
     if (nx<0||nx>=COLS||ny>=ROWS) return false;
-    if (ny<0) continue; /* allow cells above visible board */
+    if (ny<0) continue;
     if (board[ny][nx]) return false;
   }
   return true;
 }
 function tryMove(dx,dy){
   if (!alive||clearing) return false;
-  if (canPlace(cur.cells, cur.x+dx, cur.y+dy)){ cur.x+=dx; cur.y+=dy; return true; }
+  if (canPlace(cur.cells,cur.x+dx,cur.y+dy)){ cur.x+=dx; cur.y+=dy; return true; }
   return false;
 }
 function inp_rotate(){
   SoundEngine.play('rotate');
   if (!alive||clearing) return;
-  var r = rotateCells(cur.cells);
-  var kicks = [0,-1,1,-2,2];
+  var r=rotateCells(cur.cells);
+  var kicks=[0,-1,1,-2,2];
   for (var i=0;i<kicks.length;i++){
-    if (canPlace(r, cur.x+kicks[i], cur.y)){ cur.cells=r; cur.x+=kicks[i]; drawBoard(); return; }
+    if (canPlace(r,cur.x+kicks[i],cur.y)){ cur.cells=r; cur.x+=kicks[i]; drawBoard(); return; }
   }
 }
 function inp_left()  { if(!clearing) tryMove(-1,0); }
@@ -237,7 +504,7 @@ function inp_hard(){
   SoundEngine.play('drop');
   if (!alive||clearing) return;
   var d=0;
-  while (canPlace(cur.cells, cur.x, cur.y+d+1)) d++;
+  while (canPlace(cur.cells,cur.x,cur.y+d+1)) d++;
   cur.y+=d; score+=d*2; setHUD(); lock();
 }
 function inp_hold(){
@@ -252,19 +519,19 @@ function inp_hold(){
     held={ cells:PIECES[cur.key].cells.map(function(c){return [c[0],c[1]];}), color:PIECES[cur.key].color, key:cur.key };
     cur={ cells:tmp.cells.map(function(c){return [c[0],c[1]];}), color:tmp.color, key:tmp.key, x:Math.floor(COLS/2)-2, y:0 };
   }
-  drawMini(hctx, held, 100);
+  drawMini(hctx,held,MINI_SIZE);
   drawBoard();
 }
 
 /* ── Lock & clear ── */
-var LINE_PTS = [0,100,300,500,800];
+var LINE_PTS=[0,100,300,500,800];
 function lock(){
   for (var i=0;i<cur.cells.length;i++){
     var nx=cur.x+cur.cells[i][0], ny=cur.y+cur.cells[i][1];
     if (ny>=0) board[ny][nx]=cur.color;
   }
   canHold=true;
-  clearLines(); /* spawn() is called inside clearLines after rows removed */
+  clearLines();
 }
 function clearLines(){
   var cleared=[];
@@ -273,31 +540,28 @@ function clearLines(){
     for (var c=0;c<COLS;c++) if (!board[r][c]){ full=false; break; }
     if (full) cleared.push(r);
   }
-  if (!cleared.length){ spawn(); return; } /* no lines — spawn immediately */
+  if (!cleared.length){ spawn(); return; }
   SoundEngine.play('line');
-  clearAnim=cleared.slice();
-  clearing=true;
+  clearAnim=cleared.slice(); clearing=true;
   setTimeout(function(){
     cleared.sort(function(a,b){return b-a;}).forEach(function(r){
       board.splice(r,1);
       board.unshift(new Array(COLS).fill(null));
     });
-    clearAnim=[];
-    var pts = LINE_PTS[Math.min(cleared.length,4)] * level;
+    clearAnim=[]; clearing=false;
+    var pts=LINE_PTS[Math.min(cleared.length,4)]*level;
     score+=pts; lines+=cleared.length;
     level=Math.floor(lines/10)+1;
-    dropMs=Math.max(80, 800-(level-1)*70);
-    setHUD();
-    clearing=false;
-    lastDrop=performance.now(); /* reset drop timer after clear */
-    spawn(); /* spawn AFTER board is updated */
-  }, 130);
+    dropMs=Math.max(80,800-(level-1)*70);
+    setHUD(); lastDrop=performance.now();
+    spawn();
+  },130);
 }
 
 /* ── Ghost ── */
 function ghostY(){
   var gy=cur.y;
-  while (canPlace(cur.cells, cur.x, gy+1)) gy++;
+  while (canPlace(cur.cells,cur.x,gy+1)) gy++;
   return gy;
 }
 
@@ -307,34 +571,26 @@ function drawBoard(){
   var isDark=CoinEngine.getTheme()==='dark';
   ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
   ctx.fillRect(0,0,COLS*T,ROWS*T);
-
-  /* grid */
+  /* grid lines */
   ctx.strokeStyle=isDark?'rgba(255,255,255,.03)':'rgba(0,0,0,.05)';
   ctx.lineWidth=1;
   for(var x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*T,0);ctx.lineTo(x*T,ROWS*T);ctx.stroke();}
   for(var y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*T);ctx.lineTo(COLS*T,y*T);ctx.stroke();}
-
   /* board cells */
   for(var r=0;r<ROWS;r++){
     var fl=clearAnim.indexOf(r)>=0;
     for(var c=0;c<COLS;c++){
       if(board[r][c]){
-        if(fl){
-          ctx.fillStyle='#fff'; ctx.shadowColor='#fff'; ctx.shadowBlur=20;
-          ctx.fillRect(c*T+1,r*T+1,T-2,T-2);
-          ctx.shadowBlur=0;
-        } else {
-          block(ctx,c,r,board[r][c],T);
-        }
+        if(fl){ ctx.fillStyle='#fff'; ctx.shadowColor='#fff'; ctx.shadowBlur=16; ctx.fillRect(c*T+1,r*T+1,T-2,T-2); ctx.shadowBlur=0; }
+        else block(ctx,c,r,board[r][c],T);
       }
     }
   }
-
-  /* ghost */
-  if (alive && cur) {
+  /* ghost piece */
+  if (alive&&cur){
     var gy=ghostY();
     if (gy>cur.y){
-      ctx.strokeStyle=cur.color; ctx.globalAlpha=0.22; ctx.lineWidth=1;
+      ctx.globalAlpha=0.2; ctx.strokeStyle=cur.color; ctx.lineWidth=1;
       for(var gi=0;gi<cur.cells.length;gi++){
         var gx2=cur.x+cur.cells[gi][0], gy2=gy+cur.cells[gi][1];
         if(gy2>=0) ctx.strokeRect(gx2*T+1,gy2*T+1,T-2,T-2);
@@ -342,9 +598,8 @@ function drawBoard(){
       ctx.globalAlpha=1;
     }
   }
-
   /* active piece */
-  if (alive && cur) {
+  if (alive&&cur){
     for(var ai=0;ai<cur.cells.length;ai++){
       var ax=cur.x+cur.cells[ai][0], ay=cur.y+cur.cells[ai][1];
       if(ay>=0) block(ctx,ax,ay,cur.color,T);
@@ -352,20 +607,20 @@ function drawBoard(){
   }
 }
 
-function block(c, col, row, color, t){
-  c.fillStyle=color; c.shadowColor=color; c.shadowBlur=7;
-  c.fillRect(col*t+1, row*t+1, t-2, t-2);
+function block(c,col,row,color,t){
+  c.fillStyle=color; c.shadowColor=color; c.shadowBlur=6;
+  c.fillRect(col*t+1,row*t+1,t-2,t-2);
   c.shadowBlur=0;
-  c.fillStyle='rgba(255,255,255,.14)';
-  c.fillRect(col*t+1, row*t+1, t-2, 3);
+  c.fillStyle='rgba(255,255,255,.15)';
+  c.fillRect(col*t+1,row*t+1,t-2,Math.max(2,t*0.1));
 }
 
-function drawMini(c, piece, size){
-  c.clearRect(0,0,size*DPR,size*DPR); /* clear full physical canvas */
+function drawMini(c,piece,size){
+  c.clearRect(0,0,size*DPR,size*DPR);
   var isDark=CoinEngine.getTheme()==='dark';
   c.fillStyle=isDark?'#07070f':'#f0f0f8'; c.fillRect(0,0,size,size);
   if (!piece) return;
-  var t=20;
+  var t=Math.floor(size/5);
   var minX=piece.cells.reduce(function(m,c){return Math.min(m,c[0]);},99);
   var maxX=piece.cells.reduce(function(m,c){return Math.max(m,c[0]);},0);
   var minY=piece.cells.reduce(function(m,c){return Math.min(m,c[1]);},99);
@@ -374,28 +629,33 @@ function drawMini(c, piece, size){
   var ox=Math.floor((size-pw)/2), oy=Math.floor((size-ph)/2);
   piece.cells.forEach(function(cell){
     var px=ox+(cell[0]-minX)*t, py=oy+(cell[1]-minY)*t;
-    c.fillStyle=piece.color; c.shadowColor=piece.color; c.shadowBlur=6;
+    c.fillStyle=piece.color; c.shadowColor=piece.color; c.shadowBlur=5;
     c.fillRect(px+1,py+1,t-2,t-2);
     c.shadowBlur=0;
     c.fillStyle='rgba(255,255,255,.18)';
-    c.fillRect(px+1,py+1,t-2,3);
+    c.fillRect(px+1,py+1,t-2,Math.max(2,t*0.12));
   });
 }
 
 /* ── HUD ── */
 function setHUD(){
-  document.getElementById('sc').textContent=score;
-  document.getElementById('lv').textContent=level;
-  document.getElementById('ln').textContent=lines;
-  if(score>hi){ hi=score; document.getElementById('hi').textContent=hi; }
+  var s=score,lv=level,ln=lines;
+  document.getElementById('sc').textContent=s;
+  document.getElementById('sc-m').textContent=s;
+  document.getElementById('lv').textContent=lv;
+  document.getElementById('lv-m').textContent=lv;
+  document.getElementById('ln').textContent=ln;
+  document.getElementById('ln-m').textContent=ln;
+  if(s>hi){ hi=s; document.getElementById('hi').textContent=hi; document.getElementById('hi-m').textContent=hi; }
 }
 
 function endGame(){
   alive=false;
+  cancelAnimationFrame(rafId);
   SoundEngine.stopBGM(); SoundEngine.play('gameover');
   var earned=CoinEngine.REWARDS.tetris(score);
-  if(earned>0){ CoinEngine.add(earned,'Tetris — score '+score,'🟦'); }
-  CoinEngine.recordGame('tetris', score, false, {lines:lines, earned:earned});
+  if(earned>0) CoinEngine.add(earned,'Tetris — score '+score,'🟦');
+  CoinEngine.recordGame('tetris',score,false,{lines:lines,earned:earned});
   document.getElementById('sc-final').textContent=score+' pts';
   document.getElementById('ln-final').textContent=lines;
   document.getElementById('lv-final').textContent=level;
@@ -403,40 +663,111 @@ function endGame(){
   document.getElementById('ov-over').classList.remove('hidden');
 }
 
-/* ── Keyboard with proper repeat ── */
-var held_keys = {};
-document.addEventListener('keydown', function(e){
-  if (e.repeat) return; /* handled by interval below */
-  var fn = {
+/* ── Touch / Swipe on canvas ── */
+var touchStartX=0, touchStartY=0, touchStartTime=0;
+var touchMoved=false;
+var SWIPE_THRESHOLD=30; // px needed to register a swipe
+
+cv.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  var t=e.touches[0];
+  touchStartX=t.clientX; touchStartY=t.clientY;
+  touchStartTime=Date.now(); touchMoved=false;
+}, {passive:false});
+
+cv.addEventListener('touchmove', function(e){
+  e.preventDefault();
+  if (!alive||clearing) return;
+  var t=e.touches[0];
+  var dx=t.clientX-touchStartX, dy=t.clientY-touchStartY;
+  var absDx=Math.abs(dx), absDy=Math.abs(dy);
+
+  /* Continuous horizontal drag — move one cell per threshold */
+  if (absDx > SWIPE_THRESHOLD && absDx > absDy*1.5) {
+    touchMoved=true;
+    if (dx>0){ inp_right(); } else { inp_left(); }
+    touchStartX=t.clientX; /* reset so next move fires another step */
+  }
+  /* Continuous downward drag */
+  else if (absDy > SWIPE_THRESHOLD && absDy > absDx*1.5) {
+    touchMoved=true;
+    inp_down();
+    touchStartY=t.clientY;
+  }
+}, {passive:false});
+
+cv.addEventListener('touchend', function(e){
+  e.preventDefault();
+  if (!alive) return;
+  var dx=e.changedTouches[0].clientX-touchStartX;
+  var dy=e.changedTouches[0].clientY-touchStartY;
+  var elapsed=Date.now()-touchStartTime;
+
+  if (!touchMoved && Math.abs(dx)<12 && Math.abs(dy)<12 && elapsed<300){
+    /* Short tap = rotate */
+    inp_rotate();
+  } else if (Math.abs(dy)>60 && dy<0 && Math.abs(dy)>Math.abs(dx)*1.5){
+    /* Swipe up = hard drop */
+    inp_hard();
+  }
+}, {passive:false});
+
+/* ── Mobile button auto-repeat (hold buttons) ── */
+var mbRepeatTimers={};
+function mbPress(e,action){
+  e.preventDefault();
+  var btn=document.getElementById('btn-'+action);
+  if(btn) btn.classList.add('pressed');
+  // fire once immediately
+  var fns={left:inp_left,right:inp_right,down:inp_down,rot:inp_rotate,drop:inp_hard,hold:inp_hold};
+  var fn=fns[action]; if(!fn) return;
+  fn();
+  if(['left','right','down'].indexOf(action)>=0){
+    mbRepeatTimers[action]=setTimeout(function(){
+      mbRepeatTimers[action+'_i']=setInterval(fn,70);
+    },180);
+  }
+}
+function mbRelease(action){
+  var btn=document.getElementById('btn-'+action);
+  if(btn) btn.classList.remove('pressed');
+  clearTimeout(mbRepeatTimers[action]);
+  clearInterval(mbRepeatTimers[action+'_i']);
+  delete mbRepeatTimers[action]; delete mbRepeatTimers[action+'_i'];
+}
+// Safety: release all on touchend/mouseup at document level
+document.addEventListener('touchend', function(){ for(var k in mbRepeatTimers){ clearTimeout(mbRepeatTimers[k]); clearInterval(mbRepeatTimers[k]); } });
+
+/* ── Keyboard (desktop) with DAS/ARR ── */
+var heldKeys={};
+document.addEventListener('keydown',function(e){
+  if(e.repeat) return;
+  var fn={
     ArrowLeft:inp_left, ArrowRight:inp_right, ArrowDown:inp_down,
     ArrowUp:inp_rotate, z:inp_rotate, Z:inp_rotate,
     ' ':inp_hard, c:inp_hold, C:inp_hold
   }[e.key];
-  if (!fn) return;
-  e.preventDefault();
-  fn();
-  if (['ArrowLeft','ArrowRight','ArrowDown'].indexOf(e.key)>=0 && !held_keys[e.key]) {
-    held_keys[e.key] = setTimeout(function(){
-      held_keys[e.key+'_i'] = setInterval(fn, 48);
-    }, 160);
+  if(!fn) return;
+  e.preventDefault(); fn();
+  if(['ArrowLeft','ArrowRight','ArrowDown'].indexOf(e.key)>=0 && !heldKeys[e.key]){
+    heldKeys[e.key]=setTimeout(function(){ heldKeys[e.key+'_i']=setInterval(fn,48); },160);
   }
 });
-document.addEventListener('keyup', function(e){
-  clearTimeout(held_keys[e.key]);
-  clearInterval(held_keys[e.key+'_i']);
-  delete held_keys[e.key]; delete held_keys[e.key+'_i'];
+document.addEventListener('keyup',function(e){
+  clearTimeout(heldKeys[e.key]); clearInterval(heldKeys[e.key+'_i']);
+  delete heldKeys[e.key]; delete heldKeys[e.key+'_i'];
 });
 
-/* initial draw */
+/* ── Initial board draw ── */
 (function(){
   ctx.fillStyle='#07070f'; ctx.fillRect(0,0,COLS*T,ROWS*T);
 })();
 
 /* ── Share Score ── */
 function shareScore(game, val) {
-  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
-  if(navigator.share) {
-    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free: ' + window.location.origin;
+  if(navigator.share){
+    navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});
   } else {
     navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
       CoinEngine.toast('Score copied to clipboard!','info');

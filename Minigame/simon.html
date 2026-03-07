@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simon Says — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
@@ -175,7 +176,7 @@ function setRound(n){document.getElementById('sc').textContent=n;document.getEle
 
 /* ── Share Score ── */
 function shareScore(game, val) {
-  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free at: https://arcadezone.vercel.app';
+  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free: ' + window.location.origin;
   if(navigator.share) {
     navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
   } else {
@@ -186,7 +187,7 @@ function shareScore(game, val) {
 }
 
 function shareScore(game,val){
-  var txt='🎮 I reached round '+val+' in '+game+' on Arcade Zone!\nPlay free: https://arcadezone.vercel.app';
+  var txt='🎮 I reached round '+val+' in '+game+' on Arcade Zone!\nPlay free: ' + window.location.origin;
   if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
   else{navigator.clipboard&&navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied to clipboard!','info');});}
 }

@@ -13,7 +13,10 @@ window.CoinEngine = (function () {
   };
 
   function load(key,fb){ try{var v=localStorage.getItem(key);return v?JSON.parse(v):fb;}catch(e){return fb;} }
-  function save(key,val){ try{localStorage.setItem(key,JSON.stringify(val));}catch(e){} }
+  function save(key,val){
+    try{localStorage.setItem(key,JSON.stringify(val));}catch(e){}
+    if(window.ArcadeDB) ArcadeDB.sync();
+  }
   function today(){ return new Date().toISOString().slice(0,10); }
   function thisWeek(){
     var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);
@@ -28,6 +31,7 @@ window.CoinEngine = (function () {
   function setBalance(n){
     var v=Math.max(0,Math.floor(n));
     try{localStorage.setItem(K.BAL,String(v));}catch(e){}
+    if(window.ArcadeDB) ArcadeDB.sync();
     _fire('az:balance',v); _refreshWidgets(v);
     /* Low balance nudge */
     if(v<15) setTimeout(function(){ toast('🪙 Low on coins! Play games & complete challenges to earn more.','warn'); },400);
@@ -286,6 +290,7 @@ window.CoinEngine = (function () {
     if(score>s[gameId].best) s[gameId].best=score;
     if(won) s[gameId].wins++;
     save(K.STATS,s);
+    if(window.ArcadeDB) ArcadeDB.pushNow();
     var totalPlays=0;
     for(var k in s) totalPlays+=s[k].plays||0;
     gainXP(won?15:5);   /* Reduced XP: 15 win, 5 loss */
