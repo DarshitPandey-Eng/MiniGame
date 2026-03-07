@@ -282,6 +282,16 @@ window.SoundEngine = (function () {
       for(var i=0;i<24;i++){(function(d){ setTimeout(function(){ _tone(200+Math.random()*200,'sine',0.05,0.04); },d); })(t); t+=25+i*9;}
     },
 
+    /* Board Games */
+    slide:      function(){ _tone(320,'sine',0.09,0.07); setTimeout(function(){ _tone(400,'sine',0.07,0.06); },50); },
+    dice_roll:  function(){ [180,220,260,200].forEach(function(f,i){ setTimeout(function(){ _tone(f,'square',0.07,0.04); },i*30); }); },
+    ladder_up:  function(){ [392,494,587,698,784].forEach(function(f,i){ setTimeout(function(){ _tone(f,'sine',0.11,0.09); },i*55); }); },
+    snake_drop: function(){ [330,262,220,196].forEach(function(f,i){ setTimeout(function(){ _tone(f,'sawtooth',0.1,0.14); },i*80); }); },
+    token_enter:function(){ _tone(523,'sine',0.13,0.06); setTimeout(function(){ _tone(784,'sine',0.12,0.09); },60); },
+    /* Word / Puzzle */
+    correct_word:function(){ [523,659,784,880].forEach(function(f,i){ setTimeout(function(){ _tone(f,'sine',0.13,0.12); },i*60); }); },
+    wrong_word:  function(){ _tone(180,'sawtooth',0.12,0.18); },
+    tile_place:  function(){ _tone(500,'square',0.07,0.04); },
     /* UI */
     toggle:  function(){ _tone(440,'sine',0.07,0.05); },
     buzz:    function(){ _tone(90,'sawtooth',0.18,0.28); },

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Connect Four — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-f);}
+.c4-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;padding:0 8px;}
+#c4cv{display:block;border-radius:10px;touch-action:none;cursor:pointer;}
+.c4-status{font-family:var(--font-display);font-size:1.1rem;letter-spacing:.05em;color:var(--text);min-height:1.8rem;text-align:center;}
+.c4-scores{display:flex;gap:8px;width:100%;max-width:400px;}
+.c4-score{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px;text-align:center;}
+.c4-score .n{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;}
+.c4-score .l{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-f);box-shadow:0 0 8px var(--neon-f)"></span>CONNECT FOUR</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:12px;align-items:center;">
+<div class="c4-wrap">
+
+  <div class="c4-scores">
+    <div class="c4-score"><div class="n" id="pw" style="color:var(--neon-c)">0</div><div class="l">YOUR WINS</div></div>
+    <div class="c4-score"><div class="n" id="pd" style="color:var(--muted)">0</div><div class="l">DRAWS</div></div>
+    <div class="c4-score"><div class="n" id="pl" style="color:#ff2d78">0</div><div class="l">CPU WINS</div></div>
+  </div>
+
+  <div class="c4-status" id="c4-status">Tap a column to drop your piece!</div>
+  <canvas id="c4cv"></canvas>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-f)" onclick="newGame()">▶ NEW GAME (🪙 5)</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="doShare()">📤 Share</button>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;">
+    Tap any column to drop · Get 4 in a row to win
+  </div>
+</div>
+</div>
+
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();drawBoard();}); _sT();
+
+var COLS=7,ROWS=6;
+var cv=document.getElementById('c4cv');
+var ctx=cv.getContext('2d');
+var DPR=Math.min(window.devicePixelRatio||1,2);
+
+function calcSize(){
+  var maxW=Math.min(window.innerWidth-24,480);
+  return Math.floor(maxW/COLS);
+}
+var CS=calcSize();
+
+function initCanvas(){
+  CS=calcSize();
+  cv.style.width=(COLS*CS)+'px'; cv.style.height=((ROWS+1)*CS)+'px';
+  cv.width=COLS*CS*DPR; cv.height=(ROWS+1)*CS*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+initCanvas();
+window.addEventListener('resize',function(){initCanvas();drawBoard();});
+
+var board,gameOver,aiTurn,wins=0,draws=0,losses=0;
+var HUMAN=1,AI=2,EMPTY=0;
+var WIN_LEN=4;
+var dropAnim=null; // {col,from,to,player,step,onDone}
+
+function newGame(){
+  if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
+  board=[];
+  for(var r=0;r<ROWS;r++){var row=[];for(var c=0;c<COLS;c++)row.push(EMPTY);board.push(row);}
+  gameOver=false;aiTurn=false;dropAnim=null;
+  setStatus('Your turn — drop a 🟡 piece!');
+  SoundEngine.play('start');
+  SoundEngine.playBGM('casino');
+  drawBoard();
+}
+
+function setStatus(msg){document.getElementById('c4-status').textContent=msg;}
+
+/* ── Drop animation ── */
+function animDrop(col,player,callback){
+  var row=findRow(col); if(row<0) return;
+  var step=0;
+  dropAnim={col:col,row:row,player:player,animRow:0,done:false};
+  function tick(){
+    dropAnim.animRow=step;
+    drawBoard();
+    if(step<row){step++;requestAnimationFrame(tick);}
+    else{dropAnim=null;board[row][col]=player;drawBoard();callback();}
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── Canvas tap ── */
+cv.addEventListener('click',function(e){
+  if(gameOver||aiTurn||dropAnim)return;
+  var rect=cv.getBoundingClientRect();
+  var x=(e.clientX-rect.left)/CS;
+  var col=Math.floor(x); if(col<0||col>=COLS)return;
+  if(findRow(col)<0){CoinEngine.toast('Column full!','warn');return;}
+  aiTurn=true;
+  animDrop(col,HUMAN,function(){
+    SoundEngine.play('drop');
+    var w=checkWin(board,HUMAN);
+    if(w){endGame('human',w);return;}
+    if(isFull(board)){endGame('draw',null);return;}
+    setStatus('CPU thinking…');
+    setTimeout(doAI,300);
+  });
+});
+
+cv.addEventListener('touchstart',function(e){e.preventDefault();},{ passive:false});
+cv.addEventListener('touchend',function(e){
+  e.preventDefault();
+  if(gameOver||aiTurn||dropAnim)return;
+  var rect=cv.getBoundingClientRect();
+  var t=e.changedTouches[0];
+  var x=(t.clientX-rect.left)/CS;
+  var col=Math.floor(x); if(col<0||col>=COLS)return;
+  if(findRow(col)<0){CoinEngine.toast('Column full!','warn');return;}
+  aiTurn=true;
+  animDrop(col,HUMAN,function(){
+    SoundEngine.play('drop');
+    var w=checkWin(board,HUMAN);
+    if(w){endGame('human',w);return;}
+    if(isFull(board)){endGame('draw',null);return;}
+    setStatus('CPU thinking…');
+    setTimeout(doAI,300);
+  });
+},{passive:false});
+
+function doAI(){
+  var col=aiPickCol();
+  if(col<0){endGame('draw',null);return;}
+  animDrop(col,AI,function(){
+    SoundEngine.play('click');
+    var w=checkWin(board,AI);
+    if(w){endGame('ai',w);return;}
+    if(isFull(board)){endGame('draw',null);return;}
+    aiTurn=false;
+    setStatus('Your turn — drop a 🟡 piece!');
+  });
+}
+
+function findRow(col){
+  for(var r=ROWS-1;r>=0;r--)if(board[r][col]===EMPTY)return r;
+  return -1;
+}
+function isFull(b){
+  for(var c=0;c<COLS;c++)if(b[0][c]===EMPTY)return false;
+  return true;
+}
+
+/* ── AI: minimax with alpha-beta ── */
+function aiPickCol(){
+  var best=-Infinity,bestCol=3;
+  var order=[3,2,4,1,5,0,6]; // center first
+  for(var i=0;i<order.length;i++){
+    var c=order[i];
+    var r=findRow(c); if(r<0)continue;
+    board[r][c]=AI;
+    var score=alphabeta(board,5,false,-Infinity,Infinity);
+    board[r][c]=EMPTY;
+    if(score>best){best=score;bestCol=c;}
+  }
+  return findRow(bestCol)>=0?bestCol:-1;
+}
+
+function alphabeta(b,depth,isMax,alpha,beta){
+  var wh=checkWin(b,HUMAN),wa=checkWin(b,AI);
+  if(wa) return 1000+depth;
+  if(wh) return -1000-depth;
+  if(isFull(b)||depth===0) return heuristic(b);
+  var order=[3,2,4,1,5,0,6];
+  if(isMax){
+    var v=-Infinity;
+    for(var i=0;i<order.length;i++){
+      var c=order[i],r=findRow(c);if(r<0)continue;
+      b[r][c]=AI;var s=alphabeta(b,depth-1,false,alpha,beta);b[r][c]=EMPTY;
+      v=Math.max(v,s);alpha=Math.max(alpha,v);if(beta<=alpha)break;
+    }
+    return v;
+  } else {
+    var v=Infinity;
+    for(var i=0;i<order.length;i++){
+      var c=order[i],r=findRow(c);if(r<0)continue;
+      b[r][c]=HUMAN;var s=alphabeta(b,depth-1,true,alpha,beta);b[r][c]=EMPTY;
+      v=Math.min(v,s);beta=Math.min(beta,v);if(beta<=alpha)break;
+    }
+    return v;
+  }
+}
+
+function heuristic(b){
+  var score=0;
+  /* center column control */
+  for(var r=0;r<ROWS;r++){
+    if(b[r][3]===AI)score+=3;
+    else if(b[r][3]===HUMAN)score-=3;
+  }
+  /* evaluate windows of 4 */
+  function evalWin4(arr){
+    var ai=0,hu=0;
+    for(var i=0;i<arr.length;i++){if(arr[i]===AI)ai++;else if(arr[i]===HUMAN)hu++;}
+    if(hu>0&&ai>0)return 0;
+    if(ai===3)return 5;if(ai===2)return 2;if(ai===1)return 1;
+    if(hu===3)return-5;if(hu===2)return-2;if(hu===1)return-1;
+    return 0;
+  }
+  /* horizontal */
+  for(var r=0;r<ROWS;r++)for(var c=0;c<=COLS-4;c++){var w=[];for(var k=0;k<4;k++)w.push(b[r][c+k]);score+=evalWin4(w);}
+  /* vertical */
+  for(var c=0;c<COLS;c++)for(var r=0;r<=ROWS-4;r++){var w=[];for(var k=0;k<4;k++)w.push(b[r+k][c]);score+=evalWin4(w);}
+  /* diagonal / */
+  for(var r=3;r<ROWS;r++)for(var c=0;c<=COLS-4;c++){var w=[];for(var k=0;k<4;k++)w.push(b[r-k][c+k]);score+=evalWin4(w);}
+  /* diagonal \ */
+  for(var r=0;r<=ROWS-4;r++)for(var c=0;c<=COLS-4;c++){var w=[];for(var k=0;k<4;k++)w.push(b[r+k][c+k]);score+=evalWin4(w);}
+  return score;
+}
+
+function checkWin(b,player){
+  /* horizontal */
+  for(var r=0;r<ROWS;r++)for(var c=0;c<=COLS-4;c++){if([0,1,2,3].every(function(k){return b[r][c+k]===player;}))return [[r,c],[r,c+1],[r,c+2],[r,c+3]];}
+  /* vertical */
+  for(var c=0;c<COLS;c++)for(var r=0;r<=ROWS-4;r++){if([0,1,2,3].every(function(k){return b[r+k][c]===player;}))return [[r,c],[r+1,c],[r+2,c],[r+3,c]];}
+  /* diag / */
+  for(var r=3;r<ROWS;r++)for(var c=0;c<=COLS-4;c++){if([0,1,2,3].every(function(k){return b[r-k][c+k]===player;}))return [[r,c],[r-1,c+1],[r-2,c+2],[r-3,c+3]];}
+  /* diag \ */
+  for(var r=0;r<=ROWS-4;r++)for(var c=0;c<=COLS-4;c++){if([0,1,2,3].every(function(k){return b[r+k][c+k]===player;}))return [[r,c],[r+1,c+1],[r+2,c+2],[r+3,c+3]];}
+  return null;
+}
+
+var winCells=null;
+function endGame(who,wCells){
+  gameOver=true;winCells=wCells;
+  SoundEngine.stopBGM();
+  if(who==='human'){
+    wins++;document.getElementById('pw').textContent=wins;
+    setStatus('🎉 You win! 4 in a row!');
+    SoundEngine.play('success');
+    CoinEngine.add(20,'Connect Four — win','🟡');
+    CoinEngine.recordGame('connect4',20,true,{});
+    CoinEngine.toast('+20 🪙','success');
+  } else if(who==='draw'){
+    draws++;document.getElementById('pd').textContent=draws;
+    setStatus('🤝 Draw!');
+    SoundEngine.play('toggle');
+    CoinEngine.add(3,'Connect Four — draw','🟡');
+    CoinEngine.recordGame('connect4',3,false,{});
+  } else {
+    losses++;document.getElementById('pl').textContent=losses;
+    setStatus('😔 CPU wins! Try again.');
+    SoundEngine.play('gameover');
+    CoinEngine.recordGame('connect4',0,false,{});
+  }
+  drawBoard();
+}
+
+/* ── Drawing ── */
+function drawBoard(){
+  var isDark=CoinEngine.getTheme()==='dark';
+  var bgCol=isDark?'#0a0a18':'#e8e8f4';
+  var boardCol=isDark?'#0d1035':'#c8ccf0';
+  ctx.clearRect(0,0,COLS*CS,(ROWS+1)*CS);
+  /* header row */
+  ctx.fillStyle=boardCol;
+  ctx.fillRect(0,0,COLS*CS,CS);
+  /* column indicators */
+  for(var c=0;c<COLS;c++){
+    ctx.strokeStyle=isDark?'rgba(255,255,255,.05)':'rgba(0,0,0,.06)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(c*CS,0,CS,CS);
+    ctx.fillStyle=isDark?'rgba(255,255,255,.15)':'rgba(0,0,0,.15)';
+    ctx.font='bold '+(CS*0.35)+'px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('▼',c*CS+CS/2,CS/2);
+  }
+  /* board background */
+  ctx.fillStyle=boardCol;
+  ctx.fillRect(0,CS,COLS*CS,ROWS*CS);
+  /* cells */
+  var winSet=new Set();
+  if(winCells)winCells.forEach(function(p){winSet.add(p[0]+','+p[1]);});
+  for(var r=0;r<ROWS;r++){
+    for(var c=0;c<COLS;c++){
+      var cx=c*CS+CS/2, cy=(r+1)*CS+CS/2, rad=CS*0.38;
+      /* hole bg */
+      ctx.fillStyle=bgCol;
+      ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.fill();
+      /* piece */
+      var v=board[r][c];
+      /* animation piece */
+      if(dropAnim&&dropAnim.col===c&&dropAnim.animRow===r){v=dropAnim.player;}
+      if(v===HUMAN||v===AI){
+        var col=v===HUMAN?'#ffe135':'#ff2d78';
+        var glow=v===HUMAN?'rgba(255,225,53,.5)':'rgba(255,45,120,.5)';
+        var isWin=winSet.has(r+','+c);
+        ctx.shadowColor=isWin?'#fff':glow;
+        ctx.shadowBlur=isWin?16:8;
+        ctx.fillStyle=isWin?'#fff':col;
+        ctx.beginPath();ctx.arc(cx,cy,rad-2,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
+        /* shine */
+        ctx.fillStyle='rgba(255,255,255,0.25)';
+        ctx.beginPath();ctx.arc(cx-rad*0.25,cy-rad*0.25,rad*0.28,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  /* grid lines */
+  ctx.strokeStyle=isDark?'rgba(255,255,255,.06)':'rgba(0,0,0,.08)';
+  ctx.lineWidth=1;
+  for(var c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CS,CS);ctx.lineTo(c*CS,(ROWS+1)*CS);ctx.stroke();}
+  for(var r=1;r<=ROWS+1;r++){ctx.beginPath();ctx.moveTo(0,r*CS);ctx.lineTo(COLS*CS,r*CS);ctx.stroke();}
+}
+
+function doShare(){
+  var msg=wins+' wins and '+draws+' draws vs CPU';
+  var txt='🟡 Connect Four: '+msg+' on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+/* Auto-start */
+newGame();
+</script>
+</body>
+</html>

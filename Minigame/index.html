@@ -13,9 +13,20 @@
 .grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
   background-size:60px 60px;
-  mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,black 0%,transparent 70%);transition:opacity .3s;}
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,black 0%,transparent 70%);}
 .xp-hero-bar{width:min(320px,85vw);background:var(--bg2);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--line2);margin-top:6px;}
 .xp-hero-fill{height:100%;background:linear-gradient(90deg,var(--neon-a),var(--neon-e));box-shadow:0 0 8px var(--neon-a);transition:width .6s ease;}
+.search-wrap{width:min(420px,92vw);position:relative;margin:0 auto 4px;}
+.search-input{width:100%;box-sizing:border-box;padding:11px 14px 11px 40px;
+  background:var(--card-bg);border:1.5px solid var(--line2);border-radius:10px;
+  color:var(--text);font-family:var(--font-mono);font-size:.8rem;outline:none;transition:border-color .15s;}
+.search-input:focus{border-color:var(--neon-a);}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none;}
+.search-input::placeholder{color:var(--muted);}
+.hub-section-title{font-family:var(--font-mono);font-size:.62rem;font-weight:800;
+  letter-spacing:.18em;color:var(--muted);margin:28px 0 10px;padding-left:2px;}
+.new-ribbon{display:inline-block;background:var(--neon-b);color:#000;font-family:var(--font-mono);
+  font-size:.42rem;font-weight:900;padding:3px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -32,7 +43,7 @@
 <div class="hub-hero">
   <div class="hub-hero-bg"></div>
   <div class="hub-headline"><div class="a">ARCADE</div><div class="b">ZONE</div></div>
-  <p class="hub-tagline">10 games · daily spin · level up · no ads ever</p>
+  <p class="hub-tagline">18 games · daily spin · level up · no ads ever</p>
   <div class="xp-hero-bar"><div class="xp-hero-fill az-xp-bar" style="width:0%"></div></div>
   <div class="hub-stats">
     <div class="hub-stat"><div class="n az-bal">0</div><div class="t">COINS</div></div>
@@ -44,6 +55,7 @@
 
 <main>
   <div class="hub-section">
+
     <div class="hub-quick-links">
       <a class="quick-link" href="wallet.html"     style="--lc:var(--neon-c)">🪙 Wallet</a>
       <a class="quick-link" href="spin.html"       style="--lc:var(--neon-e)" id="ql-spin">🎡 Daily Spin</a>
@@ -52,95 +64,172 @@
       <a class="quick-link" href="challenges.html" style="--lc:var(--neon-d)">🏆 Challenges</a>
       <a class="quick-link" href="profile.html"    style="--lc:var(--neon-e)">👤 Profile</a>
     </div>
-    <div class="hub-section-title">CLASSIC GAMES</div>
-    <div class="games-grid" id="grid-classic"></div>
-    <div class="hub-section-title" style="margin-top:40px">REFLEX &amp; SKILL</div>
-    <div class="games-grid" id="grid-skill"></div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search" type="text" placeholder="Search all 18 games…" oninput="filterGames(this.value)">
+    </div>
+
+    <div id="all-sections">
+      <div class="hub-section-title" id="t-classic">🕹 CLASSIC ARCADE</div>
+      <div class="games-grid" id="grid-classic"></div>
+
+      <div class="hub-section-title" id="t-board">🎲 BOARD GAMES <span class="new-ribbon">6 NEW</span></div>
+      <div class="games-grid" id="grid-board"></div>
+
+      <div class="hub-section-title" id="t-puzzle">🧩 PUZZLE & STRATEGY <span class="new-ribbon">4 NEW</span></div>
+      <div class="games-grid" id="grid-puzzle"></div>
+
+      <div class="hub-section-title" id="t-skill">⚡ REFLEX & SKILL</div>
+      <div class="games-grid" id="grid-skill"></div>
+    </div>
+
+    <div id="no-results" style="display:none;text-align:center;padding:40px 20px;
+      font-family:var(--font-mono);font-size:.78rem;color:var(--muted);">
+      No games match "<span id="search-term" style="color:var(--neon-a)"></span>"
+    </div>
+
   </div>
 </main>
-<site-footer>
-  ARCADE ZONE © 2026 · NO ADS · NO TRACKING · JUST FUN
+
+<footer style="text-align:center;padding:24px 16px 32px;font-family:var(--font-mono);font-size:.55rem;color:var(--muted);letter-spacing:.08em;">
+  ARCADE ZONE © 2026 &nbsp;·&nbsp; NO ADS &nbsp;·&nbsp; NO TRACKING &nbsp;·&nbsp; JUST FUN
+  <br style="margin-bottom:10px;">
   <a href="https://buymeacoffee.com/arcadezone" target="_blank" rel="noopener"
      style="display:inline-flex;align-items:center;gap:6px;background:#FFDD00;color:#1a1000;
-     font-family:var(--font-mono);font-weight:800;font-size:.62rem;padding:6px 14px;
-     border-radius:6px;text-decoration:none;margin-left:12px;
-     box-shadow:0 2px 10px rgba(255,221,0,.25);transition:all .15s;"
+     font-family:var(--font-mono);font-weight:800;font-size:.65rem;padding:8px 16px;
+     border-radius:8px;text-decoration:none;margin-top:10px;
+     box-shadow:0 2px 12px rgba(255,221,0,.3);transition:all .15s;"
      onmouseover="this.style.background='#ffe733'" onmouseout="this.style.background='#FFDD00'">
     ☕ Buy Me a Coffee
   </a>
-</site-footer>
+</footer>
 
 <script>
-var GAMES={classic:[
-  {id:'snake',   icon:'🐍',name:'Snake',       desc:'Eat, grow, survive.',               tag:'CLASSIC', diff:1,ca:'var(--neon-d)',cost:10},
-  {id:'tetris',  icon:'🟦',name:'Tetris',       desc:'Stack, clear lines, beat the speed.',tag:'PUZZLE', diff:2,ca:'var(--neon-a)',cost:10},
-  {id:'breakout',icon:'🟠',name:'Breakout',     desc:'Smash every brick with your ball.', tag:'ACTION',  diff:2,ca:'var(--neon-f)',cost:10},
-  {id:'2048',    icon:'🔢',name:'2048',         desc:'Merge tiles. Reach 2048.',           tag:'STRATEGY',diff:2,ca:'var(--neon-c)',cost:10},
-  {id:'flappy',  icon:'🐦',name:'Flappy Bird',  desc:'Tap to flap. Dodge every pipe.',    tag:'ARCADE',  diff:3,ca:'var(--neon-d)',cost:10},
-],skill:[
-  {id:'mole',    icon:'🦔',name:'Whack-a-Mole', desc:'30 seconds. Combo for bonus!',      tag:'REFLEX',  diff:1,ca:'var(--neon-c)',cost:5},
-  {id:'memory',  icon:'🃏',name:'Memory Match',  desc:'Flip cards. Find all pairs.',       tag:'MEMORY',  diff:1,ca:'var(--neon-e)',cost:5},
-  {id:'reaction',icon:'⚡',name:'Reaction Test', desc:'Click when it turns green.',        tag:'SPEED',   diff:1,ca:'var(--neon-b)',cost:0},
-  {id:'typing',  icon:'⌨️',name:'Typing Speed',  desc:'60-second WPM challenge.',          tag:'SKILL',   diff:2,ca:'#c0c0e0',cost:0},
-  {id:'simon',   icon:'🔴',name:'Simon Says',    desc:'Follow the growing pattern.',       tag:'MEMORY',  diff:2,ca:'var(--neon-b)',cost:5},
-]};
+/* ── Game catalogue ── */
+var GAMES = {
+  classic: [
+    {id:'snake',    icon:'🐍', name:'Snake',         desc:'Eat, grow, don\'t crash.',        tag:'CLASSIC',  diff:1, ca:'var(--neon-d)', cost:10},
+    {id:'tetris',   icon:'🟦', name:'Tetris',         desc:'Stack blocks, clear lines.',      tag:'PUZZLE',   diff:2, ca:'var(--neon-a)', cost:10},
+    {id:'breakout', icon:'🟠', name:'Breakout',       desc:'Smash every brick.',              tag:'ACTION',   diff:2, ca:'var(--neon-f)', cost:10},
+    {id:'flappy',   icon:'🐦', name:'Flappy Bird',    desc:'Tap to fly, dodge pipes.',        tag:'ARCADE',   diff:3, ca:'var(--neon-d)', cost:10},
+    {id:'pong',     icon:'🏓', name:'Pong',           desc:'Classic paddle battle vs CPU.',   tag:'ARCADE',   diff:2, ca:'var(--neon-a)', cost:5, isNew:true},
+  ],
+  board: [
+    {id:'tictactoe',    icon:'❎', name:'Tic Tac Toe',     desc:'3-in-a-row. 3 AI difficulties.',  tag:'STRATEGY', diff:1, ca:'var(--neon-b)', cost:0,  isNew:true},
+    {id:'connect4',     icon:'🟡', name:'Connect Four',    desc:'Drop pieces, get 4 in a row.',    tag:'STRATEGY', diff:2, ca:'var(--neon-f)', cost:5,  isNew:true},
+    {id:'snakesladders',icon:'🎲', name:'Snakes & Ladders',desc:'Roll dice, climb & slide.',        tag:'BOARD',    diff:1, ca:'var(--neon-d)', cost:5,  isNew:true},
+    {id:'ludo',         icon:'🎯', name:'Ludo',            desc:'Race all 4 tokens home first.',   tag:'BOARD',    diff:2, ca:'var(--neon-c)', cost:8,  isNew:true},
+  ],
+  puzzle: [
+    {id:'2048',      icon:'🔢', name:'2048',           desc:'Merge tiles to reach 2048.',      tag:'STRATEGY', diff:2, ca:'var(--neon-c)', cost:10},
+    {id:'sudoku',    icon:'🔷', name:'Sudoku',          desc:'Fill the 9×9 grid. 3 levels.',   tag:'LOGIC',    diff:2, ca:'var(--neon-c)', cost:0,  isNew:true},
+    {id:'wordguess', icon:'📝', name:'Word Guess',      desc:'Guess the 5-letter word in 6.',  tag:'WORD',     diff:2, ca:'var(--neon-a)', cost:0,  isNew:true},
+    {id:'hanoi',     icon:'🗼', name:'Tower of Hanoi',  desc:'Move all discs optimally.',      tag:'LOGIC',    diff:3, ca:'var(--neon-e)', cost:0,  isNew:true},
+    {id:'minesweeper',icon:'💣',name:'Minesweeper',     desc:'Flag mines, clear the board.',   tag:'LOGIC',    diff:2, ca:'var(--neon-d)', cost:0,  isNew:true},
+    {id:'memory',    icon:'🃏', name:'Memory Match',    desc:'Flip cards, find all pairs.',    tag:'MEMORY',   diff:1, ca:'var(--neon-e)', cost:5},
+  ],
+  skill: [
+    {id:'mole',    icon:'🦔', name:'Whack-a-Mole',   desc:'30 seconds of pure reflex.',      tag:'REFLEX',   diff:1, ca:'var(--neon-c)', cost:5},
+    {id:'reaction',icon:'⚡', name:'Reaction Test',   desc:'Click the moment it turns green.',tag:'SPEED',    diff:1, ca:'var(--neon-b)', cost:0},
+    {id:'typing',  icon:'⌨️', name:'Typing Speed',    desc:'How fast can you type?',          tag:'SKILL',    diff:2, ca:'#c0c0e0',       cost:0},
+    {id:'simon',   icon:'🔴', name:'Simon Says',      desc:'Copy the growing sequence.',      tag:'MEMORY',   diff:2, ca:'var(--neon-b)', cost:5},
+  ]
+};
+
+/* ── Helpers ── */
 function dots(n){return[1,2,3].map(function(i){return'<span class="'+(i<=n?'':'off')+'"></span>';}).join('');}
 function costBadge(c){return c===0?'<span class="cost-badge free">FREE</span>':'<span class="cost-badge">🪙 '+c+'</span>';}
-function card(g){return'<a class="game-card" href="'+g.id+'.html" style="--ca:'+g.ca+'">'+
-  '<div class="card-top"><span class="card-icon">'+g.icon+'</span><span class="card-tag">'+g.tag+'</span></div>'+
-  '<div class="card-name">'+g.name+'</div><div class="card-desc">'+g.desc+'</div>'+
-  '<div class="card-footer"><span class="card-play">PLAY</span>'+
-  '<div style="display:flex;align-items:center;gap:7px;">'+costBadge(g.cost)+'<span class="card-diff">'+dots(g.diff)+'</span></div>'+
-  '</div></a>';}
-document.getElementById('grid-classic').innerHTML=GAMES.classic.map(card).join('');
-document.getElementById('grid-skill').innerHTML=GAMES.skill.map(card).join('');
+
+function card(g){
+  return '<a class="game-card" href="'+g.id+'.html" style="--ca:'+g.ca+';position:relative;">'
+    +(g.isNew?'<div style="position:absolute;top:6px;right:6px;background:var(--neon-b);color:#000;font-family:var(--font-mono);font-size:.42rem;font-weight:900;padding:3px 7px;border-radius:4px;pointer-events:none;z-index:2;">NEW</div>':'')
+    +'<div class="card-top"><span class="card-icon">'+g.icon+'</span><span class="card-tag">'+g.tag+'</span></div>'
+    +'<div class="card-name">'+g.name+'</div>'
+    +'<div class="card-desc">'+g.desc+'</div>'
+    +'<div class="card-footer"><span class="card-play">PLAY</span>'
+    +'<div style="display:flex;align-items:center;gap:7px;">'+costBadge(g.cost)+'<span class="card-diff">'+dots(g.diff)+'</span></div>'
+    +'</div></a>';
+}
+
+/* ── Render / Search ── */
+var SECTIONS = ['classic','board','puzzle','skill'];
+
+function renderAll(filter){
+  var f=(filter||'').toLowerCase().trim();
+  var total=0;
+  SECTIONS.forEach(function(sec){
+    var grid=document.getElementById('grid-'+sec);
+    var title=document.getElementById('t-'+sec);
+    var list=GAMES[sec].filter(function(g){
+      if(!f) return true;
+      return (g.name+g.tag+g.desc).toLowerCase().indexOf(f)>=0;
+    });
+    grid.innerHTML=list.map(card).join('');
+    grid.style.display=list.length?'':'none';
+    if(title) title.style.display=list.length?'':'none';
+    total+=list.length;
+  });
+  document.getElementById('no-results').style.display=total?'none':'block';
+  if(!total) document.getElementById('search-term').textContent=f;
+  if(!f) applyGameOfDay();
+}
+
+function filterGames(v){renderAll(v);}
+
+/* ── Game of the Day ── */
+function applyGameOfDay(){
+  var ids=[];
+  SECTIONS.forEach(function(s){GAMES[s].forEach(function(g){ids.push(g.id);});});
+  var d=new Date(), seed=d.getFullYear()*10000+( d.getMonth()+1)*100+d.getDate();
+  var gotd=ids[seed%ids.length];
+  document.querySelectorAll('.game-card').forEach(function(el){
+    if(el.href&&el.href.indexOf('/'+gotd+'.html')>=0){
+      if(!el.querySelector('.gotd-b')){
+        var b=document.createElement('div');
+        b.className='gotd-b';
+        b.textContent='⭐ TODAY';
+        b.style.cssText='position:absolute;top:6px;left:6px;background:var(--neon-c);color:#000;font-family:var(--font-mono);font-size:.42rem;font-weight:900;padding:3px 8px;border-radius:4px;z-index:3;pointer-events:none;';
+        el.insertBefore(b,el.firstChild);
+        el.style.boxShadow='0 0 0 2px var(--neon-c),0 0 24px color-mix(in srgb,var(--neon-c) 16%,transparent)';
+      }
+    }
+  });
+}
+
+/* ── Live stats ── */
 function refresh(){
-  var done=0;var cs=CoinEngine.getChallengeState();for(var k in cs)if(cs[k].claimed)done++;
+  var done=0,cs=CoinEngine.getChallengeState();for(var k in cs)if(cs[k].claimed)done++;
   document.getElementById('s-challs').textContent=done;
   var st=CoinEngine.getStats(),plays=0;for(var k in st)plays+=(st[k].plays||0);
   var pe=document.getElementById('s-plays');if(pe)pe.textContent=plays;
+  var xd=CoinEngine.getXPData(),pct=((xd.xp%500)/500*100).toFixed(1);
+  document.querySelectorAll('.az-xp-bar').forEach(function(el){el.style.width=pct+'%';});
+  var st2=CoinEngine.getStreak();
+  document.querySelectorAll('.az-streak').forEach(function(el){el.textContent=st2.current;});
 }
-document.addEventListener('az:balance',refresh);refresh();
+document.addEventListener('az:balance',refresh);
+document.addEventListener('az:xp',function(e){
+  document.querySelectorAll('.az-level').forEach(function(el){el.textContent='Lv.'+e.detail.level;});
+  document.querySelectorAll('.az-xp-bar').forEach(function(el){el.style.width=((e.detail.xp%500)/500*100).toFixed(1)+'%';});
+});
+refresh();
+
+/* Theme */
 var tb=document.getElementById('theme-btn');
 tb.addEventListener('click',function(){CoinEngine.toggleTheme();tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';});
 tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';
-document.addEventListener('az:xp',function(e){
-  document.querySelectorAll('.az-level').forEach(function(el){el.textContent='Lv.'+e.detail.level;});
-});
 
-/* Spin badge on quick link */
+/* Spin badge */
 (function(){
-  var el=document.getElementById('ql-spin');
-  if(!el)return;
-  if(CoinEngine.canSpin()){
-    var badge=document.createElement('span');
-    badge.textContent='NEW';
-    badge.style.cssText='background:var(--neon-b);color:#000;font-size:.44rem;font-weight:800;'+
-      'padding:2px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;';
-    el.appendChild(badge);
-  }
+  var el=document.getElementById('ql-spin');if(!el||!CoinEngine.canSpin())return;
+  var b=document.createElement('span');b.textContent='NEW';
+  b.style.cssText='background:var(--neon-b);color:#000;font-size:.44rem;font-weight:800;padding:2px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;';
+  el.appendChild(b);
 })();
 
-/* Game of the Day highlight */
-(function(){
-  var games=['snake','tetris','breakout','2048','flappy','mole','memory','reaction','typing','simon'];
-  var seed=parseInt(new Date().toISOString().slice(0,10).replace(/-/g,''))%games.length;
-  var gotd=games[seed];
-  var cards=document.querySelectorAll('.game-card');
-  cards.forEach(function(card){
-    if(card.href&&card.href.indexOf(gotd+'.html')>=0){
-      card.setAttribute('data-gotd','1');
-      var badge=document.createElement('div');
-      badge.textContent='⭐ TODAY';
-      badge.style.cssText='position:absolute;top:8px;left:8px;font-family:var(--font-mono);'+
-        'font-size:.44rem;font-weight:800;background:var(--neon-c);color:#000;'+
-        'padding:3px 7px;border-radius:4px;z-index:2;pointer-events:none;';
-      card.style.position='relative';
-      card.insertBefore(badge,card.firstChild);
-      card.style.boxShadow='0 0 0 2px var(--neon-c), 0 0 22px color-mix(in srgb,var(--neon-c) 20%,transparent)';
-    }
-  });
-})();
+/* Initial render */
+renderAll();
 </script>
 </body>
 </html>

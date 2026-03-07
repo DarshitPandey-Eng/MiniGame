@@ -382,20 +382,34 @@ window.CoinEngine = (function () {
 
   /* ══════════════════ REWARDS (lean economy) ══════════════════ */
   var REWARDS={
-    snake:   function(s){ return Math.floor(s*0.25); },       /* score 40 → 10 coins  */
-    tetris:  function(s){ return Math.floor(s*0.012); },      /* score 500 → 6 coins  */
-    breakout:function(s){ return Math.floor(s*0.05); },       /* score 200 → 10 coins */
-    '2048':  function(s){ return Math.floor(s*0.003); },      /* score 1000 → 3 coins */
-    flappy:  function(s){ return s*3; },                      /* score 5 → 15 coins   */
-    mole:    function(s){ return Math.floor(s*0.6); },        /* score 20 → 12 coins  */
-    memory:  function(s,w){ return w?8:0; },                  /* win → 8 coins        */
-    reaction:function(s){ return s<200?8:s<300?3:0; },
-    typing:  function(s){ return Math.floor(s*0.15); },       /* 60wpm → 9 coins      */
-    simon:   function(s){ return s*2; },                      /* round 5 → 10 coins   */
-    casino:  function(s){ return s; },
+    snake:       function(s){ return Math.floor(s*0.25); },
+    tetris:      function(s){ return Math.floor(s*0.012); },
+    breakout:    function(s){ return Math.floor(s*0.05); },
+    '2048':      function(s){ return Math.floor(s*0.003); },
+    flappy:      function(s){ return s*3; },
+    mole:        function(s){ return Math.floor(s*0.6); },
+    memory:      function(s,w){ return w?8:0; },
+    reaction:    function(s){ return s<200?8:s<300?3:0; },
+    typing:      function(s){ return Math.floor(s*0.15); },
+    simon:       function(s){ return s*2; },
+    casino:      function(s){ return s; },
+    /* New games */
+    tictactoe:   function(s){ return s; },        /* 12 win, 3 draw */
+    connect4:    function(s){ return s; },         /* 20 win, 3 draw */
+    snakesladders:function(s){ return s; },        /* 20 win */
+    ludo:        function(s){ return s; },         /* 30 win */
+    pong:        function(s){ return s; },         /* score*3 win */
+    wordguess:   function(s){ return s; },         /* up to 30 by tries */
+    sudoku:      function(s){ return s; },         /* 20-70 by diff */
+    hanoi:       function(s){ return s; },         /* disc*6 or *12 perfect */
+    minesweeper: function(s){ return s; },         /* 25-100 by diff */
   };
-  /* Entry costs unchanged — scarcity comes from low rewards */
-  var COSTS={snake:10,tetris:10,breakout:10,'2048':10,flappy:10,mole:5,memory:5,reaction:0,typing:0,simon:5,casino:0};
+  var COSTS={
+    snake:10,tetris:10,breakout:10,'2048':10,flappy:10,
+    mole:5,memory:5,reaction:0,typing:0,simon:5,casino:0,
+    tictactoe:0,connect4:5,snakesladders:5,ludo:8,
+    pong:5,wordguess:0,sudoku:0,hanoi:0,minesweeper:0,
+  };
 
 
   /* ══════════════════ DAILY SPIN WHEEL ══════════════════ */

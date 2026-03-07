@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Word Guess — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-a);}
+.wg-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:400px;padding:0 8px 16px;}
+
+/* Board */
+.wg-board{display:flex;flex-direction:column;gap:5px;}
+.wg-row{display:flex;gap:5px;}
+.wg-cell{
+  width:clamp(42px,12vw,56px);height:clamp(42px,12vw,56px);
+  border:2px solid var(--line2);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:clamp(1.2rem,5vw,1.6rem);
+  font-weight:900;letter-spacing:.02em;
+  transition:background .25s, border-color .25s, transform .15s;
+  background:var(--card-bg);color:var(--text);
+  user-select:none;-webkit-user-select:none;
+}
+.wg-cell.filled{border-color:var(--text2);transform:scale(1.04);}
+.wg-cell.correct{background:#538d4e;border-color:#538d4e;color:#fff;}
+.wg-cell.present{background:#b59f3b;border-color:#b59f3b;color:#fff;}
+.wg-cell.absent {background:var(--bg2);border-color:var(--bg2);color:var(--muted);}
+.wg-cell.flip{animation:cellFlip .5s ease forwards;}
+@keyframes cellFlip{
+  0%{transform:rotateX(0)}
+  50%{transform:rotateX(-90deg)}
+  51%{transform:rotateX(-90deg)}
+  100%{transform:rotateX(0)}
+}
+.wg-cell.shake{animation:rowShake .4s ease;}
+@keyframes rowShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.wg-cell.bounce{animation:bounce .3s ease;}
+@keyframes bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+
+/* Keyboard */
+.wg-kbd{display:flex;flex-direction:column;gap:5px;width:100%;}
+.kbd-row{display:flex;gap:4px;justify-content:center;}
+.kbd-key{
+  flex:1;max-width:clamp(28px,8vw,38px);height:clamp(40px,10vw,52px);
+  border-radius:6px;border:none;
+  background:var(--card-bg);color:var(--text);
+  font-family:var(--font-mono);font-size:.7rem;font-weight:700;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background .2s, color .2s, transform .1s;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line2);
+}
+.kbd-key:active{transform:scale(.92);}
+.kbd-key.wide{max-width:58px;font-size:.6rem;}
+.kbd-key.correct{background:#538d4e;color:#fff;border-color:#538d4e;}
+.kbd-key.present{background:#b59f3b;color:#fff;border-color:#b59f3b;}
+.kbd-key.absent {background:var(--bg2);color:var(--muted);border-color:var(--bg2);}
+
+/* Status */
+.wg-msg{font-family:var(--font-mono);font-size:.78rem;color:var(--text);text-align:center;min-height:1.5rem;font-weight:700;letter-spacing:.05em;}
+
+/* Stats */
+.wg-stats{display:flex;gap:8px;width:100%;}
+.wg-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:7px;text-align:center;}
+.wg-stat .v{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-a);}
+.wg-stat .l{font-family:var(--font-mono);font-size:.48rem;color:var(--muted);letter-spacing:.1em;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>WORD GUESS</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:12px;align-items:center;">
+<div class="wg-wrap">
+
+  <div class="wg-stats">
+    <div class="wg-stat"><div class="v" id="wg-wins">0</div><div class="l">WINS</div></div>
+    <div class="wg-stat"><div class="v" id="wg-streak" style="color:var(--neon-c)">0</div><div class="l">STREAK</div></div>
+    <div class="wg-stat"><div class="v" id="wg-played">0</div><div class="l">PLAYED</div></div>
+  </div>
+
+  <div class="wg-msg" id="wg-msg">Guess the 5-letter word!</div>
+
+  <div class="wg-board" id="wg-board"></div>
+
+  <div class="wg-kbd" id="wg-kbd"></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-a)" onclick="newGame()">▶ NEW WORD</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="doShare()" style="display:none">📤 Share</button>
+  </div>
+
+  <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:1.8;">
+    🟩 Right letter, right spot · 🟨 Right letter, wrong spot · ⬛ Letter not in word
+  </div>
+
+</div>
+</div>
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+/* ── Word list ── */
+var WORDS = [
+  'APPLE','BRAVE','CRANE','DANCE','EAGLE','FLAME','GRACE','HEART','IVORY','JAZZY',
+  'KNIFE','LEMON','MAGIC','NERVE','OCEAN','PIANO','QUEST','RIVER','SOLAR','TIGER',
+  'ULTRA','VIVID','WHALE','XENON','YIELD','ZEBRA','AMBER','BLOOM','CHESS','DAISY',
+  'EMBER','FROST','GLOBE','HONEY','INDEX','JOINT','KARMA','LASER','MIMIC','NINJA',
+  'ORBIT','PIXEL','QUIRK','RADAR','STORM','TORCH','UNITY','VAPOR','WINDY','XYLOP',
+  'YACHT','ZONES','ALIEN','BLACK','CLOUD','DEPTH','EARTH','FENCE','GLASS','HAVEN',
+  'INPUT','JUDGE','KNEEL','LUNAR','MANOR','NIGHT','OLIVE','PLANT','QUEEN','RAVEN',
+  'SHINE','TREND','UNDER','VISIT','WATCH','EXTRA','YOUNG','AZURE','BERRY','CANDY',
+  'DELTA','EVENT','FALLS','GAMER','HORSE','IRONY','JEWEL','KINGS','LIGHT','MUSIC',
+  'NOVEL','OZONE','POWER','QUIET','RAISE','SPEED','TRIBE','USHER','VENUE','WORLD',
+  'ANGEL','BEACH','CLICK','DREAM','EXACT','FANCY','GREET','HYPER','IDEAL','JUICE',
+  'KNOWN','LUCKY','MARSH','NICHE','OFFER','PLAIN','RALLY','SCARF','TOWER','URGED',
+  'VIOLA','WRIST','EXPEL','YIKES','ZONAL','AGILE','BLEND','CHARM','DINER','EQUAL',
+  'FAIRY','GNOME','HOVER','IMPLY','JOKER','KNACK','LAVA','MANGO','NUDGE','OAKEN',
+  'PASTA','REIGN','SNACK','THORN','UNWED','VENOM','WOVEN','EXERT','YAWNS','ZINCS',
+];
+/* Valid guesses also includes words */
+var VALID = WORDS.slice();
+/* Add more valid 5-letter words */
+['ABOUT','ABOVE','ABUSE','ACTOR','ACUTE','ADMIT','ADOPT','ADULT','AFTER','AGAIN',
+ 'AGENT','AGREE','AHEAD','ALARM','ALBUM','ALERT','ALIKE','ALIVE','ALLEY','ALLOW',
+ 'ALONE','ALONG','ALTER','ANGEL','ANGER','ANGLE','ANGRY','ANIME','ANNEX','ANTSY',
+ 'AORTA','APACE','APART','APING','APRON','ARENA','ARGUE','ARISE','ARRAY','ARSON',
+ 'ASIDE','ASKED','ATLAS','ATTIC','AUDIO','AUDIT','AUGUR','AUNTS','AVAIL','AVERT',
+ 'AVOID','AWAKE','AWARD','AWARE','AWFUL','BAKED','BANJO','BASTE','BATTY','BEADY',
+ 'BLANK','BLAST','BLAZE','BLEAT','BLISS','BLOAT','BLOCK','BLOKE','BLOOD','BLOWN',
+ 'BLUES','BLUNT','BLURB','BLURT','BOARD','BOAST','BOGEY','BOGUS','BONES','BONUS',
+ 'BOOST','BOOTS','BOTCH','BOUND','BOXER','BRACE','BRAID','BRAKE','BRAND','BRASH',
+ 'BRAWL','BRAWN','BREAD','BREAK','BREED','BRIBE','BRIEF','BRISK','BROAD','BROOD',
+ 'BROOK','BROOM','BROWN','BRUSH','BUCKS','BUDDY','BUDGE','BUGGY','BUILT','BULGE',
+ 'BULLS','BUMPY','BUNCH','BURNS','BURST','BUYER','CABIN','CACHE','CADET','CAMEL',
+ 'CAMP','CARDS','CARGO','CARRY','CATCH','CAUSE','CEASE','CHAIN','CHAIR','CHALK',
+ 'CHAOS','CHASE','CHEAP','CHEAT','CHECK','CHEEK','CHEER','CHICK','CHIEF','CHILD',
+].forEach(function(w){if(VALID.indexOf(w)<0)VALID.push(w);});
+
+/* ── State ── */
+var target='',guesses=[],curGuess='',row=0,gameOver=false;
+var wins=0,streak=0,played=0;
+var kbState={}; /* letter → 'correct'|'present'|'absent' */
+
+function newGame(){
+  target=WORDS[Math.floor(Math.random()*WORDS.length)];
+  guesses=[]; curGuess=''; row=0; gameOver=false; kbState={};
+  played++;
+  document.getElementById('wg-played').textContent=played;
+  document.getElementById('wg-msg').textContent='Guess the 5-letter word!';
+  document.getElementById('share-btn').style.display='none';
+  renderBoard(); renderKbd();
+  SoundEngine.play('start');
+}
+
+/* ── Board ── */
+function renderBoard(){
+  var board=document.getElementById('wg-board');
+  board.innerHTML='';
+  for(var r=0;r<6;r++){
+    var rowEl=document.createElement('div');rowEl.className='wg-row';rowEl.id='row-'+r;
+    for(var c=0;c<5;c++){
+      var cell=document.createElement('div');cell.className='wg-cell';cell.id='cell-'+r+'-'+c;
+      if(r<guesses.length){
+        cell.textContent=guesses[r].letters[c];
+        cell.classList.add(guesses[r].result[c]);
+      } else if(r===row){
+        cell.textContent=curGuess[c]||'';
+        if(curGuess[c]) cell.classList.add('filled');
+      }
+      rowEl.appendChild(cell);
+    }
+    board.appendChild(rowEl);
+  }
+}
+
+function updateCurrentRow(){
+  for(var c=0;c<5;c++){
+    var cell=document.getElementById('cell-'+row+'-'+c);
+    if(!cell)return;
+    cell.className='wg-cell';
+    cell.textContent=curGuess[c]||'';
+    if(curGuess[c]) cell.classList.add('filled');
+  }
+}
+
+/* ── Keyboard ── */
+var ROWS_KEYS=[['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['ENTER','Z','X','C','V','B','N','M','⌫']];
+function renderKbd(){
+  var kbd=document.getElementById('wg-kbd');
+  kbd.innerHTML='';
+  ROWS_KEYS.forEach(function(row){
+    var rowEl=document.createElement('div');rowEl.className='kbd-row';
+    row.forEach(function(k){
+      var btn=document.createElement('button');
+      btn.className='kbd-key'+(k.length>1?' wide':'');
+      btn.textContent=k;
+      var st=kbState[k];
+      if(st) btn.classList.add(st);
+      btn.addEventListener('click',function(){handleKey(k);});
+      rowEl.appendChild(btn);
+    });
+    kbd.appendChild(rowEl);
+  });
+}
+
+/* ── Input ── */
+document.addEventListener('keydown',function(e){
+  if(gameOver)return;
+  if(e.key==='Enter') handleKey('ENTER');
+  else if(e.key==='Backspace') handleKey('⌫');
+  else if(/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+function handleKey(k){
+  if(gameOver)return;
+  if(k==='⌫'){
+    curGuess=curGuess.slice(0,-1);
+    SoundEngine.play('key');
+    updateCurrentRow();
+  } else if(k==='ENTER'){
+    submitGuess();
+  } else if(curGuess.length<5){
+    curGuess+=k;
+    SoundEngine.play('key');
+    updateCurrentRow();
+    /* bounce animation on cell */
+    var cell=document.getElementById('cell-'+row+'-'+(curGuess.length-1));
+    if(cell){cell.classList.remove('bounce');void cell.offsetWidth;cell.classList.add('bounce');}
+  }
+}
+
+function submitGuess(){
+  if(curGuess.length<5){
+    shakeRow(row);
+    setMsg('Not enough letters!'); SoundEngine.play('error');
+    return;
+  }
+  if(VALID.indexOf(curGuess)<0&&WORDS.indexOf(curGuess)<0){
+    shakeRow(row);
+    setMsg('Not in word list!'); SoundEngine.play('error');
+    return;
+  }
+  /* evaluate */
+  var result=evaluate(curGuess,target);
+  guesses.push({letters:curGuess.split(''),result:result});
+  /* update kb state */
+  curGuess.split('').forEach(function(l,i){
+    var prev=kbState[l];
+    if(result[i]==='correct') kbState[l]='correct';
+    else if(result[i]==='present'&&prev!=='correct') kbState[l]='present';
+    else if(!prev) kbState[l]='absent';
+  });
+  row++;
+  /* flip animation then check win */
+  flipRow(row-1,result,function(){
+    renderKbd();
+    var won=result.every(function(r){return r==='correct';});
+    if(won){
+      wins++;streak++;
+      document.getElementById('wg-wins').textContent=wins;
+      document.getElementById('wg-streak').textContent=streak;
+      var reward=Math.max(5,(7-row)*5); /* 30,25,20,15,10,5 based on tries */
+      SoundEngine.play('success');
+      setMsg(['Genius!','Magnificent!','Impressive!','Splendid!','Great!','Phew!'][row-1]||'Nice!');
+      CoinEngine.add(reward,'Word Guess — solved in '+row,'📝');
+      CoinEngine.recordGame('wordguess',reward,true,{tries:row});
+      CoinEngine.toast('+'+reward+' 🪙 Solved in '+row+'!','success');
+      gameOver=true;
+      document.getElementById('share-btn').style.display='block';
+    } else if(row===6){
+      streak=0;
+      document.getElementById('wg-streak').textContent=0;
+      SoundEngine.play('gameover');
+      setMsg('Answer was: '+target);
+      CoinEngine.recordGame('wordguess',0,false,{});
+      gameOver=true;
+      document.getElementById('share-btn').style.display='block';
+    } else {
+      curGuess='';
+      setMsg('');
+      renderBoard();
+    }
+  });
+}
+
+function evaluate(guess,target){
+  var result=Array(5).fill('absent');
+  var tChars=target.split('');
+  var used=Array(5).fill(false);
+  /* First pass: correct */
+  for(var i=0;i<5;i++){
+    if(guess[i]===tChars[i]){result[i]='correct';used[i]=true;}
+  }
+  /* Second pass: present */
+  for(var i=0;i<5;i++){
+    if(result[i]==='correct')continue;
+    for(var j=0;j<5;j++){
+      if(!used[j]&&guess[i]===tChars[j]){result[i]='present';used[j]=true;break;}
+    }
+  }
+  return result;
+}
+
+function flipRow(r,result,callback){
+  var cells=[];
+  for(var c=0;c<5;c++) cells.push(document.getElementById('cell-'+r+'-'+c));
+  cells.forEach(function(cell,i){
+    setTimeout(function(){
+      cell.style.transition='none';
+      cell.classList.add('flip');
+      setTimeout(function(){
+        cell.className='wg-cell '+result[i];
+      },250);
+    },i*120);
+  });
+  setTimeout(callback,(4*120)+400);
+}
+
+function shakeRow(r){
+  var rowEl=document.getElementById('row-'+r);
+  if(!rowEl)return;
+  for(var c=0;c<5;c++){
+    var cell=document.getElementById('cell-'+r+'-'+c);
+    if(cell){cell.classList.remove('shake');void cell.offsetWidth;cell.classList.add('shake');}
+  }
+}
+
+function setMsg(msg){document.getElementById('wg-msg').textContent=msg;}
+
+function doShare(){
+  var emoji=guesses.map(function(g){
+    return g.result.map(function(r){return r==='correct'?'🟩':r==='present'?'🟨':'⬛';}).join('');
+  }).join('\n');
+  var txt='📝 Word Guess '+row+'/6\n'+emoji+'\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Word Guess',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+newGame();
+</script>
+</body>
+</html>

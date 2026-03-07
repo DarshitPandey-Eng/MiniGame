@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pong — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-a);}
+.pong-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;padding:0 8px 16px;}
+#pcv{display:block;border-radius:10px;border:2px solid var(--line2);touch-action:none;}
+.pong-info{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;}
+.pong-score-box{display:flex;align-items:center;gap:8px;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px 16px;}
+.pong-score{font-family:var(--font-display);font-size:2rem;color:var(--neon-a);line-height:1;width:28px;text-align:center;}
+.pong-sep{font-family:var(--font-display);font-size:1.2rem;color:var(--muted);}
+.pong-lbl{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.1em;}
+.pong-hint{font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;line-height:1.7;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>PONG</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:12px;align-items:center;">
+<div class="pong-wrap">
+
+  <div class="pong-info">
+    <div>
+      <div class="pong-lbl" style="text-align:center;">YOU</div>
+      <div class="pong-score" id="p1-score">0</div>
+    </div>
+    <div class="pong-sep">—</div>
+    <div>
+      <div class="pong-lbl" style="text-align:center;">CPU</div>
+      <div class="pong-score" id="p2-score">0</div>
+    </div>
+  </div>
+
+  <canvas id="pcv"></canvas>
+
+  <div class="pong-hint">
+    📱 Drag anywhere on screen to move your paddle<br>
+    🖥 Move mouse to control · First to 7 wins!
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-a)" onclick="startGame()">▶ START (🪙 5)</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" onclick="doShare()">📤 Share</button>
+  </div>
+
+</div>
+</div>
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+var cv=document.getElementById('pcv');
+var ctx=cv.getContext('2d');
+var DPR=Math.min(window.devicePixelRatio||1,2);
+var W,H,alive=false,rafId;
+
+function initCanvas(){
+  var maxW=Math.min(window.innerWidth-20,480);
+  W=maxW; H=Math.round(W*0.65);
+  cv.style.width=W+'px'; cv.style.height=H+'px';
+  cv.width=W*DPR; cv.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+initCanvas();
+window.addEventListener('resize',function(){initCanvas();if(!alive)drawIdle();});
+
+/* ── Game objects ── */
+var PH=H*0.18, PW=10, BALL_R=7;
+var p1={y:H/2-PH/2, score:0};
+var p2={y:H/2-PH/2, score:0};
+var ball={x:W/2,y:H/2,vx:3.5,vy:2.5};
+var WIN_SCORE=7;
+var mouseY=H/2, lastTouchY=H/2;
+var gameOver=false;
+
+function resetBall(dir){
+  ball.x=W/2; ball.y=H/2;
+  var spd=4+Math.min((p1.score+p2.score)*0.15,3);
+  ball.vx=(dir||1)*spd;
+  ball.vy=(Math.random()-0.5)*spd*0.9;
+}
+
+function startGame(){
+  if(!CoinEngine.spend(5)){CoinEngine.toast('Not enough coins!','warn');return;}
+  p1.score=0;p2.score=0;p1.y=H/2-PH*0.5;p2.y=H/2-PH*0.5;
+  gameOver=false;
+  document.getElementById('p1-score').textContent=0;
+  document.getElementById('p2-score').textContent=0;
+  SoundEngine.play('start');
+  SoundEngine.playBGM('reaction');
+  resetBall(1); alive=true;
+  cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(loop);
+}
+
+/* ── AI ── */
+var aiErr=0, aiErrTimer=0;
+function updateAI(){
+  /* Imperfect AI: occasionally adds error */
+  if(--aiErrTimer<=0){aiErr=(Math.random()-0.5)*PH*0.8;aiErrTimer=40+Math.random()*60;}
+  var target=ball.y+aiErr;
+  var diff=target-(p2.y+PH/2);
+  var spd=Math.min(4+p2.score*0.2,7);
+  if(Math.abs(diff)>spd) p2.y+=diff>0?spd:-spd;
+  p2.y=Math.max(0,Math.min(H-PH,p2.y));
+}
+
+/* ── Loop ── */
+function loop(){
+  if(!alive){return;}
+  rafId=requestAnimationFrame(loop);
+  /* Move player paddle */
+  var target=mouseY-PH/2;
+  p1.y+=(target-p1.y)*0.18;
+  p1.y=Math.max(0,Math.min(H-PH,p1.y));
+  updateAI();
+  /* Ball movement */
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  /* Top/bottom wall */
+  if(ball.y-BALL_R<=0){ball.y=BALL_R;ball.vy=Math.abs(ball.vy);SoundEngine.play('wall');}
+  if(ball.y+BALL_R>=H){ball.y=H-BALL_R;ball.vy=-Math.abs(ball.vy);SoundEngine.play('wall');}
+  /* Paddle collisions */
+  /* Player (left) */
+  if(ball.vx<0&&ball.x-BALL_R<=PW+8&&ball.x-BALL_R>0){
+    if(ball.y>=p1.y&&ball.y<=p1.y+PH){
+      ball.vx=Math.abs(ball.vx)*1.04;
+      var rel=(ball.y-(p1.y+PH/2))/(PH/2);
+      ball.vy=rel*6;
+      SoundEngine.play('paddle');
+    }
+  }
+  /* CPU (right) */
+  if(ball.vx>0&&ball.x+BALL_R>=W-PW-8&&ball.x+BALL_R<W){
+    if(ball.y>=p2.y&&ball.y<=p2.y+PH){
+      ball.vx=-Math.abs(ball.vx)*1.04;
+      var rel=(ball.y-(p2.y+PH/2))/(PH/2);
+      ball.vy=rel*6;
+      SoundEngine.play('paddle');
+    }
+  }
+  /* Speed cap */
+  var spd=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
+  if(spd>14){ball.vx=ball.vx/spd*14;ball.vy=ball.vy/spd*14;}
+  /* Scoring */
+  if(ball.x<0){
+    p2.score++;document.getElementById('p2-score').textContent=p2.score;
+    SoundEngine.play('gameover');
+    if(p2.score>=WIN_SCORE){endGame(false);return;}
+    resetBall(1);
+  }
+  if(ball.x>W){
+    p1.score++;document.getElementById('p1-score').textContent=p1.score;
+    SoundEngine.play('score');
+    if(p1.score>=WIN_SCORE){endGame(true);return;}
+    resetBall(-1);
+  }
+  draw();
+}
+
+function endGame(playerWon){
+  alive=false; gameOver=true;
+  SoundEngine.stopBGM();
+  if(playerWon){
+    SoundEngine.play('success');
+    var reward=p1.score*3;
+    CoinEngine.add(reward,'Pong — win '+p1.score+'-'+p2.score,'🏓');
+    CoinEngine.recordGame('pong',reward,true,{score:p1.score});
+    CoinEngine.toast('+'+reward+' 🪙 You win!','success');
+  } else {
+    SoundEngine.play('gameover');
+    CoinEngine.recordGame('pong',0,false,{});
+    CoinEngine.toast('CPU wins! Try again.','warn');
+  }
+  draw();
+  /* Show winner message on canvas */
+  ctx.fillStyle=playerWon?'rgba(0,230,118,.2)':'rgba(255,45,120,.2)';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=playerWon?'#00e676':'#ff2d78';
+  ctx.font='bold '+(W*0.1)+'px monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(playerWon?'YOU WIN!':'CPU WINS!',W/2,H/2);
+}
+
+/* ── Draw ── */
+function draw(){
+  var isDark=CoinEngine.getTheme()==='dark';
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
+  ctx.fillRect(0,0,W,H);
+  /* center line */
+  ctx.strokeStyle=isDark?'rgba(255,255,255,.08)':'rgba(0,0,0,.08)';
+  ctx.setLineDash([8,8]); ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+  ctx.setLineDash([]);
+  /* paddles */
+  function drawPaddle(x,y,color){
+    ctx.shadowColor=color;ctx.shadowBlur=10;
+    ctx.fillStyle=color;
+    ctx.beginPath();ctx.roundRect(x,y,PW,PH,5);ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  drawPaddle(4,p1.y,isDark?'#00e5ff':'#0070cc');
+  drawPaddle(W-PW-4,p2.y,isDark?'#ff2d78':'#cc0050');
+  /* ball */
+  ctx.shadowColor=isDark?'#ffe135':'#cc8800';ctx.shadowBlur=12;
+  ctx.fillStyle=isDark?'#ffe135':'#cc8800';
+  ctx.beginPath();ctx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+}
+
+function drawIdle(){
+  var isDark=CoinEngine.getTheme()==='dark';
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=isDark?'rgba(255,255,255,.15)':'rgba(0,0,0,.15)';
+  ctx.font='bold '+(W*0.06)+'px monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('TAP START TO PLAY',W/2,H/2);
+}
+
+/* ── Mouse / Touch ── */
+cv.addEventListener('mousemove',function(e){
+  var rect=cv.getBoundingClientRect();
+  mouseY=e.clientY-rect.top;
+});
+cv.addEventListener('touchstart',function(e){e.preventDefault();lastTouchY=e.touches[0].clientY;},{passive:false});
+cv.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  var dy=e.touches[0].clientY-lastTouchY;
+  mouseY=Math.max(0,Math.min(H,mouseY+dy));
+  lastTouchY=e.touches[0].clientY;
+},{passive:false});
+
+/* Also allow tapping anywhere on body to move paddle */
+document.addEventListener('touchmove',function(e){
+  if(!alive)return;
+  var rect=cv.getBoundingClientRect();
+  mouseY=e.touches[0].clientY-rect.top;
+},{passive:true});
+
+function doShare(){
+  var txt='🏓 Pong score: '+p1.score+'-'+p2.score+' on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+initCanvas(); drawIdle();
+</script>
+</body>
+</html>

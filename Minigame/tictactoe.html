@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tic Tac Toe — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-b);}
+.ttt-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:380px;padding:0 12px;}
+.ttt-status{font-family:var(--font-display);font-size:1.2rem;letter-spacing:.06em;color:var(--text);text-align:center;min-height:2rem;display:flex;align-items:center;justify-content:center;}
+.ttt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:320px;}
+.ttt-cell{
+  aspect-ratio:1;border-radius:12px;border:2px solid var(--line2);
+  background:var(--card-bg);display:flex;align-items:center;justify-content:center;
+  font-size:clamp(2.4rem,12vw,3.5rem);font-family:var(--font-display);
+  cursor:pointer;transition:all .12s;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;
+}
+.ttt-cell:hover:not(.taken){background:color-mix(in srgb,var(--neon-a) 8%,var(--card-bg));border-color:var(--neon-a);}
+.ttt-cell:active:not(.taken){transform:scale(.94);}
+.ttt-cell.x{color:var(--neon-b);border-color:color-mix(in srgb,var(--neon-b) 40%,transparent);
+  text-shadow:0 0 20px color-mix(in srgb,var(--neon-b) 50%,transparent);}
+.ttt-cell.o{color:var(--neon-c);border-color:color-mix(in srgb,var(--neon-c) 40%,transparent);
+  text-shadow:0 0 20px color-mix(in srgb,var(--neon-c) 50%,transparent);}
+.ttt-cell.win{background:color-mix(in srgb,var(--neon-d) 14%,var(--card-bg));border-color:var(--neon-d)!important;
+  animation:winPulse .5s ease both;}
+@keyframes winPulse{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+.ttt-cell.taken{cursor:default;}
+.score-bar{display:flex;gap:8px;width:100%;max-width:320px;}
+.score-box{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;
+  padding:8px;text-align:center;}
+.score-box .sv{font-family:var(--font-display);font-size:1.6rem;color:var(--neon-a);}
+.score-box .sl{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;}
+.diff-row{display:flex;gap:6px;justify-content:center;}
+.diff-btn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 14px;
+  border-radius:6px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;}
+.diff-btn.on{border-color:var(--neon-b);color:var(--neon-b);
+  background:color-mix(in srgb,var(--neon-b) 12%,transparent);}
+.ttt-btn-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>TIC TAC TOE</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px;align-items:center;">
+<div class="ttt-wrap">
+
+  <!-- Score bar -->
+  <div class="score-bar">
+    <div class="score-box"><div class="sv" id="sw">0</div><div class="sl">YOU WIN</div></div>
+    <div class="score-box"><div class="sv" id="sd" style="color:var(--muted)">0</div><div class="sl">DRAW</div></div>
+    <div class="score-box"><div class="sv" id="sl2" style="color:var(--neon-b)">0</div><div class="sl">CPU WIN</div></div>
+  </div>
+
+  <!-- Difficulty -->
+  <div class="diff-row">
+    <button class="diff-btn on" id="d-easy"   onclick="setDiff('easy')">EASY</button>
+    <button class="diff-btn"   id="d-medium" onclick="setDiff('medium')">MEDIUM</button>
+    <button class="diff-btn"   id="d-hard"   onclick="setDiff('hard')">HARD</button>
+  </div>
+
+  <!-- Status -->
+  <div class="ttt-status" id="status">Tap a cell to start!</div>
+
+  <!-- Grid -->
+  <div class="ttt-grid" id="grid">
+    <div class="ttt-cell" data-i="0" onclick="tap(0)"></div>
+    <div class="ttt-cell" data-i="1" onclick="tap(1)"></div>
+    <div class="ttt-cell" data-i="2" onclick="tap(2)"></div>
+    <div class="ttt-cell" data-i="3" onclick="tap(3)"></div>
+    <div class="ttt-cell" data-i="4" onclick="tap(4)"></div>
+    <div class="ttt-cell" data-i="5" onclick="tap(5)"></div>
+    <div class="ttt-cell" data-i="6" onclick="tap(6)"></div>
+    <div class="ttt-cell" data-i="7" onclick="tap(7)"></div>
+    <div class="ttt-cell" data-i="8" onclick="tap(8)"></div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="ttt-btn-row">
+    <button class="btn filled" style="--c:var(--neon-b)" onclick="newGame()">▶ NEW GAME</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="shareScore('Tic Tac Toe',wins+' wins')" style="display:none">📤 Share</button>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+/* State */
+var board=Array(9).fill(null), human='X', ai='O', gameOver=false;
+var wins=0, draws=0, losses=0, diff='easy';
+
+var LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function setDiff(d){
+  diff=d;
+  ['easy','medium','hard'].forEach(function(x){
+    document.getElementById('d-'+x).className='diff-btn'+(d===x?' on':'');
+  });
+  newGame();
+}
+
+function newGame(){
+  board=Array(9).fill(null); gameOver=false;
+  document.querySelectorAll('.ttt-cell').forEach(function(c){
+    c.textContent=''; c.className='ttt-cell';
+  });
+  setStatus('Your turn — you are ✕');
+  SoundEngine.play('start');
+  document.getElementById('share-btn').style.display='none';
+}
+
+function setStatus(msg){document.getElementById('status').textContent=msg;}
+function cells(){return document.querySelectorAll('.ttt-cell');}
+function render(){
+  cells().forEach(function(c,i){
+    if(board[i]){
+      c.textContent=board[i]==='X'?'✕':'◯';
+      c.className='ttt-cell taken '+(board[i]==='X'?'x':'o');
+    }
+  });
+}
+
+function tap(i){
+  if(gameOver||board[i]) return;
+  board[i]=human;
+  SoundEngine.play('pop');
+  render();
+  var result=checkWin(board);
+  if(result){ endGame(result,true); return; }
+  if(isFull(board)){ endGame('draw',false); return; }
+  setStatus('CPU thinking…');
+  setTimeout(aiMove,diff==='hard'?200:diff==='medium'?150:100);
+}
+
+function aiMove(){
+  var idx;
+  if(diff==='easy') idx=randMove();
+  else if(diff==='medium') idx=mediumMove();
+  else idx=bestMove();
+  if(idx==null) return;
+  board[idx]=ai;
+  SoundEngine.play('click');
+  render();
+  var result=checkWin(board);
+  if(result){ endGame(result,false); return; }
+  if(isFull(board)){ endGame('draw',false); return; }
+  setStatus('Your turn — you are ✕');
+}
+
+function randMove(){ var e=board.map(function(v,i){return v?-1:i;}).filter(function(i){return i>=0;}); return e[Math.floor(Math.random()*e.length)]||null; }
+
+function mediumMove(){
+  /* block immediate wins, else random */
+  for(var i=0;i<9;i++){
+    if(!board[i]){ board[i]=ai; if(checkWin(board)){board[i]=null;return i;} board[i]=null; }
+  }
+  for(var i=0;i<9;i++){
+    if(!board[i]){ board[i]=human; if(checkWin(board)){board[i]=null;return i;} board[i]=null; }
+  }
+  return randMove();
+}
+
+function bestMove(){
+  var bestScore=-Infinity,bestIdx=0;
+  for(var i=0;i<9;i++){
+    if(!board[i]){
+      board[i]=ai;
+      var score=minimax(board,0,false,-Infinity,Infinity);
+      board[i]=null;
+      if(score>bestScore){bestScore=score;bestIdx=i;}
+    }
+  }
+  return bestIdx;
+}
+
+function minimax(b,depth,isMax,alpha,beta){
+  var w=checkWin(b);
+  if(w===ai) return 10-depth;
+  if(w===human) return depth-10;
+  if(isFull(b)) return 0;
+  if(isMax){
+    var best=-Infinity;
+    for(var i=0;i<9;i++){
+      if(!b[i]){b[i]=ai;var s=minimax(b,depth+1,false,alpha,beta);b[i]=null;best=Math.max(best,s);alpha=Math.max(alpha,best);if(beta<=alpha)break;}
+    }
+    return best;
+  } else {
+    var best=Infinity;
+    for(var i=0;i<9;i++){
+      if(!b[i]){b[i]=human;var s=minimax(b,depth+1,true,alpha,beta);b[i]=null;best=Math.min(best,s);beta=Math.min(beta,best);if(beta<=alpha)break;}
+    }
+    return best;
+  }
+}
+
+function checkWin(b){
+  for(var l=0;l<LINES.length;l++){
+    var a=LINES[l][0],bb=LINES[l][1],c=LINES[l][2];
+    if(b[a]&&b[a]===b[bb]&&b[a]===b[c]) return b[a];
+  }
+  return null;
+}
+function isFull(b){return b.every(function(v){return v!==null;});}
+
+function endGame(result,humanFirst){
+  gameOver=true;
+  var line=null;
+  for(var l=0;l<LINES.length;l++){
+    var a=LINES[l][0],b2=LINES[l][1],c=LINES[l][2];
+    if(board[a]&&board[a]===board[b2]&&board[a]===board[c]){line=LINES[l];break;}
+  }
+  if(line) line.forEach(function(i){cells()[i].classList.add('win');});
+
+  if(result==='draw'){
+    draws++;document.getElementById('sd').textContent=draws;
+    setStatus('🤝 Draw! Well played.');
+    SoundEngine.play('toggle');
+    CoinEngine.add(3,'Tic Tac Toe — draw','❎');
+    CoinEngine.recordGame('tictactoe',3,false,{});
+  } else if(result===human){
+    wins++;document.getElementById('sw').textContent=wins;
+    setStatus('🎉 You win!');
+    SoundEngine.play('success');
+    CoinEngine.add(12,'Tic Tac Toe — win','❎');
+    CoinEngine.recordGame('tictactoe',12,true,{});
+    CoinEngine.toast('+12 🪙 You win!','success');
+  } else {
+    losses++;document.getElementById('sl2').textContent=losses;
+    setStatus('😔 CPU wins. Try again!');
+    SoundEngine.play('gameover');
+    CoinEngine.recordGame('tictactoe',0,false,{});
+  }
+  document.getElementById('share-btn').style.display='block';
+}
+
+newGame();
+
+function shareScore(game,val){
+  var txt='❎ I got '+val+' playing '+game+' on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+</script>
+</body>
+</html>

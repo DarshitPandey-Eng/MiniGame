@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tower of Hanoi — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-e);}
+.hanoi-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:500px;padding:0 10px;}
+#hcv{display:block;touch-action:none;cursor:pointer;border-radius:8px;}
+.h-stats{display:flex;gap:8px;width:100%;}
+.h-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px;text-align:center;}
+.h-stat .v{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-e);}
+.h-stat .l{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.1em;}
+.h-hint{font-family:var(--font-mono);font-size:.62rem;color:var(--muted);text-align:center;line-height:1.7;}
+.level-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;}
+.lvl-btn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:6px 12px;
+  border-radius:6px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;}
+.lvl-btn.on{border-color:var(--neon-e);color:var(--neon-e);background:color-mix(in srgb,var(--neon-e) 12%,transparent);}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-e);box-shadow:0 0 8px var(--neon-e)"></span>TOWER OF HANOI</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+<div class="page" style="padding-top:14px;align-items:center;">
+<div class="hanoi-wrap">
+
+  <div class="h-stats">
+    <div class="h-stat"><div class="v" id="h-moves">0</div><div class="l">MOVES</div></div>
+    <div class="h-stat"><div class="v" id="h-opt" style="color:var(--muted)">0</div><div class="l">OPTIMAL</div></div>
+    <div class="h-stat"><div class="v" id="h-best" style="color:var(--neon-c)">—</div><div class="l">BEST</div></div>
+  </div>
+
+  <div class="level-row">
+    <button class="lvl-btn" id="l3" onclick="setDiscs(3)">3 DISCS</button>
+    <button class="lvl-btn on" id="l4" onclick="setDiscs(4)">4 DISCS</button>
+    <button class="lvl-btn" id="l5" onclick="setDiscs(5)">5 DISCS</button>
+    <button class="lvl-btn" id="l6" onclick="setDiscs(6)">6 DISCS</button>
+    <button class="lvl-btn" id="l7" onclick="setDiscs(7)">7 DISCS</button>
+  </div>
+
+  <div style="font-family:var(--font-display);font-size:.9rem;color:var(--text2);text-align:center;min-height:1.4rem;" id="h-status">Tap a peg to select, tap again to move</div>
+
+  <canvas id="hcv"></canvas>
+
+  <div class="h-hint">
+    🎯 Move all discs to the rightmost peg<br>
+    · Only one disc at a time · Smaller disc always on top
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn filled" style="--c:var(--neon-e)" onclick="newGame()">▶ RESET</button>
+    <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="doShare()">📤 Share</button>
+  </div>
+
+</div>
+</div>
+<script>
+/* Theme */
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();draw();});  _sT();
+
+var cv=document.getElementById('hcv');
+var ctx=cv.getContext('2d');
+var DPR=Math.min(window.devicePixelRatio||1,2);
+
+var PEGS=3, N=4, pegs=[[],[],[]], selected=-1, moves=0, best={}, gameWon=false;
+var DISC_COLORS=['#ff2d78','#ff6b35','#ffe135','#00e676','#00e5ff','#bf5af2','#ff9900'];
+
+function calcSize(){
+  var w=Math.min(window.innerWidth-24,480);
+  return {w:w, h:Math.min(w*0.55,240)};
+}
+
+function initCanvas(){
+  var sz=calcSize();
+  cv.style.width=sz.w+'px'; cv.style.height=sz.h+'px';
+  cv.width=sz.w*DPR; cv.height=sz.h*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+initCanvas();
+window.addEventListener('resize',function(){initCanvas();draw();});
+
+function setDiscs(n){
+  N=n;
+  ['3','4','5','6','7'].forEach(function(x){
+    document.getElementById('l'+x).className='lvl-btn'+(x==n?' on':'');
+  });
+  newGame();
+}
+
+function newGame(){
+  pegs=[[],[],[]]; selected=-1; moves=0; gameWon=false;
+  for(var i=N-1;i>=0;i--) pegs[0].push(i); // largest at bottom
+  var opt=Math.pow(2,N)-1;
+  document.getElementById('h-moves').textContent=0;
+  document.getElementById('h-opt').textContent=opt;
+  setStatus('Tap a peg to select');
+  draw();
+  SoundEngine.play('start');
+}
+
+function setStatus(msg){document.getElementById('h-status').textContent=msg;}
+
+/* Tap handling */
+function pegFromX(x){
+  var sz=calcSize();
+  var seg=sz.w/PEGS;
+  return Math.min(PEGS-1,Math.max(0,Math.floor(x/seg)));
+}
+
+cv.addEventListener('click',function(e){
+  if(gameWon)return;
+  var rect=cv.getBoundingClientRect();
+  var x=e.clientX-rect.left;
+  var peg=pegFromX(x);
+  handleTap(peg);
+});
+cv.addEventListener('touchend',function(e){
+  e.preventDefault();
+  if(gameWon)return;
+  var rect=cv.getBoundingClientRect();
+  var t=e.changedTouches[0];
+  var peg=pegFromX(t.clientX-rect.left);
+  handleTap(peg);
+},{passive:false});
+cv.addEventListener('touchstart',function(e){e.preventDefault();},{passive:false});
+
+function handleTap(peg){
+  if(selected===-1){
+    if(pegs[peg].length===0){setStatus('That peg is empty!');SoundEngine.play('buzz');return;}
+    selected=peg;
+    setStatus('Selected peg '+(peg+1)+'  — now tap destination');
+    SoundEngine.play('flip');
+    draw();
+  } else {
+    if(peg===selected){selected=-1;setStatus('Deselected');draw();return;}
+    /* try move */
+    var disc=pegs[selected][pegs[selected].length-1];
+    var top=pegs[peg].length?pegs[peg][pegs[peg].length-1]:999;
+    if(disc<top){
+      pegs[peg].push(pegs[selected].pop());
+      moves++;
+      document.getElementById('h-moves').textContent=moves;
+      SoundEngine.play('match');
+      selected=-1;
+      draw();
+      /* check win */
+      if(pegs[2].length===N){
+        gameWon=true;
+        var opt=Math.pow(2,N)-1;
+        var perfect=moves===opt;
+        var reward=perfect?N*12:N*6;
+        CoinEngine.add(reward,'Tower of Hanoi — '+(perfect?'perfect':'solved'),'🗼');
+        CoinEngine.recordGame('hanoi',reward,true,{});
+        SoundEngine.play('success');
+        var bk='hanoi_best_'+N;
+        var prev=parseInt(localStorage.getItem(bk)||'0');
+        if(!prev||moves<prev){localStorage.setItem(bk,moves);}
+        document.getElementById('h-best').textContent=localStorage.getItem(bk)||moves;
+        setStatus(perfect?'🏆 Perfect! +'+reward+' 🪙 (Optimal solution!)':'🎉 Solved! +'+reward+' 🪙');
+        CoinEngine.toast('+'+reward+' 🪙 '+(perfect?'Perfect!':'Solved!'),'success');
+      } else {
+        setStatus('Move '+(moves)+' — keep going!');
+      }
+    } else {
+      SoundEngine.play('buzz');
+      setStatus('❌ Can\'t place larger disc on smaller!');
+      selected=-1;draw();
+    }
+  }
+}
+
+function draw(){
+  var sz=calcSize(), W=sz.w, H=sz.h;
+  var isDark=CoinEngine.getTheme()==='dark';
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
+  ctx.fillRect(0,0,W,H);
+
+  /* base */
+  ctx.fillStyle=isDark?'#1a1a30':'#d0d0e8';
+  ctx.fillRect(0,H-18,W,18);
+
+  var pegW=8, pegH=H-22;
+  var maxDiscW=W/PEGS*0.82;
+  var discH=Math.max(14,Math.floor((pegH-20)/(N+1)));
+
+  for(var p=0;p<PEGS;p++){
+    var pegX=W/PEGS*(p+0.5);
+    /* peg rod */
+    ctx.fillStyle=selected===p?(isDark?'#ffe135':'#cc9900'):isDark?'rgba(255,255,255,.25)':'rgba(0,0,0,.25)';
+    if(selected===p){ctx.shadowColor='#ffe135';ctx.shadowBlur=12;}
+    ctx.fillRect(pegX-pegW/2, 14, pegW, pegH);
+    ctx.shadowBlur=0;
+
+    /* peg label */
+    ctx.fillStyle=selected===p?'#ffe135':isDark?'rgba(255,255,255,.3)':'rgba(0,0,0,.3)';
+    ctx.font='bold 11px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p+1,pegX,8);
+
+    /* discs */
+    for(var d=0;d<pegs[p].length;d++){
+      var discIdx=pegs[p][d]; /* 0=smallest */
+      var w=((N-discIdx)/(N))*maxDiscW+discH;
+      var y=H-18-(d+1)*discH-2;
+      var r=discH/2;
+      var col=DISC_COLORS[discIdx%DISC_COLORS.length];
+
+      ctx.shadowColor=col; ctx.shadowBlur=6;
+      ctx.fillStyle=col;
+      roundRect(ctx,pegX-w/2,y,w,discH-3,r);
+      ctx.shadowBlur=0;
+
+      /* shine */
+      ctx.fillStyle='rgba(255,255,255,0.2)';
+      roundRect(ctx,pegX-w/2+4,y+2,w-8,Math.max(3,discH*0.3),2);
+    }
+  }
+
+  /* win highlight */
+  if(gameWon){
+    ctx.fillStyle='rgba(0,230,118,.08)';
+    ctx.fillRect(0,0,W,H);
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+}
+
+function doShare(){
+  var txt='🗼 I solved Tower of Hanoi ('+N+' discs) in '+moves+' moves on Arcade Zone!\nPlay free: '+window.location.origin;
+  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+/* Load best */
+function loadBest(){
+  var v=localStorage.getItem('hanoi_best_'+N);
+  document.getElementById('h-best').textContent=v||'—';
+}
+
+setDiscs(4);
+</script>
+</body>
+</html>
