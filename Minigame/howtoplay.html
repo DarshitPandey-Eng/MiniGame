@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Play — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root{--accent:var(--neon-a);}
+
+/* ── Search + filter bar ── */
+.htp-search{width:min(520px,92vw);position:relative;margin:0 auto 16px;}
+.htp-search input{width:100%;box-sizing:border-box;padding:11px 14px 11px 40px;
+  background:var(--card-bg);border:1.5px solid var(--line2);border-radius:10px;
+  color:var(--text);font-family:var(--font-mono);font-size:.8rem;outline:none;
+  transition:border-color .15s;}
+.htp-search input:focus{border-color:var(--neon-a);}
+.htp-search .si{position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;}
+
+/* ── Category tabs ── */
+.htp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;}
+.htp-tab{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 14px;
+  border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
+  cursor:pointer;transition:all .12s;}
+.htp-tab.on{border-color:var(--neon-a);color:var(--neon-a);
+  background:color-mix(in srgb,var(--neon-a) 10%,transparent);}
+
+/* ── Game card ── */
+.htp-card{background:var(--card-bg);border:1px solid var(--line2);border-radius:14px;
+  overflow:hidden;margin-bottom:12px;transition:border-color .15s;}
+.htp-card:hover{border-color:var(--ca,var(--neon-a));}
+.htp-header{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;
+  transition:background .12s;user-select:none;}
+.htp-header:hover{background:var(--card-hover);}
+.htp-icon{font-size:2rem;flex-shrink:0;line-height:1;}
+.htp-title-wrap{flex:1;}
+.htp-name{font-family:var(--font-ui);font-size:1rem;font-weight:700;color:var(--text);}
+.htp-tagline{font-family:var(--font-mono);font-size:.58rem;color:var(--muted);margin-top:3px;}
+.htp-badges{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;}
+.htp-badge{font-family:var(--font-mono);font-size:.44rem;font-weight:700;
+  padding:3px 8px;border-radius:5px;}
+.htp-badge.cost{background:color-mix(in srgb,var(--neon-c) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--neon-c) 22%,transparent);color:var(--neon-c);}
+.htp-badge.free{background:color-mix(in srgb,var(--neon-d) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--neon-d) 22%,transparent);color:var(--neon-d);}
+.htp-badge.diff{background:color-mix(in srgb,var(--ca,var(--neon-a)) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--ca,var(--neon-a)) 18%,transparent);
+  color:var(--ca,var(--neon-a));}
+.htp-chevron{font-size:1rem;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.htp-card.open .htp-chevron{transform:rotate(90deg);}
+
+/* ── Body ── */
+.htp-body{display:none;padding:0 20px 20px;border-top:1px solid var(--line);}
+.htp-card.open .htp-body{display:block;}
+
+/* ── Sections inside body ── */
+.htp-section{margin-top:14px;}
+.htp-section-title{font-family:var(--font-mono);font-size:.52rem;font-weight:800;
+  letter-spacing:.16em;color:var(--muted);margin-bottom:8px;}
+
+/* ── Controls grid ── */
+.ctrl-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.ctrl-key{display:inline-flex;align-items:center;gap:7px;}
+.ctrl-k{font-family:var(--font-mono);font-size:.68rem;font-weight:700;
+  background:var(--bg2);border:1.5px solid var(--line2);border-radius:7px;
+  padding:5px 10px;color:var(--text);white-space:nowrap;
+  box-shadow:0 2px 0 var(--line2);}
+.ctrl-v{font-family:var(--font-mono);font-size:.6rem;color:var(--text2);}
+
+/* ── Tips list ── */
+.tips-list{list-style:none;}
+.tips-list li{font-family:var(--font-mono);font-size:.64rem;color:var(--text2);
+  padding:5px 0;border-bottom:1px solid var(--line);line-height:1.6;}
+.tips-list li:last-child{border-bottom:none;}
+.tips-list li::before{content:"💡 ";margin-right:2px;}
+
+/* ── Rewards row ── */
+.reward-row{display:flex;align-items:center;gap:8px;background:var(--bg2);
+  border-radius:9px;padding:10px 14px;margin-top:6px;}
+.reward-icon{font-size:1.2rem;flex-shrink:0;}
+.reward-text{font-family:var(--font-mono);font-size:.64rem;color:var(--text2);line-height:1.5;}
+
+/* ── Play button ── */
+.htp-play-btn{display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--font-mono);font-size:.7rem;font-weight:800;
+  padding:10px 22px;border-radius:10px;border:none;
+  background:var(--ca,var(--neon-a));color:#000;cursor:pointer;
+  text-decoration:none;margin-top:14px;transition:filter .12s;}
+.htp-play-btn:hover{filter:brightness(1.15);}
+
+.htp-wrap{max-width:720px;width:100%;padding:0 14px 32px;}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>HOW TO PLAY</div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px;align-items:center;">
+<div class="htp-wrap">
+
+  <div style="font-family:var(--font-display);font-size:clamp(2rem,8vw,3.5rem);color:var(--neon-a);
+    letter-spacing:.06em;margin-bottom:6px;">HOW TO PLAY</div>
+  <p style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin-bottom:18px;">
+    Click any game to expand its guide · Controls, tips, and coin rewards
+  </p>
+
+  <div class="htp-search">
+    <span class="si">🔍</span>
+    <input type="text" placeholder="Search games…" id="htp-q" oninput="filterCards(this.value)">
+  </div>
+
+  <div class="htp-tabs">
+    <button class="htp-tab on" onclick="setTab('all',this)">🎮 All</button>
+    <button class="htp-tab" onclick="setTab('classic',this)">🕹 Classic</button>
+    <button class="htp-tab" onclick="setTab('board',this)">🎲 Board</button>
+    <button class="htp-tab" onclick="setTab('puzzle',this)">🧩 Puzzle</button>
+    <button class="htp-tab" onclick="setTab('skill',this)">⚡ Skill</button>
+  </div>
+
+  <div id="htp-list"></div>
+
+</div>
+</div>
+
+<script>
+var _tb=document.getElementById('tb');
+function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+
+var GAMES=[
+  {id:'asteroids',icon:'🚀',name:'Asteroids',cat:'classic',ca:'var(--neon-a)',cost:10,diff:'Hard',
+    tagline:'Space shooter — blast rocks, dodge UFOs',
+    objective:'Destroy all asteroids before they destroy you. Large rocks break into smaller pieces. Survive as long as possible and rack up the highest score.',
+    controls:[
+      {k:'← →',v:'Rotate ship'},
+      {k:'↑ / W',v:'Thrust forward'},
+      {k:'Space',v:'Fire bullet'},
+      {k:'Shift / ↓',v:'Hyperspace jump'},
+      {k:'P',v:'Pause'},
+    ],
+    tips:['Large rocks = 20 pts, medium = 50 pts, small = 100 pts','UFO appears from Level 2 — worth 200 pts but it shoots back!','Hyperspace teleports you randomly — great escape but risky','Build speed for momentum; tap thrust to brake','On mobile: use the virtual D-pad shown below the canvas'],
+    reward:'Score × 0.08 coins (e.g. score 500 = 40 🪙)',
+  },
+  {id:'tetris',icon:'🟦',name:'Tetris',cat:'classic',ca:'var(--neon-a)',cost:10,diff:'Medium',
+    tagline:'Stack blocks, clear lines, score big',
+    objective:'Fit falling tetrominoes together to clear horizontal lines. The game ends when pieces stack to the top. Clear multiple lines at once for huge bonuses.',
+    controls:[{k:'← →',v:'Move piece'},{k:'↑',v:'Rotate'},{k:'↓',v:'Soft drop'},{k:'Space',v:'Hard drop'},{k:'P',v:'Pause'}],
+    tips:['Clear 4 lines at once (Tetris) for maximum points','Build a well on one side for I-pieces','Hard drop scores 2× vs soft drop','Swipe on mobile to move/rotate','Pieces speed up every 10 lines'],
+    reward:'Score × 0.012 coins',
+  },
+  {id:'breakout',icon:'🟠',name:'Breakout',cat:'classic',ca:'var(--neon-f)',cost:10,diff:'Medium',
+    tagline:'Smash every brick with your paddle',
+    objective:'Bounce the ball using your paddle to destroy all bricks. Don\'t let the ball fall past the bottom!',
+    controls:[{k:'← → / Mouse',v:'Move paddle'},{k:'Space',v:'Launch ball'},{k:'P',v:'Pause'}],
+    tips:['Aim for corners to create chain reactions','Hit the top rows first — they\'re worth more','Gold bricks may take 2 hits','The ball speeds up as you clear rows'],
+    reward:'Score × 0.05 coins',
+  },
+  {id:'flappy',icon:'🐦',name:'Flappy Bird',cat:'classic',ca:'var(--neon-d)',cost:10,diff:'Hard',
+    tagline:'Tap to fly, every gap counts',
+    objective:'Tap to make the bird flap and keep it flying through pipe gaps. Each gap you clear adds 1 to your score.',
+    controls:[{k:'Space / Tap',v:'Flap (apply upward force)'}],
+    tips:['Short rapid taps give more control than holding','Aim for the dead center of each gap','The sweet spot rhythm is about 2–3 taps per second','Watch the pipe ahead, not the bird'],
+    reward:'Score × 3 coins (score 5 = 15 🪙)',
+  },
+  {id:'pong',icon:'🏓',name:'Pong',cat:'classic',ca:'var(--neon-a)',cost:5,diff:'Medium',
+    tagline:'Classic paddle duel vs the CPU',
+    objective:'First to 7 points wins. Hit the ball past the CPU paddle. The CPU gets faster as the score climbs.',
+    controls:[{k:'↑ ↓ / W S',v:'Move your paddle'},{k:'Swipe',v:'Move paddle (mobile)'}],
+    tips:['Aim at the edges of the CPU paddle to beat it','The CPU has a tiny reaction delay — exploit it early','Hit the ball with the edges of your paddle to angle it','Don\'t chase every ball — stay central'],
+    reward:'Score × 3 coins per win',
+  },
+  {id:'tictactoe',icon:'❎',name:'Tic Tac Toe',cat:'board',ca:'var(--neon-b)',cost:0,diff:'Easy',
+    tagline:'3-in-a-row vs unbeatable AI',
+    objective:'Place your marks to get 3 in a row — horizontally, vertically, or diagonally — before the AI does.',
+    controls:[{k:'Click/Tap',v:'Place your mark'}],
+    tips:['Easy mode makes random moves','Medium mode is smart but beatable','Hard mode uses Minimax — a draw is the best you can get','Always try to take the center on your first move','Corner openings are the strongest plays'],
+    reward:'Win = 12 🪙, Draw = 3 🪙',
+  },
+  {id:'connect4',icon:'🟡',name:'Connect Four',cat:'board',ca:'var(--neon-f)',cost:5,diff:'Medium',
+    tagline:'Drop pieces, get 4 in a row',
+    objective:'Drop coloured discs into the grid to get 4 in a row before your opponent. Pieces fall to the lowest available row.',
+    controls:[{k:'Click column',v:'Drop piece'},{k:'Tap column',v:'Drop piece (mobile)'}],
+    tips:['Control the center column — it\'s the most powerful','Look for diagonal threats, not just rows','Block your opponent\'s 3-in-a-row before completing your own','Double threats (two ways to win) are unbeatable'],
+    reward:'Win = 20 🪙, Draw = 3 🪙',
+  },
+  {id:'snakesladders',icon:'🎲',name:'Snakes & Ladders',cat:'board',ca:'var(--neon-d)',cost:5,diff:'Easy',
+    tagline:'Pure luck — climb ladders, avoid snakes',
+    objective:'Roll the dice and race to square 100. Ladders boost you forward, snakes send you back. First to reach 100 wins.',
+    controls:[{k:'Click/Tap',v:'Roll the dice'}],
+    tips:['There\'s no strategy — this is pure luck!','The board has 5 ladders and 5 snakes','Landing exactly on 100 wins (no overshooting)','Great game to relax and try your luck'],
+    reward:'Win = 20 🪙',
+  },
+  {id:'2048',icon:'🔢',name:'2048',cat:'puzzle',ca:'var(--neon-c)',cost:10,diff:'Medium',
+    tagline:'Merge tiles, reach 2048',
+    objective:'Slide all tiles in one direction. Matching tiles merge and double in value. Reach the 2048 tile!',
+    controls:[{k:'Arrow keys',v:'Slide all tiles'},{k:'Swipe',v:'Slide tiles (mobile)'}],
+    tips:['Keep your highest tile in a corner','Build a \'snake\' pattern from the corner outward','Never move away from your highest tile\'s direction','Think 2–3 moves ahead','Undo is available — use it wisely'],
+    reward:'Score × 0.003 coins',
+  },
+  {id:'sudoku',icon:'🔷',name:'Sudoku',cat:'puzzle',ca:'var(--neon-c)',cost:0,diff:'Medium',
+    tagline:'Fill the grid using pure logic',
+    objective:'Fill the 9×9 grid so every row, column, and 3×3 box contains digits 1–9. No duplicates allowed.',
+    controls:[{k:'Click cell',v:'Select it'},{k:'1–9 / Tap',v:'Enter a digit'},{k:'Del / ×',v:'Clear cell'}],
+    tips:['Start with rows/columns/boxes that only have 1–2 missing numbers','Look for \'naked singles\' — cells with only one possible number','Pencil marks help track possibilities','Easy has ~40 given clues, Hard has ~25'],
+    reward:'Easy = 20 🪙, Medium = 40 🪙, Hard = 70 🪙 (−3 per error)',
+  },
+  {id:'wordguess',icon:'📝',name:'Word Guess',cat:'puzzle',ca:'var(--neon-a)',cost:0,diff:'Medium',
+    tagline:'Guess the hidden 5-letter word in 6 tries',
+    objective:'Each guess must be a valid 5-letter word. After guessing, each letter turns green (right spot), yellow (wrong spot), or grey (not in word).',
+    controls:[{k:'Type + Enter',v:'Submit a guess'},{k:'Backspace',v:'Delete letter'},{k:'Tap letters',v:'On-screen keyboard'}],
+    tips:['Start with vowel-rich words like CRANE, STARE, or AUDIO','Yellow letters ARE in the word — just move them','Use each guess to eliminate as many letters as possible','Try not to reuse grey letters'],
+    reward:'1st try = 30 🪙, 2nd = 25, 3rd = 20, 4th = 15, 5th = 10, 6th = 5',
+  },
+  {id:'hanoi',icon:'🗼',name:'Tower of Hanoi',cat:'puzzle',ca:'var(--neon-e)',cost:0,diff:'Hard',
+    tagline:'Move all discs to the right peg optimally',
+    objective:'Move all discs from peg A to peg C. You can only move one disc at a time, and you can never place a larger disc on a smaller one.',
+    controls:[{k:'Click peg',v:'Pick up / place disc'},{k:'Undo',v:'Revert last move'},{k:'Auto',v:'Watch the optimal solution'}],
+    tips:['Minimum moves = 2ⁿ − 1 (3 discs = 7, 4 = 15, 5 = 31)','Always move the top disc of any peg','Work with 3-disc groups — learn the pattern','Use Auto-solve to see the technique, then try yourself','Undo disqualifies the perfect bonus'],
+    reward:'Perfect (min moves, no undo) = discs × 12 🪙, Normal solve = discs × 4 🪙',
+  },
+  {id:'minesweeper',icon:'💣',name:'Minesweeper',cat:'puzzle',ca:'var(--neon-d)',cost:0,diff:'Medium',
+    tagline:'Clear the field without hitting a mine',
+    objective:'Click cells to reveal them. Numbers show how many adjacent mines there are. Flag suspected mines with right-click. Clear all safe cells to win.',
+    controls:[{k:'Click',v:'Reveal cell'},{k:'Right-click / Hold',v:'Place flag'},{k:'Middle-click',v:'Chord (reveal around flagged)'}],
+    tips:['The very first click is always safe','If a number\'s adjacent mines equal its value, the rest are safe','When stuck, corners are statistically safer','Easy: 9×9 grid, 10 mines — Hard: 16×30, 99 mines'],
+    reward:'Easy = 25 🪙, Medium = 50 🪙, Hard = 100 🪙',
+  },
+  {id:'memory',icon:'🃏',name:'Memory Match',cat:'puzzle',ca:'var(--neon-e)',cost:5,diff:'Easy',
+    tagline:'Flip cards and find every pair',
+    objective:'Click cards to flip them. Find all matching pairs. The fewer moves you use, the better.',
+    controls:[{k:'Click/Tap',v:'Flip a card'}],
+    tips:['Pay attention to every card that flips — build a mental map','Try to remember positions after seeing mismatches','Flip the card you\'re least sure about first','Win in ≤20 moves for the Total Recall achievement'],
+    reward:'Win = 8 🪙',
+  },
+  {id:'speedmath',icon:'🧮',name:'Speed Math',cat:'skill',ca:'var(--neon-c)',cost:0,diff:'Medium',
+    tagline:'60 seconds of rapid arithmetic',
+    objective:'Answer as many maths questions as you can in 60 seconds. Build a streak for a score multiplier up to 5×!',
+    controls:[{k:'Click/Tap',v:'Select answer'},{k:'1 2 3 4',v:'Keyboard shortcuts'}],
+    tips:['Every 3 correct answers in a row levels up your multiplier','5× multiplier means each correct answer = 50+ points','Wrong answer resets your streak — stay accurate over speedy','Every 5-question streak gives +5 bonus seconds','Hard mode includes division — brush up on times tables'],
+    reward:'Score × 0.05 coins + 0.5 per correct answer',
+  },
+  {id:'mole',icon:'🦔',name:'Whack-a-Mole',cat:'skill',ca:'var(--neon-c)',cost:5,diff:'Easy',
+    tagline:'Smash moles for 30 seconds straight',
+    objective:'Moles pop up from holes for a brief moment — click or tap them as fast as possible to earn points before they vanish.',
+    controls:[{k:'Click/Tap',v:'Whack the mole!'}],
+    tips:['Focus on one area of the grid rather than chasing wildly','Moles appear faster as your score increases','Golden moles are worth extra points','Quick taps beat holding down'],
+    reward:'Score × 0.6 coins',
+  },
+  {id:'reaction',icon:'⚡',name:'Reaction Test',cat:'skill',ca:'var(--neon-b)',cost:0,diff:'Easy',
+    tagline:'Click the millisecond it turns green',
+    objective:'Wait for the screen to turn green, then click/tap as fast as possible. The game records your average reaction time over 5 rounds.',
+    controls:[{k:'Click/Tap',v:'React!'}],
+    tips:['Don\'t click before it turns green — that\'s a false start','Relax your hand between rounds for better results','Average human reaction time is 200–250ms','Under 150ms earns the Reflexes of Steel achievement','Play in a quiet environment for best results'],
+    reward:'Under 200ms = 8 🪙, under 300ms = 3 🪙',
+  },
+  {id:'typing',icon:'⌨️',name:'Typing Speed',cat:'skill',ca:'#c0c0e0',cost:0,diff:'Medium',
+    tagline:'Race the clock — measure your WPM',
+    objective:'Type the displayed text as accurately and quickly as possible. Your WPM (words per minute) and accuracy are tracked.',
+    controls:[{k:'Type',v:'Enter characters'},{k:'Tab',v:'Restart'}],
+    tips:['Accuracy matters more than speed — errors cost time','Keep your fingers on the home row (ASDF / JKL;)','Don\'t look at your hands','80+ WPM earns the Speed Typist achievement'],
+    reward:'WPM × 0.15 coins',
+  },
+  {id:'simon',icon:'🔴',name:'Simon Says',cat:'skill',ca:'var(--neon-b)',cost:5,diff:'Medium',
+    tagline:'Watch the pattern, then copy it perfectly',
+    objective:'Simon plays a sequence of coloured lights and sounds. Repeat the sequence exactly. Each round adds one more step.',
+    controls:[{k:'Click/Tap',v:'Press a colour button'}],
+    tips:['Listen as well as watch — each colour has a unique tone','Try to group sequences into chunks of 3–4','Slow down when it\'s your turn — accuracy over speed','Reach round 10 for the Simon challenge badge'],
+    reward:'Round number × 2 coins',
+  },
+];
+
+var activeCat='all';
+
+function setTab(cat,el){
+  activeCat=cat;
+  document.querySelectorAll('.htp-tab').forEach(function(t){t.classList.remove('on');});
+  el.classList.add('on');
+  render(document.getElementById('htp-q').value);
+}
+
+function filterCards(v){render(v);}
+
+function render(q){
+  q=(q||'').toLowerCase().trim();
+  var list=document.getElementById('htp-list');
+  list.innerHTML='';
+  var shown=0;
+  GAMES.forEach(function(g){
+    if(activeCat!=='all'&&g.cat!==activeCat) return;
+    if(q&&(g.name+g.tagline+g.cat).toLowerCase().indexOf(q)<0) return;
+    shown++;
+    var div=document.createElement('div');
+    div.className='htp-card';
+    div.style.setProperty('--ca',g.ca);
+    var costBadge=g.cost===0
+      ?'<span class="htp-badge free">FREE</span>'
+      :'<span class="htp-badge cost">🪙 '+g.cost+' entry</span>';
+    var diffColors={Easy:'var(--neon-d)',Medium:'var(--neon-c)',Hard:'var(--neon-b)'};
+    var ctrlHTML=g.controls.map(function(c){
+      return '<div class="ctrl-key"><span class="ctrl-k">'+c.k+'</span><span class="ctrl-v">— '+c.v+'</span></div>';
+    }).join('');
+    var tipsHTML=g.tips.map(function(t){return '<li>'+t+'</li>';}).join('');
+    div.innerHTML='<div class="htp-header" onclick="toggle(this)">'
+      +'<div class="htp-icon">'+g.icon+'</div>'
+      +'<div class="htp-title-wrap">'
+      +'<div class="htp-name">'+g.name+'</div>'
+      +'<div class="htp-tagline">'+g.tagline+'</div>'
+      +'<div class="htp-badges">'+costBadge
+      +'<span class="htp-badge diff" style="color:'+( diffColors[g.diff]||'var(--neon-a)')+'">'+g.diff+'</span>'
+      +'</div></div>'
+      +'<div class="htp-chevron">▶</div>'
+      +'</div>'
+      +'<div class="htp-body">'
+      +'<div class="htp-section"><div class="htp-section-title">🎯 OBJECTIVE</div>'
+      +'<p style="font-family:var(--font-mono);font-size:.65rem;color:var(--text2);line-height:1.7;margin:0">'+g.objective+'</p></div>'
+      +'<div class="htp-section"><div class="htp-section-title">⌨️ CONTROLS</div>'
+      +'<div class="ctrl-grid">'+ctrlHTML+'</div></div>'
+      +'<div class="htp-section"><div class="htp-section-title">💡 TIPS & TRICKS</div>'
+      +'<ul class="tips-list">'+tipsHTML+'</ul></div>'
+      +'<div class="htp-section"><div class="htp-section-title">🪙 COIN REWARDS</div>'
+      +'<div class="reward-row"><div class="reward-icon">🪙</div>'
+      +'<div class="reward-text">'+g.reward+'</div></div></div>'
+      +'<a class="htp-play-btn" href="'+g.id+'.html" style="background:'+g.ca+';color:#000">▶ PLAY '+g.name.toUpperCase()+'</a>'
+      +'</div>';
+    list.appendChild(div);
+    /* Auto-expand if only one result */
+    if(q) div.classList.add('open');
+  });
+  if(!shown){
+    list.innerHTML='<div style="text-align:center;padding:44px;font-family:var(--font-mono);font-size:.78rem;color:var(--muted);">No games found for "'+q+'"</div>';
+  }
+}
+
+function toggle(header){
+  var card=header.closest('.htp-card');
+  card.classList.toggle('open');
+}
+
+/* Expand from URL hash e.g. howtoplay.html#tetris */
+render('');
+if(location.hash){
+  var id=location.hash.slice(1);
+  var cards=document.querySelectorAll('.htp-card');
+  cards.forEach(function(c){
+    if(c.querySelector('a[href="'+id+'.html"]')) c.classList.add('open');
+  });
+}
+</script>
+</body>
+</html>

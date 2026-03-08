@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Breakout — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
@@ -65,7 +69,7 @@ var BW=480,BH=360,W=BW,H=BH,sX=1,sY=1;
 function resize(){
   var vAvail = window.innerHeight - 56 - 120;
   var hAvail = window.innerWidth - 32;
-  var mw = Math.min(hAvail, vAvail * (BW/BH), 820);
+  var mw = Math.min(hAvail, vAvail * (BW/BH), 1100);
   mw = Math.max(300, mw);
   W=mw; H=Math.round(mw*(BH/BW)); sX=W/BW; sY=H/BH;
   cv.style.width=W+'px'; cv.style.height=H+'px';

@@ -5,27 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reaction Test — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-b);}
-#zone{width:min(400px,92vw);height:240px;border-radius:14px;border:2px solid var(--dim);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .1s,border-color .15s,box-shadow .15s;gap:10px;position:relative;overflow:hidden;}
+#zone{width:min(460px,92vw);height:clamp(220px,38vh,380px);border-radius:14px;border:2px solid var(--dim);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .1s,border-color .15s,box-shadow .15s;gap:10px;position:relative;overflow:hidden;}
 #zone.idle   {background:var(--card-bg);}
 #zone.waiting{background:#160028;border-color:var(--neon-e);box-shadow:0 0 28px rgba(191,90,242,.2);}
 #zone.ready  {background:#003318;border-color:var(--neon-d);box-shadow:0 0 56px rgba(0,230,118,.35);}
 #zone.early  {background:#280010;border-color:var(--neon-b);}
 #zone.result {background:var(--card-bg);border-color:var(--neon-c);}
-#z-icon{font-size:3.2rem;transition:transform .1s;line-height:1;}
+#z-icon{font-size:clamp(3rem,8vw,5rem);transition:transform .1s;line-height:1;}
 #zone.ready #z-icon{transform:scale(1.22);}
-#z-msg{font-family:var(--font-mono);font-size:.78rem;text-align:center;line-height:1.9;padding:0 20px;}
+#z-msg{font-family:var(--font-mono);font-size:clamp(.78rem,2vw,.98rem);text-align:center;line-height:1.9;padding:0 20px;}
 #zone.idle   #z-msg{color:var(--muted);}
 #zone.waiting #z-msg{color:var(--neon-e);}
-#zone.ready  #z-msg{color:var(--neon-d);font-size:.95rem;font-weight:700;}
+#zone.ready  #z-msg{color:var(--neon-d);font-size:clamp(.95rem,2.5vw,1.2rem);font-weight:700;}
 #zone.early  #z-msg{color:var(--neon-b);}
 #zone.result #z-msg{color:var(--muted);}
-#z-time{font-family:var(--font-display);font-size:3.5rem;letter-spacing:.04em;color:var(--neon-c);text-shadow:0 0 22px rgba(255,225,53,.5);display:none;line-height:1;}
+#z-time{font-family:var(--font-display);font-size:clamp(3.5rem,10vw,5.5rem);letter-spacing:.04em;color:var(--neon-c);text-shadow:0 0 22px rgba(255,225,53,.5);display:none;line-height:1;}
 #zone.result #z-time{display:block;}
 #z-rating{font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--neon-d);display:none;}
 #zone.result #z-rating{display:block;}
@@ -57,6 +61,9 @@
   </div>
   <div id="history"></div>
   <button class="btn" style="--c:var(--neon-a)" onclick="reset_()">RESET STATS</button>
+  <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);text-align:center;margin-top:4px;">
+    ⌨️ Press <b>Space</b> to react (PC) · 👆 Tap to react (mobile)
+  </div>
 </div>
 <script>
 (function(){
@@ -174,6 +181,14 @@ function reset_(){
   document.getElementById('sc-best').textContent='—';
   document.getElementById('history').innerHTML='';
 }
+
+/* Keyboard support: Space = click zone */
+document.addEventListener('keydown',function(e){
+  if(e.code==='Space'||e.key===' '){
+    e.preventDefault();
+    click_();
+  }
+});
 
 function shareScore(game,val){
   var txt='🎮 I scored '+val+' in '+game+' on Arcade Zone!\nPlay free: ' + window.location.origin;

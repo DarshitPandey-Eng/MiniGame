@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flappy Bird — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
@@ -80,8 +84,8 @@ let cw, ch;
 function resizeCanvas() {
   var vAvail = window.innerHeight - 56 - 100;
   var hAvail = window.innerWidth - 32;
-  var maxH = Math.min(vAvail, 820);
-  var maxW = Math.min(hAvail, maxH * (LW/LH), 540);
+  var maxH = Math.min(vAvail, 980);
+  var maxW = Math.min(hAvail, maxH * (LW/LH), 680);
   maxW = Math.max(280, maxW);
   const scale = maxW / LW;
   cw = Math.round(LW * scale);

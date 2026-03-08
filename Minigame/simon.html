@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Simon Says — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-b);}
-.simon-ring{position:relative;width:min(280px,80vw);height:min(280px,80vw);border-radius:50%;background:var(--bg2);border:3px solid var(--line2);}
+.simon-ring{position:relative;width:min(380px,80vw);height:min(380px,80vw);border-radius:50%;background:var(--bg2);border:3px solid var(--line2);}
 .sbtn{position:absolute;width:42%;height:42%;cursor:pointer;transition:filter .06s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .sbtn.tl{top:4%;left:4%;border-radius:100% 0 0 0;background:var(--neon-d);}
 .sbtn.tr{top:4%;right:4%;border-radius:0 100% 0 0;background:var(--neon-b);}
@@ -20,14 +24,14 @@
 .sbtn.lit{filter:brightness(2.5) saturate(2)!important;}
 .sbtn:active{filter:brightness(1.6);}
 .simon-hub{position:absolute;inset:36%;border-radius:50%;background:var(--bg0);border:3px solid var(--line2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:5;}
-.simon-hub .rn{font-family:var(--font-display);font-size:1.5rem;color:var(--neon-c);line-height:1;}
-.simon-hub .rl{font-family:var(--font-mono);font-size:.42rem;color:var(--muted);letter-spacing:.1em;}
-.sstatus{font-family:var(--font-mono);font-size:.78rem;font-weight:700;color:var(--muted);min-height:1.4em;text-align:center;letter-spacing:.05em;}
+.simon-hub .rn{font-family:var(--font-display);font-size:clamp(1.5rem,4vw,2.2rem);color:var(--neon-c);line-height:1;}
+.simon-hub .rl{font-family:var(--font-mono);font-size:clamp(.4rem,.9vw,.55rem);color:var(--muted);letter-spacing:.1em;}
+.sstatus{font-family:var(--font-mono);font-size:clamp(.78rem,1.5vw,.9rem);font-weight:700;color:var(--muted);min-height:1.4em;text-align:center;letter-spacing:.05em;}
 .sstatus.playing{color:var(--neon-d);}
 .sstatus.watch{color:var(--neon-c);}
 .sstatus.fail{color:var(--neon-b);}
-.sdots{display:flex;gap:5px;height:8px;min-height:8px;}
-.sdot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:background .15s,box-shadow .15s;}
+.sdots{display:flex;gap:5px;height:10px;min-height:10px;flex-wrap:wrap;justify-content:center;max-width:min(380px,80vw);}
+.sdot{width:9px;height:9px;border-radius:50%;background:var(--dim);transition:background .15s,box-shadow .15s;}
 .sdot.done{background:var(--neon-d);box-shadow:0 0 6px var(--neon-d);}
 </style>
 </head>
@@ -47,6 +51,9 @@
     <button class="btn filled" style="--c:var(--neon-b)" onclick="startGame()">▶ START (🪙 5)</button>
       <button class="btn" style="--c:var(--neon-a);font-size:.7rem;margin-top:6px" id="share-btn" onclick="shareScore('Simon Says',round)" style="display:none">📤 Share Score</button>
     <a class="btn" href="index.html">HUB</a>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);text-align:center;display:none;" class="wg-pc-hint">
+    ⌨️ Press <b>1 2 3 4</b> to match the pattern (PC)
   </div>
 </div>
 <script>
@@ -185,6 +192,12 @@ function shareScore(game, val) {
     });
   }
 }
+
+/* ── Keyboard support (PC): 1=green, 2=red, 3=yellow, 4=blue ── */
+document.addEventListener('keydown', function(e){
+  var map={'1':0,'2':1,'3':2,'4':3};
+  if(map[e.key]!==undefined) press(map[e.key]);
+});
 
 function shareScore(game,val){
   var txt='🎮 I reached round '+val+' in '+game+' on Arcade Zone!\nPlay free: ' + window.location.origin;

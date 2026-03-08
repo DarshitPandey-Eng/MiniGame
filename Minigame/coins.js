@@ -111,9 +111,10 @@ window.CoinEngine = (function () {
     var d=getXPData(),oldLevel=d.level;
     d.xp+=amount; d.level=getLevelForXP(d.xp);
     save(K.XP,d);
-    _fire('az:xp',{xp:d.xp,level:d.level,gained:amount});
+    var didLvl=d.level>oldLevel;
+    _fire('az:xp',{xp:d.xp,level:d.level,gained:amount,levelUp:didLvl});
     _refreshXPBar(d);
-    if(d.level>oldLevel) _onLevelUp(d.level);
+    if(didLvl) _onLevelUp(d.level);
     return d;
   }
   function _refreshXPBar(d){
@@ -228,22 +229,32 @@ window.CoinEngine = (function () {
 
   /* ══════════════════ ACHIEVEMENTS ══════════════════ */
   var ACHIEVEMENTS=[
-    {id:'a1', icon:'🥉',label:'First Blood',      desc:'Complete your first game',      xp:20,  secret:false},
-    {id:'a2', icon:'🥈',label:'Getting Warmed Up',desc:'Play 25 games',                 xp:40,  secret:false},
-    {id:'a3', icon:'🥇',label:'Arcade Veteran',   desc:'Play 100 games',                xp:100, secret:false},
-    {id:'a4', icon:'💰',label:'Coin Hoarder',     desc:'Reach 500 coins',               xp:60,  secret:false},
-    {id:'a5', icon:'🐍',label:'Snake Master',     desc:'Score 300 in Snake',            xp:80,  secret:false},
-    {id:'a6', icon:'🟦',label:'Tetris God',       desc:'Score 5000 in Tetris',          xp:120, secret:false},
-    {id:'a7', icon:'💎',label:'Jackpot!',         desc:'Hit the slots jackpot',         xp:160, secret:false},
-    {id:'a8', icon:'🔥',label:'On Fire',          desc:'Reach a 7-day streak',          xp:80,  secret:false},
-    {id:'a9', icon:'⚡',label:'Reflexes of Steel',desc:'Reaction under 150ms',          xp:100, secret:false},
-    {id:'a10',icon:'🎓',label:'Speed Typist',     desc:'Type at 80+ WPM',               xp:80,  secret:false},
-    {id:'a11',icon:'🦋',label:'Flutter',          desc:'Score 10 in Flappy Bird',       xp:80,  secret:false},
-    {id:'a12',icon:'🧠',label:'Total Recall',     desc:'Win Memory Match in ≤20 moves', xp:60,  secret:false},
-    {id:'a13',icon:'🎯',label:'All-In',           desc:'Win a casino all-in bet',       xp:140, secret:true},
-    {id:'a14',icon:'⭐',label:'Level 10',         desc:'Reach player level 10',         xp:200, secret:false},
-    {id:'a15',icon:'🏆',label:'Legend',           desc:'Reach player level 25',         xp:400, secret:true},
-    {id:'a16',icon:'☕',label:'Supporter',        desc:'Bought the dev a coffee ☕',     xp:200, secret:false},
+    /* Progress */
+    {id:'a1', icon:'🥉',label:'First Blood',        desc:'Complete your first game',          xp:20,  secret:false},
+    {id:'a2', icon:'🥈',label:'Getting Warmed Up',  desc:'Play 25 games',                     xp:40,  secret:false},
+    {id:'a3', icon:'🥇',label:'Arcade Veteran',     desc:'Play 100 games',                    xp:100, secret:false},
+    {id:'a4', icon:'💰',label:'Coin Hoarder',       desc:'Reach 500 coins',                   xp:60,  secret:false},
+    {id:'a5', icon:'🚀',label:'Space Cadet',        desc:'Score 200+ in Asteroids',           xp:80,  secret:false},
+    {id:'a6', icon:'🟦',label:'Tetris God',         desc:'Score 5000 in Tetris',              xp:120, secret:false},
+    {id:'a7', icon:'💎',label:'Jackpot!',           desc:'Hit the slots jackpot',             xp:160, secret:false},
+    {id:'a8', icon:'🔥',label:'On Fire',            desc:'7-day login streak',                xp:80,  secret:false},
+    {id:'a9', icon:'⚡',label:'Reflexes of Steel',  desc:'Reaction time under 150ms',         xp:100, secret:false},
+    {id:'a10',icon:'🎓',label:'Speed Typist',       desc:'Type at 80+ WPM',                   xp:80,  secret:false},
+    {id:'a11',icon:'🦋',label:'Flutter',            desc:'Score 10 in Flappy Bird',           xp:80,  secret:false},
+    {id:'a12',icon:'🧠',label:'Total Recall',       desc:'Win Memory Match in ≤20 moves',     xp:60,  secret:false},
+    {id:'a13',icon:'🎯',label:'All-In',             desc:'Win a casino all-in bet',           xp:140, secret:true},
+    {id:'a14',icon:'⭐',label:'Level 10',           desc:'Reach player level 10',             xp:200, secret:false},
+    {id:'a15',icon:'🏆',label:'Legend',             desc:'Reach player level 25',             xp:400, secret:true},
+    {id:'a16',icon:'☕',label:'Supporter',          desc:'Bought the dev a coffee',           xp:200, secret:false},
+    /* New game achievements */
+    {id:'a17',icon:'🧮',label:'Math Whiz',          desc:'Score 150+ in Speed Math',          xp:80,  secret:false},
+    {id:'a18',icon:'🧩',label:'Wordsmith',          desc:'Guess a word on the first try',     xp:120, secret:true},
+    {id:'a19',icon:'💣',label:'Minesweeper Pro',    desc:'Clear Hard Minesweeper',            xp:100, secret:false},
+    {id:'a20',icon:'🔷',label:'Sudoku Master',      desc:'Complete Hard Sudoku without hints',xp:100, secret:false},
+    {id:'a21',icon:'🏰',label:'Tower Wizard',       desc:'Solve Tower of Hanoi perfectly (5+ discs)', xp:120, secret:false},
+    {id:'a22',icon:'🤑',label:'Millionaire',        desc:'Earn 1000 total coins',             xp:150, secret:false},
+    {id:'a23',icon:'🎲',label:'Lucky Roll',         desc:'Win Snakes & Ladders 3 times',      xp:60,  secret:false},
+    {id:'a24',icon:'🤯',label:'Insanity',           desc:'Score 1000+ in Asteroids',          xp:200, secret:true},
   ];
   function getAchievements(){ return load(K.ACHIEVE,{}); }
   function unlockAchievement(id){
@@ -265,21 +276,33 @@ window.CoinEngine = (function () {
     var stats=getStats(),totalPlays=0;
     for(var k in stats) totalPlays+=stats[k].plays||0;
     var bal=getBalance(),streak=getStreak().current,xpData=getXPData();
-    if(totalPlays>=1)  unlockAchievement('a1');
-    if(totalPlays>=25) unlockAchievement('a2');
-    if(totalPlays>=100)unlockAchievement('a3');
-    if(bal>=500)       unlockAchievement('a4');
-    if(gameId==='snake'&&score>=300) unlockAchievement('a5');
-    if(gameId==='tetris'&&score>=5000) unlockAchievement('a6');
-    if(gameId==='slots'&&won&&extraData.jackpot) unlockAchievement('a7');
-    if(streak>=7)      unlockAchievement('a8');
-    if(gameId==='reaction'&&score>0&&score<=150) unlockAchievement('a9');
-    if(gameId==='typing'&&score>=80) unlockAchievement('a10');
-    if(gameId==='flappy'&&score>=10) unlockAchievement('a11');
-    if(gameId==='memory'&&won&&extraData.moves<=20) unlockAchievement('a12');
-    if(gameId==='casino'&&extraData.allIn&&won) unlockAchievement('a13');
+    /* Progress milestones */
+    if(totalPlays>=1)   unlockAchievement('a1');
+    if(totalPlays>=25)  unlockAchievement('a2');
+    if(totalPlays>=100) unlockAchievement('a3');
+    if(bal>=500)        unlockAchievement('a4');
+    if(bal>=1000)       unlockAchievement('a22');
+    if(streak>=7)       unlockAchievement('a8');
     if(xpData.level>=10) unlockAchievement('a14');
     if(xpData.level>=25) unlockAchievement('a15');
+    /* Classic games */
+    if(gameId==='asteroids'&&score>=200)   unlockAchievement('a5');
+    if(gameId==='asteroids'&&score>=1000)  unlockAchievement('a24');
+    if(gameId==='tetris'&&score>=5000)     unlockAchievement('a6');
+    if(gameId==='casino'&&extraData.jackpot) unlockAchievement('a7');
+    if(gameId==='reaction'&&score>0&&score<=150) unlockAchievement('a9');
+    if(gameId==='typing'&&score>=80)       unlockAchievement('a10');
+    if(gameId==='flappy'&&score>=10)       unlockAchievement('a11');
+    if(gameId==='memory'&&won&&extraData.moves<=20) unlockAchievement('a12');
+    if(gameId==='casino'&&extraData.allIn&&won) unlockAchievement('a13');
+    /* New games */
+    if(gameId==='speedmath'&&score>=150)   unlockAchievement('a17');
+    if(gameId==='wordguess'&&extraData.tries===1) unlockAchievement('a18');
+    if(gameId==='minesweeper'&&won&&extraData.difficulty==='hard') unlockAchievement('a19');
+    if(gameId==='sudoku'&&won&&extraData.difficulty==='hard'&&!extraData.hints) unlockAchievement('a20');
+    if(gameId==='hanoi'&&won&&extraData.discs>=5&&extraData.perfect) unlockAchievement('a21');
+    var slStats=stats['snakesladders']||{};
+    if(slStats.wins>=3) unlockAchievement('a23');
   }
 
   /* ══════════════════ STATS + RECORD GAME ══════════════════ */
@@ -307,8 +330,8 @@ window.CoinEngine = (function () {
 
   /* ══════════════════ CHALLENGES (reduced rewards) ══════════════════ */
   var CHALLENGE_DEFS=[
-    {id:'c1', game:'snake',   type:'score',target:50,  reward:12, label:'Snake: Score 50+',         icon:'🐍'},
-    {id:'c2', game:'snake',   type:'score',target:200, reward:40, label:'Snake: Score 200+',        icon:'🐍'},
+    {id:'c1', game:'asteroids',type:'score',target:200, reward:16, label:'Asteroids: Score 200+',   icon:'🚀'},
+    {id:'c2', game:'asteroids',type:'score',target:800, reward:45, label:'Asteroids: Score 800+',   icon:'🚀'},
     {id:'c3', game:'tetris',  type:'score',target:500, reward:20, label:'Tetris: Score 500+',       icon:'🟦'},
     {id:'c4', game:'tetris',  type:'score',target:3000,reward:60, label:'Tetris: Score 3000+',      icon:'🟦'},
     {id:'c5', game:'breakout',type:'score',target:300, reward:16, label:'Breakout: Score 300+',     icon:'🟠'},
@@ -325,6 +348,12 @@ window.CoinEngine = (function () {
     {id:'c16',game:'memory',  type:'win',  target:1,   reward:10, label:'Memory: Complete a game',  icon:'🃏'},
     {id:'c17',game:'any',     type:'plays',target:10,  reward:20, label:'Play any game 10 times',   icon:'🎮'},
     {id:'c18',game:'casino',  type:'win',  target:3,   reward:30, label:'Casino: Win 3 bets',       icon:'🎰'},
+    {id:'c19',game:'speedmath',type:'score',target:80,  reward:16, label:'Speed Math: Score 80+',    icon:'🧮'},
+    {id:'c20',game:'speedmath',type:'score',target:200, reward:40, label:'Speed Math: Score 200+',   icon:'🧮'},
+    {id:'c21',game:'wordguess',type:'win',  target:3,   reward:20, label:'Word Guess: Win 3 times',  icon:'📝'},
+    {id:'c22',game:'minesweeper',type:'win',target:1,  reward:25, label:'Minesweeper: Win any game', icon:'💣'},
+    {id:'c23',game:'connect4', type:'win',  target:2,   reward:18, label:'Connect 4: Win twice',     icon:'🟡'},
+    {id:'c24',game:'pong',     type:'win',  target:1,   reward:12, label:'Pong: Beat the CPU',       icon:'🏓'},
   ];
   function getChallengeState(){ return load(K.CHALL,{}); }
   function _checkChallenges(gameId,score,gameStats,allStats,totalPlays){

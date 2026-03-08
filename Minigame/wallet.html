@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wallet — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
@@ -97,7 +101,11 @@
 .hi-amt.pos{color:var(--neon-d);}
 .hi-amt.neg{color:var(--neon-b);}
 
-.w-section{width:100%;max-width:600px;display:flex;flex-direction:column;gap:10px;}
+.w-section{width:100%;max-width:760px;display:flex;flex-direction:column;gap:10px;}
+@media(min-width:760px){
+  .w-section.earn-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .w-section.earn-2col .section-title{grid-column:1/-1;}
+}
 </style>
 </head>
 <body>
@@ -148,7 +156,7 @@
   </div>
 
   <!-- EARN COINS -->
-  <div class="w-section">
+  <div class="w-section earn-2col">
     <div class="section-title">EARN COINS</div>
 
     <!-- Daily Spin -->

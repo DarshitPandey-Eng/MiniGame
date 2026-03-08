@@ -5,22 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Word Guess — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-a);}
-.wg-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:min(92vw,680px);padding:0 8px 16px;}
+.wg-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:min(92vw,780px);padding:0 8px 16px;}
 
 /* Board */
 .wg-board{display:flex;flex-direction:column;gap:5px;}
 .wg-row{display:flex;gap:5px;}
 .wg-cell{
-  width:clamp(42px,12vw,56px);height:clamp(42px,12vw,56px);
+  width:clamp(44px,11vw,62px);height:clamp(44px,11vw,62px);
   border:2px solid var(--line2);border-radius:6px;
   display:flex;align-items:center;justify-content:center;
-  font-family:var(--font-display);font-size:clamp(1.2rem,5vw,1.6rem);
+  font-family:var(--font-display);font-size:clamp(1.3rem,4.5vw,1.8rem);
   font-weight:900;letter-spacing:.02em;
   transition:background .25s, border-color .25s, transform .15s;
   background:var(--card-bg);color:var(--text);

@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Minesweeper — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
@@ -51,7 +55,8 @@
   <canvas id="ms-cv"></canvas>
 
   <div class="ms-hint">
-    👆 Tap to reveal · 👆👆 Double-tap (or hold) to flag<br>
+    🖱️ Left-click to reveal · Right-click to flag (PC)<br>
+    📱 Tap to reveal · Double-tap or hold to flag (Mobile)<br>
     Reveal all safe cells to win!
   </div>
 
@@ -78,9 +83,9 @@ var DPR=Math.min(window.devicePixelRatio||1,2);
 
 function calcCS(){
   var vAvail = window.innerHeight - 56 - 160;
-  var hAvail = window.innerWidth > 820 ? Math.min(window.innerWidth - 40, 900) : window.innerWidth - 24;
-  var avail = Math.min(hAvail, vAvail * 1.15, 960);
-  return Math.max(22, Math.min(52, Math.floor(avail / cfg.cols)));
+  var hAvail = window.innerWidth > 820 ? Math.min(window.innerWidth - 40, 1100) : window.innerWidth - 24;
+  var avail = Math.min(hAvail, vAvail * 1.15, 1100);
+  return Math.max(22, Math.min(56, Math.floor(avail / cfg.cols)));
 }
 var CS=calcCS();
 

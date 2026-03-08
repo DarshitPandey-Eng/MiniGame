@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>2048 — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-c);}
-#board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:var(--bg2);border-radius:10px;padding:10px;border:1px solid var(--line2);touch-action:none;user-select:none;width:min(380px,96vw);}
-.cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.55rem;letter-spacing:.04em;background:var(--bg1);color:transparent;transition:background .12s,transform .1s;}
+#board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:var(--bg2);border-radius:10px;padding:10px;border:1px solid var(--line2);touch-action:none;user-select:none;width:min(500px,96vw);}
+.cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:clamp(1.2rem,4.5vw,1.8rem);letter-spacing:.04em;background:var(--bg1);color:transparent;transition:background .12s,transform .1s;}
 .cell.pop{animation:cpop .18s ease-out;}
 @keyframes cpop{0%{transform:scale(1)}50%{transform:scale(1.13)}100%{transform:scale(1)}}
 .cell[data-v="2"]   {background:#1a2a1a;color:#a5d6a7;}

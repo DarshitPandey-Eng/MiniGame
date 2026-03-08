@@ -5,22 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Speed Math — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
 :root{--accent:var(--neon-c);}
-.sm-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:600px;padding:0 12px 20px;}
+.sm-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:680px;padding:0 12px 20px;}
 
 /* Timer ring */
-.sm-timer-ring{position:relative;width:110px;height:110px;}
-.sm-timer-ring svg{transform:rotate(-90deg);}
+.sm-timer-ring{position:relative;width:clamp(100px,22vw,140px);height:clamp(100px,22vw,140px);}
+.sm-timer-ring svg{transform:rotate(-90deg);width:100%;height:100%;}
 .sm-timer-ring .ring-bg{fill:none;stroke:var(--bg2);stroke-width:8;}
 .sm-timer-ring .ring-fill{fill:none;stroke:var(--neon-c);stroke-width:8;stroke-linecap:round;
   stroke-dasharray:283;stroke-dashoffset:0;transition:stroke-dashoffset .5s linear,stroke .3s;}
 .sm-timer-ring .ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--font-display);font-size:2rem;color:var(--neon-c);line-height:1;}
+  font-family:var(--font-display);font-size:clamp(2rem,5vw,2.6rem);color:var(--neon-c);line-height:1;}
 
 /* Question area */
 .sm-question{font-family:var(--font-display);font-size:clamp(2rem,10vw,4.5rem);
@@ -90,7 +94,7 @@
 
   <div style="display:flex;align-items:center;gap:16px;">
     <div class="sm-timer-ring" id="sm-timer-wrap">
-      <svg width="110" height="110" viewBox="0 0 110 110">
+      <svg viewBox="0 0 110 110">
         <circle class="ring-bg" cx="55" cy="55" r="45"/>
         <circle class="ring-fill" id="ring-fill" cx="55" cy="55" r="45"/>
       </svg>
