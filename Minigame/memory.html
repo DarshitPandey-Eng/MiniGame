@@ -416,7 +416,21 @@ function renderBests() {
   document.getElementById('best-strip').innerHTML = html;
 }
 
-/* ══════════════════════ START GAME ════════════════════════════ */
+/* ══════════════════════ CARD SKIN ═════════════════════════════ */
+function getCardSkinStyle() {
+  try {
+    var id = localStorage.getItem('az_shop_eq_cards') || 'default';
+    var BACKS = {
+      'default':    { bg:'',        accent:'var(--neon-e)', symbol:'?',  extra:'' },
+      'card_stars': { bg:'#0a0a1f', accent:'#ffe135',       symbol:'★',  extra:'' },
+      'card_waves': { bg:'#001a2e', accent:'#00cfff',       symbol:'〰', extra:'' },
+      'card_flame': { bg:'#1a0500', accent:'#ff4500',       symbol:'🔥', extra:'' },
+      'card_geo':   { bg:'#0d0d0d', accent:'#00e5ff',       symbol:'◆',  extra:'' },
+      'card_holo':  { bg:'#0a001a', accent:'#ff2d78',       symbol:'✦',  extra:'background-image:linear-gradient(135deg,rgba(255,0,128,.12),rgba(0,229,255,.12),rgba(191,90,242,.12))' },
+    };
+    return BACKS[id] || BACKS['default'];
+  } catch(_) { return { bg:'', accent:'var(--neon-e)', symbol:'?', extra:'' }; }
+}
 function startGame() {
   var cfg = CFG[diff];
 
@@ -465,10 +479,13 @@ function buildBoard() {
     card.className  = 'mc';
     card.dataset.em = em;
     card.style.width = card.style.height = cs+'px';
+    var _skin = getCardSkinStyle();
+    var _bs = _skin.bg ? 'background:'+_skin.bg+';' : '';
+    if (_skin.extra) _bs += _skin.extra+';';
     card.innerHTML =
       '<div class="mc-inner">' +
-        '<div class="mc-back">'  +
-          '<span class="mc-back-q" style="font-size:'+bqfs+'">?</span>' +
+        '<div class="mc-back" style="'+_bs+'">'  +
+          '<span class="mc-back-q" style="font-size:'+bqfs+';color:'+_skin.accent+'">'+_skin.symbol+'</span>' +
         '</div>' +
         '<div class="mc-front">' +
           '<span class="mc-em" style="font-size:'+efs+'">'+em+'</span>' +

@@ -35,9 +35,10 @@
 
     <div class="overlay" id="ov-start">
       <div class="ov-title" style="color:var(--neon-d)">FLAPPY BIRD</div>
-      <div class="ov-sub">
+      <div class="ov-sub" id="flappy-sub">
         Press <b>Space</b>, click, or tap to flap.<br>
-        Dodge every pipe. Good luck!<br><br>
+        Dodge every pipe. Pipes get faster every 5 cleared!<br>
+        Higher player level = harder from the start.<br><br>
         Cost: <span style="color:var(--neon-c)">🪙 10 per play</span>
       </div>
       <div class="cost-badge" id="balance-check">Balance: 🪙 0</div>
@@ -101,12 +102,27 @@ resizeCanvas();
 window.addEventListener('resize', () => { if (!gameState || gameState==='idle') resizeCanvas(); });
 
 /* ── Constants (logical px) ── */
-const GRAV    = 0.38;
-const FLAP_V  = -7.2;
-const PIPE_W  = 54;
-const PIPE_GAP= 155;
-const PIPE_SPD= 2.6;
-const BIRD_R  = 14;
+const GRAV   = 0.38;
+const FLAP_V = -7.2;
+const PIPE_W = 54;
+const BIRD_R = 14;
+
+/* ── Difficulty helpers ── */
+function getPlayerLevel() {
+  try { return (CoinEngine.getXPData && CoinEngine.getXPData().level) || 1; } catch(_){ return 1; }
+}
+/* Returns { speed, gap, spawnInterval } based on score + player level.
+   - Every 5 pipes: speed +0.18, gap -6px
+   - Player level shifts the baseline: each 5 levels adds +0.15 to start speed, -5 to start gap */
+function getDifficulty(currentScore) {
+  const pLv = getPlayerLevel();
+  const pBonus  = Math.floor((pLv - 1) / 5); // 0 at lv1-5, 1 at lv6-10, etc.
+  const stage   = Math.floor(currentScore / 5);
+  const speed   = Math.min(5.8, 2.6 + stage * 0.18 + pBonus * 0.15);
+  const gap     = Math.max(90, 155 - stage * 6  - pBonus * 5);
+  const spawn   = Math.max(55, 88  - stage * 2  - pBonus * 1);
+  return { speed, gap, spawn };
+}
 
 /* ── State ── */
 let gameState = 'idle'; // idle | playing | dead
@@ -143,6 +159,7 @@ function startGame() {
 
   setScore(0);
   cancelAnimationFrame(raf);
+  lastTs = performance.now(); /* critical: prevent first-frame dt spike */
   raf = requestAnimationFrame(loop);
 }
 
@@ -151,10 +168,9 @@ let lastTs = 0;
 function loop(ts) {
   if (gameState !== 'playing') return;
   raf = requestAnimationFrame(loop);
-
-  const dt = Math.min((ts - lastTs) / 16.67, 2.5); // normalize to 60fps, cap spike
+  /* Clamp dt to prevent physics explosion on tab-switch or first frame */
+  const dt = lastTs === 0 ? 1 : Math.min((ts - lastTs) / 16.67, 2.0);
   lastTs = ts;
-
   update(dt);
   draw();
 }
@@ -173,12 +189,13 @@ function update(dt) {
   if (bird.y + BIRD_R > LH) { die(); return; }
 
   /* Pipe timer */
+  const diff = getDifficulty(score);
   pipeTimer += dt;
-  if (pipeTimer > 88) { addPipe(); pipeTimer = 0; }
+  if (pipeTimer > diff.spawn) { addPipe(); pipeTimer = 0; }
 
   /* Move pipes */
   for (let i = pipes.length - 1; i >= 0; i--) {
-    pipes[i].x -= PIPE_SPD * dt;
+    pipes[i].x -= diff.speed * dt;
     if (pipes[i].x + PIPE_W < 0) { pipes.splice(i, 1); continue; }
 
     /* Score */
@@ -186,14 +203,14 @@ function update(dt) {
       pipes[i].scored = true;
       score++; SoundEngine.play('score');
       setScore(score);
-      spawnParticles(bird.x, bird.y, '#ffe135');
+      spawnParticles(bird.x, bird.y, getBirdSkin().trail);
     }
 
     /* Collision (AABB vs circle) */
     if (circleRect(bird.x, bird.y, BIRD_R - 3,
         pipes[i].x, 0, PIPE_W, pipes[i].topH) ||
         circleRect(bird.x, bird.y, BIRD_R - 3,
-        pipes[i].x, pipes[i].topH + PIPE_GAP, PIPE_W, LH)) {
+        pipes[i].x, pipes[i].topH + pipes[i].gap, PIPE_W, LH)) {
       die(); return;
     }
   }
@@ -211,11 +228,13 @@ function update(dt) {
 }
 
 function addPipe() {
+  const { gap } = getDifficulty(score);
   const minTop = LH * 0.15;
-  const maxTop = LH * 0.70;
+  const maxTop = LH * 0.85 - gap;
   pipes.push({
     x: LW + PIPE_W,
     topH: minTop + Math.random() * (maxTop - minTop),
+    gap,
     scored: false
   });
 }
@@ -290,20 +309,24 @@ function draw() {
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
   /* Bird */
+  const skin = getBirdSkin();
   ctx.save();
   ctx.translate(bird.x, bird.y);
   ctx.rotate(bird.rot * Math.PI / 180);
 
+  /* Glow trail */
+  ctx.shadowColor = skin.trail; ctx.shadowBlur = 14;
+
   /* Body */
-  ctx.fillStyle = '#ffe135'; ctx.shadowColor = '#ffe135'; ctx.shadowBlur = 14;
+  ctx.fillStyle = skin.body;
   ctx.beginPath(); ctx.arc(0, 0, BIRD_R, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
 
   /* Wing */
-  ctx.fillStyle = '#ff9900';
+  ctx.fillStyle = skin.wing;
   ctx.beginPath(); ctx.ellipse(-3, 3, 9, 6, 0.3, 0, Math.PI * 2); ctx.fill();
 
   /* White eye */
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = skin.eye;
   ctx.beginPath(); ctx.arc(5, -4, 5.5, 0, Math.PI * 2); ctx.fill();
 
   /* Pupil */
@@ -316,13 +339,22 @@ function draw() {
 
   ctx.restore();
 
-  /* HUD score */
+  /* HUD score + difficulty */
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(LW/2 - 40, 14, 80, 36);
+  ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.fillRect(LW/2 - 44, 10, 88, 42);
   ctx.fillStyle = '#fff'; ctx.shadowColor = '#ffe135'; ctx.shadowBlur = 10;
   ctx.font = 'bold 26px "Bebas Neue", cursive';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(score, LW / 2, 33);
+  ctx.fillText(score, LW / 2, 27);
+  /* stage label */
+  const _d = getDifficulty(score);
+  const stage = Math.floor(score / 5);
+  if (stage > 0) {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,225,53,0.85)';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('SPD ' + _d.speed.toFixed(1) + '  GAP ' + Math.round(_d.gap), LW / 2, 44);
+  }
   ctx.restore();
   ctx.shadowBlur = 0;
 }
@@ -343,7 +375,7 @@ function drawPipe(p) {
   ctx.fillRect(p.x - CAP_EXTRA, p.topH - CAP_H, PIPE_W + CAP_EXTRA * 2, CAP_H);
 
   /* Bottom pipe body */
-  const botY = p.topH + PIPE_GAP;
+  const botY = p.topH + p.gap;
   ctx.fillStyle = bodyColor;
   ctx.fillRect(p.x, botY, PIPE_W, LH - botY);
 
@@ -362,19 +394,44 @@ function setScore(v) {
   document.getElementById('sc').textContent = v;
 }
 
-/* ── Flap ── */
+/* ── Skin helper (reads localStorage same keys as shop.html) ── */
+function getBirdSkin() {
+  try {
+    var eqId = localStorage.getItem('az_shop_eq_bird') || 'default';
+    var SKINS = {
+      'default':    { body:'#ffe135', wing:'#ff9900', eye:'#fff', trail:'#ffe135' },
+      'bird_fire':  { body:'#ff4500', wing:'#ff8c00', eye:'#ffe135', trail:'#ff6b35' },
+      'bird_ice':   { body:'#00cfff', wing:'#0090e0', eye:'#fff',    trail:'#a0f0ff' },
+      'bird_dino':  { body:'#5cb85c', wing:'#3d8b3d', eye:'#ffe135', trail:'#8fbc8f' },
+      'bird_space': { body:'#bf5af2', wing:'#8b2fc9', eye:'#00e5ff', trail:'#e040fb' },
+      'bird_gem':   { body:'#e0f7ff', wing:'#00e5ff', eye:'#ff2d78', trail:'#ffffff' },
+    };
+    return SKINS[eqId] || SKINS['default'];
+  } catch(_) { return { body:'#ffe135', wing:'#ff9900', eye:'#fff', trail:'#ffe135' }; }
+}
 function flap() {
   if (gameState !== 'playing') return;
   bird.vy = FLAP_V;
-  lastTs = performance.now(); // reset dt to avoid spike after flap
+  SoundEngine.play('pop');
 }
 
-/* ── Input ── */
+/* ── Input — pointerdown fires immediately on both mouse AND touch with zero delay.
+   Using document (not just canvas) so the whole screen is a tap target.
+   We guard against overlay clicks by checking gameState.             ── */
+let _lastFlapTs = 0;
+function handleFlapInput(e) {
+  /* Debounce: ignore if fired within 80ms of last flap (prevents double-fire) */
+  const now = performance.now();
+  if (now - _lastFlapTs < 80) return;
+  _lastFlapTs = now;
+  /* Don't steal clicks on buttons/links */
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') return;
+  flap();
+}
+document.addEventListener('pointerdown', handleFlapInput);
 document.addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); flap(); }
 });
-cv.addEventListener('click', flap);
-cv.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, { passive: false });
 
 /* ── Initial draw ── */
 stars = makeStars();

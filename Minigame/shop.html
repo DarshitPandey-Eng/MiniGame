@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shop — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<style>
+:root { --acc: var(--neon-f); }
+
+/* ── Page shell ── */
+.shop-page {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0; width: 100%; padding: 14px 12px 80px; box-sizing: border-box;
+  max-width: 760px; margin: 0 auto;
+}
+
+/* ── Balance bar ── */
+.bal-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; width: 100%; margin-bottom: 18px;
+  background: var(--card-bg); border: 1.5px solid var(--neon-c);
+  border-radius: 14px; padding: 12px 20px;
+  box-shadow: 0 0 24px color-mix(in srgb,var(--neon-c) 12%,transparent);
+}
+.bal-icon { font-size: 1.5rem; }
+.bal-val {
+  font-family: var(--font-display); font-size: clamp(1.8rem,6vw,2.5rem);
+  color: var(--neon-c); letter-spacing: .04em; line-height: 1;
+}
+.bal-lbl {
+  font-family: var(--font-mono); font-size: .5rem;
+  color: var(--muted); letter-spacing: .14em;
+}
+
+/* ── Section header ── */
+.shop-section {
+  width: 100%; margin-bottom: 6px; margin-top: 18px;
+  display: flex; align-items: center; gap: 10px;
+}
+.shop-section-title {
+  font-family: var(--font-display); font-size: clamp(.85rem,3vw,1.1rem);
+  color: var(--neon-f); letter-spacing: .12em;
+}
+.shop-section-line {
+  flex: 1; height: 1px;
+  background: linear-gradient(to right, color-mix(in srgb,var(--neon-f) 30%,transparent), transparent);
+}
+
+/* ── Item grid ── */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px; width: 100%;
+}
+@media(min-width:500px) { .shop-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
+
+/* ── Shop item card ── */
+.shop-item {
+  background: var(--card-bg); border: 1.5px solid var(--line2);
+  border-radius: 14px; padding: 14px 10px 12px; text-align: center;
+  cursor: pointer; transition: all .16s; position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  -webkit-tap-highlight-color: transparent;
+}
+.shop-item:hover { border-color: var(--neon-f); transform: translateY(-3px);
+  box-shadow: 0 8px 24px color-mix(in srgb,var(--neon-f) 16%,transparent); }
+.shop-item.owned { border-color: var(--neon-d); cursor: default; }
+.shop-item.owned:hover { transform: none; box-shadow: none; }
+.shop-item.equipped {
+  border-color: var(--neon-d);
+  background: color-mix(in srgb,var(--neon-d) 10%,var(--card-bg));
+  box-shadow: 0 0 20px color-mix(in srgb,var(--neon-d) 20%,transparent);
+}
+.shop-item.locked { opacity: .55; cursor: not-allowed; }
+.shop-item.locked:hover { transform: none; box-shadow: none; border-color: var(--line2); }
+
+/* Preview area */
+.si-preview {
+  width: 64px; height: 64px; border-radius: 10px;
+  background: var(--bg2); border: 1px solid var(--line2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; overflow: hidden; flex-shrink: 0;
+  transition: transform .2s;
+}
+.shop-item:hover .si-preview { transform: scale(1.08) rotate(-2deg); }
+.shop-item.equipped .si-preview { animation: siPulse 2s ease infinite; }
+@keyframes siPulse { 0%,100%{box-shadow:0 0 0 transparent} 50%{box-shadow:0 0 14px color-mix(in srgb,var(--neon-d) 55%,transparent)} }
+
+.si-name {
+  font-family: var(--font-mono); font-size: .62rem; font-weight: 700;
+  color: var(--text); letter-spacing: .05em; line-height: 1.3;
+}
+.si-desc {
+  font-family: var(--font-mono); font-size: .48rem;
+  color: var(--muted); line-height: 1.4;
+}
+.si-cost {
+  font-family: var(--font-display); font-size: .95rem;
+  color: var(--neon-c); letter-spacing: .04em;
+}
+.si-status {
+  font-family: var(--font-mono); font-size: .52rem; font-weight: 700;
+  padding: 3px 9px; border-radius: 5px; letter-spacing: .06em;
+}
+.si-status.s-own  { color: var(--neon-d); background: color-mix(in srgb,var(--neon-d) 12%,transparent); }
+.si-status.s-eq   { color: var(--neon-d); background: color-mix(in srgb,var(--neon-d) 20%,transparent); }
+.si-status.s-buy  { color: var(--neon-f); background: color-mix(in srgb,var(--neon-f) 10%,transparent); }
+.si-status.s-lock { color: var(--muted); }
+
+/* Level lock badge */
+.lv-lock {
+  position: absolute; top: 7px; right: 7px;
+  font-family: var(--font-mono); font-size: .46rem; font-weight: 700;
+  padding: 2px 6px; border-radius: 4px;
+  background: var(--bg2); border: 1px solid var(--line2); color: var(--muted);
+}
+
+/* ── Confirm modal ── */
+.shop-modal {
+  position: fixed; inset: 0; z-index: 800;
+  background: var(--modal-bg); backdrop-filter: blur(14px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.shop-modal.hidden { display: none; }
+.sm-box {
+  background: var(--card-bg); border: 1.5px solid var(--neon-f);
+  border-radius: 18px; padding: 28px 24px; max-width: 340px; width: 100%;
+  text-align: center; box-shadow: 0 0 48px color-mix(in srgb,var(--neon-f) 18%,transparent);
+  animation: smIn .22s ease;
+}
+@keyframes smIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+.sm-preview {
+  font-size: 3.5rem; margin: 0 auto 12px;
+  width: 80px; height: 80px; border-radius: 14px;
+  background: var(--bg2); display: flex; align-items: center; justify-content: center;
+}
+.sm-title { font-family:var(--font-display); font-size:1.6rem; color:var(--neon-f); margin-bottom:4px; }
+.sm-desc  { font-family:var(--font-mono); font-size:.62rem; color:var(--text2); margin-bottom:14px; line-height:1.7; }
+.sm-price { font-family:var(--font-display); font-size:2rem; color:var(--neon-c); margin-bottom:16px; }
+
+/* ── Toast-style equip confirmation ── */
+@keyframes equipPop {
+  0%  { opacity:0; transform:translateY(20px) scale(.9); }
+  15% { opacity:1; transform:translateY(0)    scale(1.05); }
+  80% { opacity:1; transform:translateY(0)    scale(1); }
+  100%{ opacity:0; transform:translateY(-10px); }
+}
+.equip-toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--card-bg); border: 1.5px solid var(--neon-d);
+  border-radius: 12px; padding: 10px 20px; z-index: 900;
+  font-family: var(--font-mono); font-size: .7rem; color: var(--neon-d);
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  box-shadow: 0 4px 24px color-mix(in srgb,var(--neon-d) 25%,transparent);
+  animation: equipPop 1.8s ease forwards;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-f);box-shadow:0 0 8px var(--neon-f)"></span>SHOP
+  </div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px; align-items:center;">
+<div class="shop-page">
+
+  <!-- Balance bar -->
+  <div class="bal-bar">
+    <div class="bal-icon">🪙</div>
+    <div>
+      <div class="bal-val" id="shop-bal">0</div>
+      <div class="bal-lbl">COINS AVAILABLE</div>
+    </div>
+    <a class="btn" href="wallet.html" style="--c:var(--neon-c);margin-left:auto;font-size:.62rem;padding:7px 14px;">EARN MORE</a>
+  </div>
+
+  <!-- BIRD SKINS -->
+  <div class="shop-section">
+    <div class="shop-section-title">🐦 FLAPPY BIRD SKINS</div>
+    <div class="shop-section-line"></div>
+  </div>
+  <div class="shop-grid" id="grid-bird"></div>
+
+  <!-- TETRIS THEMES -->
+  <div class="shop-section">
+    <div class="shop-section-title">🟦 TETRIS THEMES</div>
+    <div class="shop-section-line"></div>
+  </div>
+  <div class="shop-grid" id="grid-tetris"></div>
+
+  <!-- CARD BACKS -->
+  <div class="shop-section">
+    <div class="shop-section-title">🃏 MEMORY CARD BACKS</div>
+    <div class="shop-section-line"></div>
+  </div>
+  <div class="shop-grid" id="grid-cards"></div>
+
+  <!-- PROFILE TITLES -->
+  <div class="shop-section">
+    <div class="shop-section-title">🏷 PROFILE TITLES</div>
+    <div class="shop-section-line"></div>
+  </div>
+  <div class="shop-grid" id="grid-titles"></div>
+
+  <!-- POWER-UPS -->
+  <div class="shop-section">
+    <div class="shop-section-title">⚡ POWER-UP BUNDLES</div>
+    <div class="shop-section-line"></div>
+  </div>
+  <div class="shop-grid" id="grid-pups"></div>
+
+</div>
+</div>
+
+<!-- Confirm / buy modal -->
+<div class="shop-modal hidden" id="shop-modal">
+  <div class="sm-box">
+    <div class="sm-preview" id="sm-preview">?</div>
+    <div class="sm-title" id="sm-title">Item Name</div>
+    <div class="sm-desc"  id="sm-desc">Description</div>
+    <div class="sm-price" id="sm-price">🪙 0</div>
+    <div class="btn-row">
+      <button class="btn filled" style="--c:var(--neon-f)" id="sm-confirm">BUY NOW</button>
+      <button class="btn" style="--c:var(--muted)" onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════ NAV THEME ══════════════════════════════════════════ */
+(function(){
+  var nav = document.getElementById('main-nav');
+  var tb  = document.getElementById('tb');
+  function syncT(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); syncT(); });
+  syncT();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+    document.getElementById('shop-bal').textContent = e.detail;
+  });
+  document.getElementById('shop-bal').textContent = CoinEngine.getBalance();
+})();
+
+/* ══════════ STORAGE HELPERS ═══════════════════════════════════ */
+var SK = 'az_shop_';
+function owned(id)    { try{ return !!JSON.parse(localStorage.getItem(SK+'own')||'{}')[id]; }catch(_){ return false; } }
+function equip_get(cat){ try{ return localStorage.getItem(SK+'eq_'+cat)||null; }catch(_){ return null; } }
+function equip_set(cat,id){ try{ localStorage.setItem(SK+'eq_'+cat,id); }catch(_){} }
+function markOwned(id){
+  try{
+    var o=JSON.parse(localStorage.getItem(SK+'own')||'{}');
+    o[id]=true;
+    localStorage.setItem(SK+'own',JSON.stringify(o));
+  }catch(_){}
+}
+/* ══════════ SKIN DATA TABLES ════════════════════════════════════ */
+var BIRD_SKINS = {
+  'default':    { body:'#ffe135', wing:'#f5a623', eye:'#fff',    trail:'#ffe135', label:'Classic Yellow' },
+  'bird_fire':  { body:'#ff4500', wing:'#ff8c00', eye:'#ffe135', trail:'#ff6b35', label:'Fire Bird'      },
+  'bird_ice':   { body:'#00cfff', wing:'#0090e0', eye:'#fff',    trail:'#a0f0ff', label:'Ice Bird'       },
+  'bird_dino':  { body:'#5cb85c', wing:'#3d8b3d', eye:'#ffe135', trail:'#8fbc8f', label:'Dino Bird'      },
+  'bird_space': { body:'#bf5af2', wing:'#8b2fc9', eye:'#00e5ff', trail:'#e040fb', label:'Space Bird'     },
+  'bird_gem':   { body:'#e0f7ff', wing:'#00e5ff', eye:'#ff2d78', trail:'#ffffff', label:'Crystal Bird'   },
+};
+var CARD_BACKS = {
+  'default':    { bg:'var(--bg2)', accent:'var(--neon-e)', pattern:'dots',   label:'Dot Grid'     },
+  'card_stars': { bg:'#0a0a1f',   accent:'#ffe135',       pattern:'stars',  label:'Starfield'    },
+  'card_waves': { bg:'#001a2e',   accent:'#00cfff',       pattern:'waves',  label:'Ocean Waves'  },
+  'card_flame': { bg:'#1a0500',   accent:'#ff4500',       pattern:'flames', label:'Fire Pattern' },
+  'card_geo':   { bg:'#0d0d0d',   accent:'#00e5ff',       pattern:'geo',    label:'Geometric'    },
+  'card_holo':  { bg:'#0a001a',   accent:'#ff2d78',       pattern:'holo',   label:'Holographic'  },
+};
+var TETRIS_THEMES = {
+  'default':    ['#00e5ff','#ffe135','#bf5af2','#00e676','#ff2d78','#ff6b35','#00aaff'],
+  'tet_pastel': ['#ffb3c1','#ffd6a5','#fdffb6','#caffbf','#a0c4ff','#bdb2ff','#ffc6ff'],
+  'tet_matrix': ['#00ff41','#00cc33','#009926','#006619','#00ff41','#00e639','#33ff66'],
+  'tet_lava':   ['#ff4500','#ff6b00','#ff8c00','#ffa500','#ff3300','#ff1a00','#cc2200'],
+  'tet_galaxy': ['#e040fb','#7c4dff','#448aff','#00e5ff','#ff4081','#ea80fc','#b388ff'],
+};
+
+/* Public API — used by shop page AND by games (loaded via script tag or localStorage read) */
+window.AZShop = {
+  /* Equipped ID getters */
+  getBirdSkin:   function(){ return equip_get('bird')   || 'default'; },
+  getTetrisTheme:function(){ return equip_get('tetris') || 'default'; },
+  getCardBack:   function(){ return equip_get('cards')  || 'default'; },
+  getTitle:      function(){ return equip_get('titles') || null; },
+  /* Skin data getters */
+  getBirdSkinData:  function(){ return BIRD_SKINS[window.AZShop.getBirdSkin()]    || BIRD_SKINS['default']; },
+  getCardBackData:  function(){ return CARD_BACKS[window.AZShop.getCardBack()]    || CARD_BACKS['default']; },
+  getTetrisColors:  function(){ return TETRIS_THEMES[window.AZShop.getTetrisTheme()] || TETRIS_THEMES['default']; },
+  /* Consumable power-ups */
+  getPowerUp: function(id){ try{ return parseInt(localStorage.getItem(SK+'pu_'+id)||'0'); }catch(_){ return 0; } },
+  usePowerUp: function(id){
+    var n = window.AZShop.getPowerUp(id);
+    if (n > 0){ try{ localStorage.setItem(SK+'pu_'+id, n-1); }catch(_){} return true; }
+    return false;
+  }
+};
+
+/* ══════════ CATALOG ══════════════════════════════════════════== */
+function getPlayerLevel(){ try{ return (CoinEngine.getXPData&&CoinEngine.getXPData().level)||1; }catch(_){ return 1; } }
+
+var CATALOG = {
+  bird: [
+    { id:'default',    name:'Classic Yellow', desc:'The original bird.',               icon:'🐤', cost:0,     lvl:1  },
+    { id:'bird_fire',  name:'Fire Bird',       desc:'Burns through every pipe.',        icon:'🔥', cost:10000, lvl:5  },
+    { id:'bird_ice',   name:'Ice Bird',        desc:'Chill vibes only.',                icon:'🧊', cost:10000, lvl:5  },
+    { id:'bird_dino',  name:'Dino Bird',       desc:'Prehistoric power.',               icon:'🦕', cost:20000, lvl:10 },
+    { id:'bird_space', name:'Space Bird',      desc:'Launched beyond the atmosphere.',  icon:'🚀', cost:20000, lvl:15 },
+    { id:'bird_gem',   name:'Crystal Bird',    desc:'Rare prismatic plumage.',          icon:'💎', cost:50000, lvl:20 },
+  ],
+  tetris: [
+    { id:'default',     name:'Neon Classic',   desc:'The default neon look.',           icon:'🟦', cost:0,     lvl:1  },
+    { id:'tet_pastel',  name:'Pastel Dreams',  desc:'Soft candy-color blocks.',         icon:'🌸', cost:10000, lvl:3  },
+    { id:'tet_matrix',  name:'Matrix',         desc:'Everything in glowing green.',     icon:'🟩', cost:20000, lvl:8  },
+    { id:'tet_lava',    name:'Lava Flow',       desc:'Red-hot falling blocks.',         icon:'🌋', cost:20000, lvl:12 },
+    { id:'tet_galaxy',  name:'Galaxy',          desc:'Deep space block shower.',        icon:'🌌', cost:50000, lvl:18 },
+  ],
+  cards: [
+    { id:'default',     name:'Dot Grid',       desc:'The standard card back.',          icon:'✦', cost:0,     lvl:1  },
+    { id:'card_stars',  name:'Starfield',      desc:'Twinkling cosmos back.',           icon:'⭐', cost:10000, lvl:3  },
+    { id:'card_waves',  name:'Ocean Waves',    desc:'Calm sea pattern.',                icon:'🌊', cost:10000, lvl:6  },
+    { id:'card_flame',  name:'Fire Pattern',   desc:'Hot energy card back.',            icon:'🔥', cost:20000, lvl:10 },
+    { id:'card_geo',    name:'Geometric',      desc:'Sharp diamond grid.',              icon:'💠', cost:20000, lvl:15 },
+    { id:'card_holo',   name:'Holographic',    desc:'Rainbow shimmer effect.',          icon:'🌈', cost:50000, lvl:25 },
+  ],
+  titles: [
+    { id:'novice',      name:'"Novice"',       desc:'Just getting started.',            icon:'🌱', cost:0,     lvl:1  },
+    { id:'tilted',      name:'"Tilted"',       desc:'Tetris obsessive.',                icon:'🟪', cost:10000, lvl:5  },
+    { id:'flipper',     name:'"Flipper"',      desc:'Flappy perfectionist.',            icon:'🐦', cost:10000, lvl:5  },
+    { id:'mathlete',    name:'"Mathlete"',     desc:'Fastest calculator alive.',        icon:'🧮', cost:10000, lvl:5  },
+    { id:'streaker',    name:'"On A Streak"',  desc:'7-day login legend.',              icon:'🔥', cost:20000, lvl:10 },
+    { id:'arcade_king', name:'"Arcade King"',  desc:'Ruler of all games.',              icon:'👑', cost:50000, lvl:30 },
+  ],
+  pups: [
+    { id:'peek_x3',    name:'Peek ×3',         desc:'3 Peek power-ups for Memory.',    icon:'👁',  cost:500,   lvl:1, consumable:true, qty:3  },
+    { id:'shuffle_x5', name:'Shuffle ×5',      desc:'5 Shuffle power-ups for Memory.', icon:'🔀', cost:700,   lvl:1, consumable:true, qty:5  },
+    { id:'hint_x3',    name:'Hint ×3',         desc:'3 Hints for Sudoku.',             icon:'💡',  cost:600,   lvl:3, consumable:true, qty:3  },
+    { id:'continue_x3',name:'Continue ×3',     desc:'3 free continues for any game.',  icon:'❤️', cost:1500,  lvl:5, consumable:true, qty:3  },
+    { id:'coins_x2',   name:'2× Coins 1hr',    desc:'Double coin earn for 60 mins.',   icon:'💰',  cost:3000,  lvl:8, consumable:true, qty:1  },
+  ]
+};
+
+/* ══════════ RENDER GRID ════════════════════════════════════════ */
+function renderGrid(catId, items) {
+  var grid    = document.getElementById('grid-'+catId);
+  var pLv     = getPlayerLevel();
+  var eqId    = equip_get(catId);
+  grid.innerHTML = '';
+
+  items.forEach(function(item) {
+    var isOwned    = owned(item.id) || item.cost === 0;
+    var isEquipped = (eqId === item.id) || (item.cost === 0 && !eqId && catId !== 'pups');
+    var isLocked   = pLv < item.lvl;
+    var isCons     = item.consumable;
+
+    /* For consumables, show stored count */
+    var puCount = isCons ? AZShop.getPowerUp(item.id) : 0;
+    var hasStock = isCons && puCount > 0;
+
+    var div = document.createElement('div');
+    div.className = 'shop-item'
+      + (isEquipped && !isCons ? ' equipped' : '')
+      + (isOwned && !isEquipped && !isCons ? ' owned' : '')
+      + (isLocked ? ' locked' : '');
+
+    /* Level lock badge */
+    var lockBadge = isLocked ? '<div class="lv-lock">Lv.'+item.lvl+'</div>' : '';
+
+    /* Status text */
+    var statusHTML = '';
+    if (isCons) {
+      if (hasStock) statusHTML = '<div class="si-status s-own">×'+puCount+' IN STOCK</div>';
+      else          statusHTML = '<div class="si-status s-buy">🪙 '+item.cost+'</div>';
+    } else if (isEquipped) {
+      statusHTML = '<div class="si-status s-eq">✓ EQUIPPED</div>';
+    } else if (isOwned) {
+      statusHTML = '<div class="si-status s-own">OWNED — TAP TO EQUIP</div>';
+    } else if (isLocked) {
+      statusHTML = '<div class="si-status s-lock">Unlock at Lv.'+item.lvl+'</div>';
+    } else {
+      statusHTML = '<div class="si-cost">🪙 '+item.cost+'</div>';
+    }
+
+    div.innerHTML =
+      lockBadge +
+      '<div class="si-preview">'+item.icon+'</div>' +
+      '<div class="si-name">'+item.name+'</div>' +
+      '<div class="si-desc">'+item.desc+'</div>' +
+      statusHTML;
+
+    if (!isLocked) {
+      div.addEventListener('click', function(){
+        if (isCons) {
+          if (!hasStock) openBuyModal(catId, item);
+        } else if (isEquipped) {
+          /* already equipped — no-op */
+        } else if (isOwned) {
+          equipItem(catId, item.id, item.icon, item.name);
+        } else {
+          openBuyModal(catId, item);
+        }
+      });
+    }
+
+    grid.appendChild(div);
+  });
+}
+
+function renderAll() {
+  renderGrid('bird',   CATALOG.bird);
+  renderGrid('tetris', CATALOG.tetris);
+  renderGrid('cards',  CATALOG.cards);
+  renderGrid('titles', CATALOG.titles);
+  renderGrid('pups',   CATALOG.pups);
+}
+
+/* ══════════ EQUIP ITEM ════════════════════════════════════════ */
+function equipItem(catId, itemId, icon, name) {
+  equip_set(catId, itemId);
+  SoundEngine.play('unlock');
+  showEquipToast(icon + ' ' + name + ' equipped!');
+  renderAll();
+}
+
+function showEquipToast(msg) {
+  var old = document.querySelector('.equip-toast');
+  if (old) old.remove();
+  var el = document.createElement('div');
+  el.className = 'equip-toast';
+  el.textContent = '✓ ' + msg;
+  document.body.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 1900);
+}
+
+/* ══════════ BUY MODAL ═════════════════════════════════════════ */
+var _pendingItem = null, _pendingCat = null;
+
+function openBuyModal(catId, item) {
+  _pendingCat  = catId;
+  _pendingItem = item;
+  document.getElementById('sm-preview').textContent = item.icon;
+  document.getElementById('sm-title').textContent   = item.name;
+  document.getElementById('sm-desc').textContent    =
+    item.desc + (item.qty ? '\n\nQty: ×' + item.qty : '');
+  document.getElementById('sm-price').textContent   = '🪙 ' + item.cost;
+  document.getElementById('sm-confirm').onclick = confirmBuy;
+  document.getElementById('shop-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('shop-modal').classList.add('hidden');
+  _pendingItem = null; _pendingCat = null;
+}
+
+function confirmBuy() {
+  if (!_pendingItem) return;
+  var item = _pendingItem, catId = _pendingCat;
+  closeModal();
+
+  if (!CoinEngine.spend(item.cost)) {
+    CoinEngine.toast('Need 🪙'+item.cost+' — earn more in the Wallet!','warn');
+    return;
+  }
+  CoinEngine.addHistory('🛍', 'Shop — '+item.name, -item.cost);
+  SoundEngine.play('success');
+
+  if (item.consumable) {
+    /* Stack consumables */
+    var cur = AZShop.getPowerUp(item.id);
+    try { localStorage.setItem(SK+'pu_'+item.id, cur + item.qty); } catch(_){}
+    CoinEngine.toast('🎒 ×'+item.qty+' '+item.name+' added to inventory!','coin');
+  } else {
+    markOwned(item.id);
+    equipItem(catId, item.id, item.icon, item.name);
+  }
+
+  document.getElementById('shop-bal').textContent = CoinEngine.getBalance();
+  renderAll();
+}
+
+/* Close modal on outside click */
+document.getElementById('shop-modal').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+
+/* ══════════ INIT ══════════════════════════════════════════════ */
+renderAll();
+</script>
+</body>
+</html>

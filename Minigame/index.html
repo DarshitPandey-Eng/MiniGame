@@ -111,20 +111,6 @@
   font-family:var(--font-mono);font-size:.42rem;font-weight:900;padding:3px 8px;border-radius:4px;}
 .play-count{position:absolute;bottom:7px;right:8px;font-family:var(--font-mono);font-size:.44rem;color:var(--muted);opacity:.65;pointer-events:none;}
 
-/* ── Daily bonus ── */
-.daily-card{background:linear-gradient(135deg,color-mix(in srgb,var(--neon-c) 8%,var(--card-bg)),color-mix(in srgb,var(--neon-a) 5%,var(--card-bg)));
-  border:1px solid color-mix(in srgb,var(--neon-c) 25%,var(--line));border-radius:14px;
-  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;
-  transition:all .14s;flex-wrap:wrap;}
-.daily-card:hover{border-color:var(--neon-c);transform:translateY(-2px);}
-.daily-card.claimed{opacity:.55;cursor:default;}
-.dc-title{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-c);letter-spacing:.06em;}
-.dc-sub{font-family:var(--font-mono);font-size:.58rem;color:var(--muted);margin-top:3px;}
-.dc-btn{font-family:var(--font-mono);font-size:.68rem;font-weight:800;padding:10px 20px;border-radius:9px;
-  border:none;background:var(--neon-c);color:#000;cursor:pointer;transition:transform .1s;white-space:nowrap;}
-.dc-btn:active{transform:scale(.93);}
-.daily-card.claimed .dc-btn{background:var(--bg2);color:var(--muted);cursor:default;}
-
 /* ── Streak days ── */
 .streak-day{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--line2);
   background:var(--card-bg);display:flex;align-items:center;justify-content:center;font-size:1rem;}
@@ -181,11 +167,10 @@
     <a class="quick-btn" href="casino.html"      style="--lc:var(--neon-b)">🎰 Casino</a>
     <a class="quick-btn" href="profile.html"     style="--lc:var(--neon-e)">👤 Profile</a>
     <a class="quick-btn" href="settings.html"    style="--lc:var(--muted)">⚙ Settings</a>
+    <a class="quick-btn" href="shop.html"        style="--lc:var(--neon-f)">🛍 Shop</a>
   </div>
 
-  <div class="hub-stitle">🎁 DAILY BONUS</div>
-  <div id="daily-wrap"></div>
-  <div style="margin-top:10px" id="streak-wrap"></div>
+  <div id="streak-wrap"></div>
 
   <div class="hub-stitle">🎮 GAMES</div>
 
@@ -377,36 +362,6 @@ function renderAll(){
   grid.innerHTML = list.map(function(g){ return buildCard(g, g.id === GOTD && !searchVal); }).join('');
 }
 
-/* ── Daily bonus ── */
-function renderDailyBonus(){
-  var wrap = document.getElementById('daily-wrap');
-  var streak = CoinEngine.getStreak().current;
-  var bonusAmt = Math.min(100, 20 + streak * 4);
-  var claimed = false;
-  try {
-    var sp = JSON.parse(localStorage.getItem('az_daily_bonus') || '{}');
-    claimed = sp.date === new Date().toISOString().slice(0,10);
-  } catch(e){}
-  wrap.innerHTML = '<div class="daily-card'+(claimed?' claimed':'')+'" onclick="claimDaily()">'
-    + '<div><div class="dc-title">'+(claimed?'✅ Claimed Today':'🎁 Daily Bonus')+' <span style="color:var(--neon-f)">+'+bonusAmt+' 🪙</span></div>'
-    + '<div class="dc-sub">'+(claimed?'Come back tomorrow!':'Streak: '+streak+' days · bonus scales with streak')+'</div></div>'
-    + '<button class="dc-btn">'+(claimed?'✓ Done':'CLAIM NOW')+'</button></div>';
-}
-
-function claimDaily(){
-  try {
-    var sp = JSON.parse(localStorage.getItem('az_daily_bonus') || '{}');
-    if (sp.date === new Date().toISOString().slice(0,10)) return;
-  } catch(e){}
-  var streak = CoinEngine.getStreak().current;
-  var amt = Math.min(100, 20 + streak * 4);
-  CoinEngine.add(amt, 'Daily bonus', '🎁');
-  CoinEngine.toast('+' + amt + ' 🪙 Daily bonus claimed!', 'coin');
-  localStorage.setItem('az_daily_bonus', JSON.stringify({date:new Date().toISOString().slice(0,10)}));
-  renderDailyBonus();
-  renderActivity();
-}
-
 /* ── Streak ── */
 function renderStreak(){
   var s = CoinEngine.getStreak();
@@ -472,7 +427,6 @@ tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
 /* ── Init ── */
 if (CoinEngine.checkStreak) CoinEngine.checkStreak();
 refreshStats();
-renderDailyBonus();
 renderStreak();
 renderActivity();
 renderAll();
