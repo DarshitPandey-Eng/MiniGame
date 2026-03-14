@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
+<script src="supabase.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<script src="mp.js"></script>
+<style>
+:root { --acc: var(--neon-b); }
+
+.battle-page {
+  display:flex; flex-direction:column; align-items:center;
+  gap:0; width:100%; padding:16px 14px 80px; box-sizing:border-box;
+  max-width:600px; margin:0 auto;
+}
+
+/* ── Hero ── */
+.bt-hero {
+  text-align:center; margin-bottom:20px;
+}
+.bt-hero-title {
+  font-family:var(--font-display); font-size:clamp(2.4rem,10vw,4rem);
+  color:var(--neon-b); letter-spacing:.1em;
+  text-shadow:0 0 32px color-mix(in srgb,var(--neon-b) 50%,transparent);
+  animation:heroGlow 2s ease infinite alternate;
+}
+@keyframes heroGlow {
+  from{text-shadow:0 0 20px color-mix(in srgb,var(--neon-b) 30%,transparent);}
+  to  {text-shadow:0 0 50px color-mix(in srgb,var(--neon-b) 70%,transparent);}
+}
+.bt-hero-sub {
+  font-family:var(--font-mono); font-size:.64rem; color:var(--text2); margin-top:6px;
+}
+
+/* ── Status banner ── */
+.bt-status {
+  width:100%; padding:10px 16px; border-radius:10px; margin-bottom:16px;
+  font-family:var(--font-mono); font-size:.64rem; letter-spacing:.08em;
+  display:flex; align-items:center; gap:8px;
+  background:color-mix(in srgb,var(--neon-d) 10%,var(--card-bg));
+  border:1px solid color-mix(in srgb,var(--neon-d) 35%,transparent);
+  color:var(--neon-d);
+}
+.bt-status.warn {
+  background:color-mix(in srgb,var(--neon-f) 10%,var(--card-bg));
+  border-color:color-mix(in srgb,var(--neon-f) 35%,transparent);
+  color:var(--neon-f);
+}
+.bt-status.err {
+  background:color-mix(in srgb,var(--neon-b) 10%,var(--card-bg));
+  border-color:color-mix(in srgb,var(--neon-b) 35%,transparent);
+  color:var(--neon-b);
+}
+.bt-status.hidden { display:none; }
+
+/* ── Card ── */
+.bt-card {
+  width:100%; background:var(--card-bg); border:1.5px solid var(--line2);
+  border-radius:16px; padding:20px; box-sizing:border-box;
+  margin-bottom:14px;
+}
+.bt-card-title {
+  font-family:var(--font-display); font-size:1.1rem; color:var(--neon-b);
+  letter-spacing:.08em; margin-bottom:14px;
+}
+
+/* ── Name input ── */
+.bt-field {
+  width:100%; background:var(--bg2); border:1.5px solid var(--line2);
+  border-radius:10px; padding:11px 14px; box-sizing:border-box;
+  font-family:var(--font-mono); font-size:.82rem; color:var(--text);
+  outline:none; transition:border-color .15s; margin-bottom:10px;
+}
+.bt-field:focus { border-color:var(--neon-b); }
+.bt-field::placeholder { color:var(--muted); }
+
+/* ── Game picker ── */
+.bt-game-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;
+}
+.bt-game-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px; border-radius:10px;
+  border:1.5px solid var(--line2); background:var(--bg2);
+  cursor:pointer; transition:all .12s; font-family:var(--font-mono);
+  font-size:.6rem; font-weight:700; color:var(--muted);
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-game-btn .gicon { font-size:1.3rem; }
+.bt-game-btn.selected {
+  border-color:var(--neon-b); color:var(--neon-b);
+  background:color-mix(in srgb,var(--neon-b) 10%,transparent);
+}
+.bt-game-btn:hover:not(.selected) { border-color:var(--line); color:var(--text2); }
+
+/* ── Difficulty row ── */
+.bt-diff-row {
+  display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;
+}
+.bt-diff-btn {
+  font-family:var(--font-mono); font-size:.58rem; font-weight:700;
+  padding:7px 14px; border-radius:8px;
+  border:1.5px solid var(--line2); background:var(--bg2); color:var(--muted);
+  cursor:pointer; transition:all .12s;
+}
+.bt-diff-btn.selected {
+  border-color:var(--neon-c); color:var(--neon-c);
+  background:color-mix(in srgb,var(--neon-c) 10%,transparent);
+}
+
+/* ── Code display ── */
+.bt-code-display {
+  text-align:center; padding:20px 10px;
+}
+.bt-code {
+  font-family:var(--font-display); font-size:clamp(3rem,15vw,5rem);
+  color:var(--neon-b); letter-spacing:.2em;
+  text-shadow:0 0 28px color-mix(in srgb,var(--neon-b) 50%,transparent);
+}
+.bt-code-label {
+  font-family:var(--font-mono); font-size:.56rem; color:var(--muted);
+  letter-spacing:.16em; margin-bottom:12px;
+}
+.bt-copy-btn {
+  font-family:var(--font-mono); font-size:.6rem; font-weight:700;
+  padding:7px 16px; border-radius:8px;
+  border:1.5px solid var(--neon-b); background:transparent;
+  color:var(--neon-b); cursor:pointer; transition:all .12s;
+}
+.bt-copy-btn:hover { background:color-mix(in srgb,var(--neon-b) 12%,transparent); }
+
+/* ── Waiting room ── */
+.bt-waiting {
+  display:flex; gap:10px; justify-content:center; flex-wrap:wrap; padding:8px 0 4px;
+}
+.bt-player-slot {
+  background:var(--bg2); border:1.5px solid var(--line2);
+  border-radius:12px; padding:14px 18px; min-width:120px;
+  text-align:center; transition:border-color .2s;
+  flex:1;
+}
+.bt-player-slot.connected {
+  border-color:var(--neon-d);
+  background:color-mix(in srgb,var(--neon-d) 8%,var(--bg2));
+}
+.bt-player-slot.me { border-color:var(--neon-b); }
+.bt-slot-icon { font-size:2rem; margin-bottom:4px; }
+.bt-slot-name {
+  font-family:var(--font-mono); font-size:.62rem; font-weight:700;
+  color:var(--text); letter-spacing:.04em;
+}
+.bt-slot-sub {
+  font-family:var(--font-mono); font-size:.5rem; color:var(--muted); margin-top:3px;
+}
+
+/* VS badge */
+.bt-vs {
+  font-family:var(--font-display); font-size:1.6rem; color:var(--muted);
+  align-self:center;
+}
+
+/* Pulse animation for waiting */
+@keyframes slotPulse {
+  0%,100%{opacity:1} 50%{opacity:.4}
+}
+.bt-player-slot.waiting { animation:slotPulse 1.4s ease infinite; }
+
+/* ── Code input ── */
+.bt-code-input-row {
+  display:flex; gap:8px; align-items:stretch;
+}
+.bt-code-field {
+  flex:1; background:var(--bg2); border:1.5px solid var(--line2);
+  border-radius:10px; padding:11px 14px;
+  font-family:var(--font-display); font-size:1.6rem; color:var(--text);
+  letter-spacing:.2em; text-align:center; text-transform:uppercase;
+  outline:none; transition:border-color .15s; max-width:200px;
+}
+.bt-code-field:focus { border-color:var(--neon-b); }
+
+/* ── Challenge link section ── */
+.bt-challenge-box {
+  background:var(--bg2); border:1px solid var(--line2);
+  border-radius:10px; padding:12px 14px;
+}
+.bt-challenge-link {
+  font-family:var(--font-mono); font-size:.56rem; color:var(--muted);
+  word-break:break-all; margin-top:6px; line-height:1.5;
+}
+
+/* ── Section divider ── */
+.bt-or {
+  display:flex; align-items:center; gap:10px; width:100%; margin:4px 0 18px;
+}
+.bt-or-line { flex:1; height:1px; background:var(--line2); }
+.bt-or-text { font-family:var(--font-mono); font-size:.56rem; color:var(--muted); }
+
+/* ── Loading spinner ── */
+.bt-spin {
+  width:28px; height:28px; border:3px solid var(--line2);
+  border-top-color:var(--neon-b); border-radius:50%;
+  animation:spin .7s linear infinite; flex-shrink:0;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Screen sections ── */
+.bt-screen { width:100%; }
+.bt-screen.hidden { display:none; }
+
+/* ── Go button ── */
+.bt-go-btn {
+  width:100%; padding:16px; border-radius:12px;
+  font-family:var(--font-display); font-size:1.4rem; letter-spacing:.08em;
+  background:var(--neon-b); color:#000; border:none;
+  cursor:pointer; transition:all .14s;
+  box-shadow:0 4px 24px color-mix(in srgb,var(--neon-b) 30%,transparent);
+}
+.bt-go-btn:hover { transform:translateY(-2px);
+  box-shadow:0 8px 32px color-mix(in srgb,var(--neon-b) 45%,transparent); }
+.bt-go-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>BATTLE
+  </div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px;align-items:center;">
+<div class="battle-page">
+
+  <!-- Hero -->
+  <div class="bt-hero">
+    <div class="bt-hero-title">⚔ BATTLE</div>
+    <div class="bt-hero-sub">Challenge friends · Race the same puzzle · Real-time rooms</div>
+  </div>
+
+  <!-- Status banner -->
+  <div class="bt-status warn hidden" id="bt-status">
+    ⚠️ Offline mode — challenge links work, but live rooms need a Supabase key.
+    <a href="wallet.html" style="color:inherit;text-decoration:underline;margin-left:4px">Learn more</a>
+  </div>
+
+  <!-- ══════ SCREEN: Main menu ══════════════════════════════════ -->
+  <div class="bt-screen" id="scr-menu">
+
+    <!-- Name input (shared) -->
+    <div class="bt-card">
+      <div class="bt-card-title">👤 YOUR NAME</div>
+      <input class="bt-field" id="my-name" maxlength="18" placeholder="Enter your name…"
+             value="" oninput="saveName(this.value)">
+    </div>
+
+    <!-- Create room -->
+    <div class="bt-card">
+      <div class="bt-card-title">🎮 CREATE ROOM</div>
+
+      <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">CHOOSE GAME</div>
+      <div class="bt-game-grid" id="game-picker">
+        <button class="bt-game-btn selected" data-game="wordguess">
+          <span class="gicon">📝</span><div><div>Word Guess</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Same word, fewest tries</div></div>
+        </button>
+        <button class="bt-game-btn" data-game="speedmath">
+          <span class="gicon">🧮</span><div><div>Speed Math</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Same Qs, highest score</div></div>
+        </button>
+        <button class="bt-game-btn" data-game="flappy">
+          <span class="gicon">🐦</span><div><div>Flappy Bird</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Same pipes, furthest</div></div>
+        </button>
+        <button class="bt-game-btn" data-game="sudoku">
+          <span class="gicon">🔷</span><div><div>Sudoku</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Same grid, fastest time</div></div>
+        </button>
+      </div>
+
+      <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">DIFFICULTY</div>
+      <div class="bt-diff-row">
+        <button class="bt-diff-btn selected" data-diff="easy">🟢 EASY</button>
+        <button class="bt-diff-btn" data-diff="medium">🟡 MEDIUM</button>
+        <button class="bt-diff-btn" data-diff="hard">🔴 HARD</button>
+      </div>
+
+      <button class="bt-go-btn" id="btn-create" onclick="createRoom()">
+        ⚔ CREATE ROOM
+      </button>
+    </div>
+
+    <div class="bt-or">
+      <div class="bt-or-line"></div>
+      <div class="bt-or-text">OR JOIN A ROOM</div>
+      <div class="bt-or-line"></div>
+    </div>
+
+    <!-- Join room -->
+    <div class="bt-card">
+      <div class="bt-card-title">🚪 JOIN ROOM</div>
+      <div class="bt-code-input-row">
+        <input class="bt-code-field" id="join-code" maxlength="4"
+               placeholder="CODE" oninput="this.value=this.value.toUpperCase()">
+        <button class="btn filled" style="--c:var(--neon-b);flex-shrink:0" onclick="joinRoom()">JOIN →</button>
+      </div>
+    </div>
+
+    <!-- Challenge link section -->
+    <div class="bt-card">
+      <div class="bt-card-title">🔗 CHALLENGE LINK</div>
+      <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--text2);margin-bottom:10px;line-height:1.7;">
+        Play any game solo, then share your result.<br>
+        Your friend plays the exact same puzzle and their score is compared to yours.
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">CHOOSE GAME TO CHALLENGE</div>
+      <div class="bt-game-grid" id="challenge-picker">
+        <button class="bt-game-btn selected" data-cgame="wordguess"><span class="gicon">📝</span>Word Guess</button>
+        <button class="bt-game-btn" data-cgame="speedmath"><span class="gicon">🧮</span>Speed Math</button>
+        <button class="bt-game-btn" data-cgame="flappy"><span class="gicon">🐦</span>Flappy Bird</button>
+        <button class="bt-game-btn" data-cgame="sudoku"><span class="gicon">🔷</span>Sudoku</button>
+      </div>
+      <button class="btn filled" style="--c:var(--neon-e);width:100%" onclick="launchChallenge()">
+        🎯 PLAY &amp; GET SHARE LINK
+      </button>
+    </div>
+
+  </div><!-- /scr-menu -->
+
+  <!-- ══════ SCREEN: Waiting room ══════════════════════════════ -->
+  <div class="bt-screen hidden" id="scr-waiting">
+    <div class="bt-card">
+      <div class="bt-card-title" id="wait-title">ROOM CREATED</div>
+
+      <!-- Code display -->
+      <div class="bt-code-display">
+        <div class="bt-code-label">ROOM CODE</div>
+        <div class="bt-code" id="room-code-display">----</div>
+        <button class="bt-copy-btn" onclick="copyRoomCode()">📋 COPY CODE</button>
+      </div>
+
+      <!-- Players -->
+      <div class="bt-waiting" id="waiting-players">
+        <div class="bt-player-slot me" id="slot-p1">
+          <div class="bt-slot-icon">👤</div>
+          <div class="bt-slot-name" id="slot-p1-name">You</div>
+          <div class="bt-slot-sub">HOST</div>
+        </div>
+        <div class="bt-vs">VS</div>
+        <div class="bt-player-slot waiting" id="slot-p2">
+          <div class="bt-slot-icon">⌛</div>
+          <div class="bt-slot-name">Waiting…</div>
+          <div class="bt-slot-sub" id="slot-p2-sub">Share the code!</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;font-family:var(--font-mono);font-size:.56rem;color:var(--muted);text-align:center;" id="wait-status-text">
+        Waiting for opponent to join…
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn filled" style="--c:var(--neon-b)" id="btn-start-battle" disabled onclick="startBattle()">
+          ▶ START BATTLE
+        </button>
+        <button class="btn" style="--c:var(--muted)" onclick="leaveRoom()">LEAVE</button>
+      </div>
+    </div>
+
+    <!-- Offline info -->
+    <div class="bt-card" id="offline-room-info" style="display:none;">
+      <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--neon-f);letter-spacing:.06em;margin-bottom:8px;">
+        ⚡ OFFLINE MODE — CHALLENGE LINK
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--text2);line-height:1.7;margin-bottom:10px;">
+        Live rooms need Supabase. Here's a challenge link instead — your friend plays the same puzzle:
+      </div>
+      <div class="bt-challenge-link" id="offline-link">—</div>
+      <button class="btn filled" style="--c:var(--neon-e);width:100%;margin-top:10px" onclick="copyOfflineLink()">
+        📤 COPY CHALLENGE LINK
+      </button>
+    </div>
+  </div><!-- /scr-waiting -->
+
+</div>
+</div>
+
+<script>
+/* ══ NAV ══════════════════════════════════════════════════════ */
+(function(){
+  var tb = document.getElementById('tb');
+  function syncT(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); syncT(); });
+  syncT();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+  });
+})();
+
+/* ══ STATE ════════════════════════════════════════════════════ */
+var myName   = localStorage.getItem('az_mp_name') || '';
+var selGame  = 'wordguess';
+var selDiff  = 'easy';
+var selCGame = 'wordguess';
+var currentRoom = null;
+var myPid    = 1;
+var stopPoll = null;
+
+document.getElementById('my-name').value = myName;
+
+function saveName(v){ myName=v.trim(); localStorage.setItem('az_mp_name',myName); }
+
+/* ══ PICKERS ══════════════════════════════════════════════════ */
+document.getElementById('game-picker').addEventListener('click', function(e){
+  var btn = e.target.closest('.bt-game-btn');
+  if (!btn) return;
+  document.querySelectorAll('#game-picker .bt-game-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selGame = btn.dataset.game;
+});
+
+document.querySelectorAll('.bt-diff-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.bt-diff-btn').forEach(function(b){ b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    selDiff = btn.dataset.diff;
+  });
+});
+
+document.getElementById('challenge-picker').addEventListener('click', function(e){
+  var btn = e.target.closest('.bt-game-btn');
+  if (!btn) return;
+  document.querySelectorAll('#challenge-picker .bt-game-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  selCGame = btn.dataset.cgame;
+});
+
+/* ══ STATUS BANNER ════════════════════════════════════════════ */
+function showStatus(msg, type) {
+  var el = document.getElementById('bt-status');
+  el.innerHTML = msg;
+  el.className = 'bt-status ' + (type||'');
+  el.classList.remove('hidden');
+}
+function hideStatus(){ document.getElementById('bt-status').classList.add('hidden'); }
+
+/* Show warning if Supabase not configured */
+if (!AZMulti.isConfigured()) {
+  showStatus('⚡ <b>Offline mode</b> — Challenge links work perfectly. Live rooms need your Supabase key. <a href="https://supabase.com" target="_blank" style="color:inherit;text-decoration:underline">Get key →</a>', 'warn');
+}
+
+/* ══ CREATE ROOM ══════════════════════════════════════════════ */
+function createRoom() {
+  if (!myName) { CoinEngine.toast('Enter your name first!','warn'); return; }
+  var seed = AZMulti.makeSeed();
+
+  if (!AZMulti.isConfigured()) {
+    /* Offline: show challenge link instead */
+    currentRoom = { code: 'OFFLINE', game: selGame, seed: seed, difficulty: selDiff };
+    myPid = 1;
+    showWaitingScreen(null, seed);
+    return;
+  }
+
+  document.getElementById('btn-create').disabled = true;
+  AZMulti.createRoom(selGame, seed, selDiff, myName).then(function(code){
+    currentRoom = { code: code, game: selGame, seed: seed, difficulty: selDiff };
+    myPid = 1;
+    showWaitingScreen(code, seed);
+    startPolling(code);
+  }).catch(function(err){
+    showStatus('❌ Could not create room. Check your Supabase key.','err');
+    document.getElementById('btn-create').disabled = false;
+  });
+}
+
+/* ══ JOIN ROOM ════════════════════════════════════════════════ */
+function joinRoom() {
+  if (!myName) { CoinEngine.toast('Enter your name first!','warn'); return; }
+  var code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (code.length < 4) { CoinEngine.toast('Enter a 4-letter room code','warn'); return; }
+  if (!AZMulti.isConfigured()) { showStatus('❌ Live rooms need Supabase configured.','err'); return; }
+
+  AZMulti.joinRoom(code, myName).then(function(room){
+    currentRoom = room;
+    myPid = 2;
+    showWaitingScreen(code, room.seed);
+    startPolling(code);
+    /* P2 joining enables start for both — update status */
+    AZMulti.updateMyScore(code, 2, 0, false);
+  }).catch(function(err){
+    var msg = err.message === 'room_not_found' ? 'Room not found — check the code'
+            : err.message === 'room_full'      ? 'Room is full or already started'
+            : 'Could not join room';
+    CoinEngine.toast(msg,'warn');
+  });
+}
+
+/* ══ SHOW WAITING SCREEN ══════════════════════════════════════ */
+function showWaitingScreen(code, seed) {
+  document.getElementById('scr-menu').classList.add('hidden');
+  document.getElementById('scr-waiting').classList.remove('hidden');
+
+  document.getElementById('room-code-display').textContent = code || 'OFFLINE';
+  document.getElementById('slot-p1-name').textContent = myName || 'You';
+  document.getElementById('wait-title').textContent = code ? 'ROOM ' + code : 'CHALLENGE MODE';
+
+  if (!AZMulti.isConfigured()) {
+    /* Build challenge link */
+    var link = AZMulti.buildChallengeLink(selGame, seed, 0, myName, selDiff);
+    document.getElementById('offline-link').textContent = link;
+    document.getElementById('offline-room-info').style.display = '';
+    document.getElementById('btn-start-battle').disabled = false;
+    document.getElementById('btn-start-battle').textContent = '▶ PLAY NOW';
+    document.getElementById('wait-status-text').textContent = 'Copy the link and share it, then play!';
+  }
+}
+
+/* ══ POLL FOR OPPONENT ════════════════════════════════════════ */
+function startPolling(code) {
+  if (stopPoll) stopPoll();
+  stopPoll = AZMulti.pollRoom(code, function(room){
+    /* Update P2 slot when they join */
+    if (room.p2_name) {
+      var slot = document.getElementById('slot-p2');
+      slot.classList.remove('waiting');
+      slot.classList.add('connected');
+      slot.querySelector('.bt-slot-icon').textContent = '👤';
+      slot.querySelector('.bt-slot-name').textContent = room.p2_name;
+      document.getElementById('slot-p2-sub').textContent = 'READY';
+      document.getElementById('wait-status-text').textContent = 'Both players ready! Start when you like.';
+      document.getElementById('btn-start-battle').disabled = false;
+    }
+    /* If P1 started, P2 auto-launches */
+    if (room.status === 'started' && myPid === 2) {
+      launchGame(room.game, room.seed, room.code, myPid, room.difficulty);
+    }
+  });
+}
+
+/* ══ START BATTLE ═════════════════════════════════════════════ */
+function startBattle() {
+  if (!currentRoom) return;
+  /* Signal P2 to auto-launch by setting room status to 'started' */
+  if (AZMulti.isConfigured() && currentRoom.code !== 'OFFLINE') {
+    AZMulti.setRoomStatus(currentRoom.code, 'started').catch(function(){});
+  }
+  launchGame(currentRoom.game, currentRoom.seed, currentRoom.code, myPid, currentRoom.difficulty);
+}
+
+function launchGame(game, seed, code, pid, diff) {
+  if (stopPoll) { stopPoll(); stopPoll = null; }
+  var url = game + '.html?seed=' + seed
+    + '&room=' + code
+    + '&pid=' + pid
+    + '&pname=' + encodeURIComponent(myName)
+    + (diff ? '&diff=' + diff : '');
+  window.location.href = url;
+}
+
+/* ══ CHALLENGE LINK ═══════════════════════════════════════════ */
+function launchChallenge() {
+  if (!myName) { CoinEngine.toast('Enter your name first!','warn'); return; }
+  var seed = AZMulti.makeSeed();
+  var diff = selDiff;
+  /* Go play, game will show share link on finish */
+  window.location.href = selCGame + '.html?seed=' + seed + '&diff=' + diff + '&cmode=1&cname=' + encodeURIComponent(myName);
+}
+
+/* ══ COPY HELPERS ═════════════════════════════════════════════ */
+function copyRoomCode() {
+  var code = document.getElementById('room-code-display').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(function(){ CoinEngine.toast('Room code copied!','info'); });
+  }
+}
+function copyOfflineLink() {
+  var link = document.getElementById('offline-link').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(link).then(function(){ CoinEngine.toast('Challenge link copied!','info'); });
+  }
+}
+function leaveRoom() {
+  if (stopPoll) { stopPoll(); stopPoll = null; }
+  document.getElementById('scr-waiting').classList.add('hidden');
+  document.getElementById('scr-menu').classList.remove('hidden');
+  document.getElementById('btn-create').disabled = false;
+  currentRoom = null;
+}
+</script>
+</body>
+</html>

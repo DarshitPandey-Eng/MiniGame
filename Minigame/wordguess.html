@@ -13,6 +13,7 @@
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
+<script src="mp.js"></script>
 <style>
 :root{--accent:var(--neon-a);}
 .wg-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:min(92vw,780px);padding:0 8px 16px;}
@@ -101,7 +102,10 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
     <button class="btn filled" style="--c:var(--neon-a)" onclick="newGame()">▶ NEW WORD</button>
     <button class="btn" style="--c:var(--neon-a);font-size:.72rem" id="share-btn" onclick="doShare()" style="display:none">📤 Share</button>
+    <a class="btn" style="--c:var(--neon-e);font-size:.72rem" href="battle.html">⚔ Battle</a>
   </div>
+  <!-- Opponent panel (battle mode) -->
+  <div id="opp-panel" style="font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;min-height:1rem;"></div>
 
   <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:1.8;">
     🟩 Right letter, right spot · 🟨 Right letter, wrong spot · ⬛ Letter not in word
@@ -157,15 +161,49 @@ var target='',guesses=[],curGuess='',row=0,gameOver=false;
 var wins=0,streak=0,played=0;
 var kbState={}; /* letter → 'correct'|'present'|'absent' */
 
+/* ── Multiplayer / Challenge mode ─────────────────────── */
+var _MP = AZMulti.parseParams();
+var _mpSeed   = _MP.seed   || null;
+var _mpRoom   = _MP.room   || null;
+var _mpPid    = _MP.pid    || 1;
+var _mpPname  = _MP.pname  || 'You';
+var _mpCMode  = _MP.cscore !== null; /* someone challenged us */
+var _mpCScore = _MP.cscore || 0;
+var _mpCName  = _MP.cname  || 'Challenger';
+var _mpCGen   = !!_MP.seed && (new URLSearchParams(location.search)).get('cmode'); /* we launched challenge */
+var _mpRng    = _mpSeed ? AZMulti.seededRng(_mpSeed) : null;
+var _stopPoll = null;
+
+if (_mpCMode) {
+  /* Show challenger banner */
+  setTimeout(function(){
+    CoinEngine.toast('🎯 Beat ' + _mpCName + "'s score of " + _mpCScore + ' tries!','info');
+  }, 800);
+}
+
 function newGame(){
-  target=WORDS[Math.floor(Math.random()*WORDS.length)];
+  /* Seeded word selection for challenge/battle */
+  if (_mpRng) {
+    target = WORDS[Math.floor(_mpRng() * WORDS.length)];
+  } else {
+    target = WORDS[Math.floor(Math.random()*WORDS.length)];
+  }
   guesses=[]; curGuess=''; row=0; gameOver=false; kbState={};
   played++;
   document.getElementById('wg-played').textContent=played;
-  document.getElementById('wg-msg').textContent='Guess the 5-letter word!';
+  document.getElementById('wg-msg').textContent = _mpCMode
+    ? '🎯 Beat ' + _mpCName + ' (' + _mpCScore + ' tries)'
+    : 'Guess the 5-letter word!';
   document.getElementById('share-btn').style.display='none';
   renderBoard(); renderKbd();
   SoundEngine.play('start');
+
+  /* Battle mode: connect to room */
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+    _stopPoll = AZMulti.pollRoom(_mpRoom, function(room){
+      updateOpponentPanel(room);
+    });
+  }
 }
 
 /* ── Board ── */
@@ -283,6 +321,7 @@ function submitGuess(){
       CoinEngine.toast('+'+reward+' 🪙 Solved in '+row+'!','success');
       gameOver=true;
       document.getElementById('share-btn').style.display='block';
+      mpGameDone(row, true);
     } else if(row===6){
       streak=0;
       document.getElementById('wg-streak').textContent=0;
@@ -291,6 +330,7 @@ function submitGuess(){
       CoinEngine.recordGame('wordguess',0,false,{});
       gameOver=true;
       document.getElementById('share-btn').style.display='block';
+      mpGameDone(7, false);
     } else {
       curGuess='';
       setMsg('');
@@ -347,9 +387,63 @@ function doShare(){
   var emoji=guesses.map(function(g){
     return g.result.map(function(r){return r==='correct'?'🟩':r==='present'?'🟨':'⬛';}).join('');
   }).join('\n');
+  /* Challenge link share */
+  if (_mpSeed || _mpCGen) {
+    var seed = _mpSeed || AZMulti.makeSeed();
+    var link = AZMulti.buildChallengeLink('wordguess', seed, row, localStorage.getItem('az_mp_name')||'Friend');
+    var txt = '📝 Word Guess ' + row + '/6\n' + emoji + '\n⚔️ Beat my score! ' + link;
+    if (navigator.share) { navigator.share({title:'Word Guess Challenge',text:txt}).catch(function(){}); }
+    else if (navigator.clipboard) { navigator.clipboard.writeText(txt).then(function(){ CoinEngine.toast('Challenge link copied!','info'); }); }
+    return;
+  }
   var txt='📝 Word Guess '+row+'/6\n'+emoji+'\nPlay free: '+window.location.origin;
   if(navigator.share){navigator.share({title:'Word Guess',text:txt}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+/* ── Multiplayer helpers ─────────────────────────────── */
+function mpGameDone(score, won) {
+  if (_stopPoll) { _stopPoll(); _stopPoll = null; }
+  /* Submit to leaderboard */
+  var name = localStorage.getItem('az_mp_name') || 'Player';
+  AZMulti.submitScore('wordguess', won ? (7-score) : 0, name, {tries: score, word: target});
+  /* Update room */
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+    AZMulti.updateMyScore(_mpRoom, _mpPid, score, true);
+  }
+  /* Show challenge result vs challenger */
+  if (_mpCMode) {
+    var beat = won && score < _mpCScore;
+    var tie  = won && score === _mpCScore;
+    setTimeout(function(){
+      var msg = beat ? '🏆 You beat ' + _mpCName + '! (' + score + ' vs ' + _mpCScore + ' tries)'
+              : tie  ? '🤝 Tie with ' + _mpCName + '! (' + score + ' tries)'
+              : won  ? '✅ Solved but ' + _mpCName + ' was faster (' + _mpCScore + ' tries)'
+              :        '❌ ' + _mpCName + ' wins this round (' + _mpCScore + ' tries)';
+      CoinEngine.toast(msg, beat || tie ? 'coin' : 'info');
+    }, 600);
+  }
+  /* Generate fresh challenge link if in challenge-gen mode */
+  if (_mpCGen) {
+    var seed = _mpSeed;
+    var link = AZMulti.buildChallengeLink('wordguess', seed, score, localStorage.getItem('az_mp_name')||'Friend');
+    setTimeout(function(){
+      document.getElementById('share-btn').textContent = '📤 Share Challenge';
+      CoinEngine.toast('Share link ready — tap Share!', 'info');
+    }, 400);
+  }
+}
+
+function updateOpponentPanel(room) {
+  var oppScore = _mpPid === 1 ? room.p2_score : room.p1_score;
+  var oppDone  = _mpPid === 1 ? room.p2_done  : room.p1_done;
+  var oppName  = _mpPid === 1 ? room.p2_name  : room.p1_name;
+  var panel = document.getElementById('opp-panel');
+  if (!panel) return;
+  panel.innerHTML = (oppName||'Opponent') + ': ' + (oppDone ? '✓ ' + oppScore + ' tries' : 'playing…');
+  if (oppDone && !gameOver) {
+    CoinEngine.toast('⚔️ ' + (oppName||'Opponent') + ' finished in ' + oppScore + ' tries — hurry!','info');
+  }
 }
 
 newGame();

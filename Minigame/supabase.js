@@ -30,9 +30,13 @@ window.ArcadeDB = (function () {
   'use strict';
 
   /* ══════ CONFIG — fill these in ══════ */
-  var SUPABASE_URL  = 'YOUR_SUPABASE_URL';   // e.g. https://xyzxyz.supabase.co
-  var SUPABASE_KEY  = 'YOUR_SUPABASE_ANON_KEY';
+  var SUPABASE_URL  = 'https://rcyxjalllqatqddeztvv.supabase.co';
+  var SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeXhqYWxsbHFhdHFkZGV6dHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NzE4MzMsImV4cCI6MjA4ODQ0NzgzM30.eY6Dck0unEBS8W4lSbojAtu5zNkOtYsaBBATe3hSV3Q';
   var TABLE         = 'player_data';
+
+  /* Expose for mp.js multiplayer engine */
+  window._AZ_SB_URL = SUPABASE_URL;
+  window._AZ_SB_KEY = SUPABASE_KEY;
   /* ═════════════════════════════════════ */
 
   var configured = (

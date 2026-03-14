@@ -13,6 +13,7 @@
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
+<script src="mp.js"></script>
 <style>
 :root { --accent: var(--neon-c); }
 
@@ -353,8 +354,20 @@ document.addEventListener('az:balance', function(e){
 /* ════════════════════════ CONFIG ════════════════════════════ */
 var REMOVE = { easy:36, medium:48, hard:58 };
 
+/* ── Multiplayer ── */
+var _MP_S     = AZMulti.parseParams();
+var _mpSeedS  = _MP_S.seed   || null;
+var _mpRoomS  = _MP_S.room   || null;
+var _mpPidS   = _MP_S.pid    || 1;
+var _mpCModeS = _MP_S.cscore !== null;
+var _mpCScoreS= _MP_S.cscore || 0;
+var _mpCNameS = _MP_S.cname  || 'Challenger';
+var _mpCGenS  = !!_MP_S.seed && (new URLSearchParams(location.search)).get('cmode');
+var _mpRngS   = _mpSeedS ? AZMulti.seededRng(_mpSeedS) : null;
+var _stopPollS= null;
+
 /* ════════════════════════ STATE ═════════════════════════════ */
-var DIFF = 'easy';
+var DIFF = (['easy','medium','hard'].indexOf(_MP_S.diff) >= 0) ? _MP_S.diff : 'easy';
 var puzzle, solution, given, notes;
 var selected = -1;
 var errors = 0, MAX_ERRORS = 5;
@@ -389,6 +402,9 @@ function newGame() {
   document.getElementById('pause-btn').textContent = '⏸ Pause';
   updateHUD();
 
+  /* Seed RNG for challenge/battle mode — same puzzle for everyone */
+  _sdkRng = _mpRngS ? AZMulti.seededRng(_mpSeedS + '_puzzle') : null;
+
   /* Generate puzzle */
   solution = generate();
   puzzle = solution.slice();
@@ -396,6 +412,19 @@ function newGame() {
   for (var i = 0; i < REMOVE[DIFF]; i++) puzzle[indices[i]] = 0;
   given = puzzle.map(function(v){ return v !== 0; });
   notes = Array.from({length:81}, function(){ return Array(10).fill(false); });
+
+  /* Reset to true RNG for confetti/cosmetic shuffles */
+  _sdkRng = null;
+
+  startTime = Date.now();
+  timerInt  = setInterval(tickTimer, 1000);
+
+  if (_mpCModeS) setTimeout(function(){
+    CoinEngine.toast('🎯 Beat '+_mpCNameS+"'s time of "+_mpCScoreS+'s!','info');
+  }, 600);
+  if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
+    _stopPollS = AZMulti.pollRoom(_mpRoomS, function(room){ updateOpponentSudoku(room); });
+  }
 
   startTime = Date.now();
   timerInt  = setInterval(tickTimer, 1000);
@@ -653,9 +682,12 @@ function checkWin() {
 /* ════════════════════════ END GAME ══════════════════════════ */
 function endGame(won) {
   clearInterval(timerInt); gameOver = true;
+  if (_stopPollS) { _stopPollS(); _stopPollS = null; }
   var elapsed = getElapsed();
   var m = Math.floor(elapsed/60), s = elapsed%60;
   var timeStr = m+'m '+s+'s';
+
+  var pname = localStorage.getItem('az_mp_name') || 'Player';
 
   if (won) {
     SoundEngine.play('success');
@@ -663,6 +695,21 @@ function endGame(won) {
     reward = Math.max(5, reward - errors*4);
     CoinEngine.add(reward, 'Sudoku — '+DIFF, '🔷');
     CoinEngine.recordGame('sudoku', reward, true, {diff:DIFF, errors:errors, time:elapsed});
+    /* Leaderboard: lower time = better score, store as negative elapsed so DESC sort works */
+    AZMulti.submitScore('sudoku', 100000 - elapsed, pname, {diff:DIFF, errors:errors, time:elapsed, timeStr:timeStr});
+    if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
+      AZMulti.updateMyScore(_mpRoomS, _mpPidS, elapsed, true);
+    }
+    /* Challenge result (cscore = opponent's elapsed seconds) */
+    if (_mpCModeS) {
+      var beat = elapsed < _mpCScoreS, tie = elapsed === _mpCScoreS;
+      setTimeout(function(){
+        var msg = beat ? '🏆 You beat '+_mpCNameS+'! ('+elapsed+'s vs '+_mpCScoreS+'s)'
+                : tie  ? '🤝 Tie with '+_mpCNameS+'!'
+                :        '❌ '+_mpCNameS+' was faster ('+_mpCScoreS+'s vs '+elapsed+'s)';
+        CoinEngine.toast(msg, beat||tie ? 'coin' : 'info');
+      }, 600);
+    }
     document.getElementById('w-time').textContent   = timeStr;
     document.getElementById('w-errors').textContent = errors;
     document.getElementById('w-diff').textContent   = DIFF.toUpperCase();
@@ -672,10 +719,23 @@ function endGame(won) {
   } else {
     SoundEngine.play('gameover');
     CoinEngine.recordGame('sudoku', 0, false, {diff:DIFF});
+    if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
+      AZMulti.updateMyScore(_mpRoomS, _mpPidS, 999999, true);
+    }
     var pct = Math.round(puzzle.filter(function(v,i){return v===solution[i];}).length/81*100);
     document.getElementById('l-time').textContent     = timeStr;
     document.getElementById('l-progress').textContent = pct+'%';
     document.getElementById('lose-ov').classList.remove('hidden');
+  }
+}
+
+function updateOpponentSudoku(room) {
+  var oppScore = _mpPidS===1 ? room.p2_score : room.p1_score;
+  var oppDone  = _mpPidS===1 ? room.p2_done  : room.p1_done;
+  var oppName  = _mpPidS===1 ? room.p2_name  : room.p1_name;
+  if (oppDone && !gameOver) {
+    var oppTime = oppScore < 999999 ? oppScore+'s' : 'gave up';
+    CoinEngine.toast('⚔️ '+(oppName||'Opponent')+' finished in '+oppTime+' — hurry!', 'info');
   }
 }
 
@@ -717,6 +777,14 @@ function updateNumpad() {
 /* ════════════════════════ SHARE ════════════════════════════ */
 function doShare() {
   var elapsed = getElapsed();
+  var pname = localStorage.getItem('az_mp_name') || 'Player';
+  if (_mpSeedS || _mpCGenS) {
+    var link = AZMulti.buildChallengeLink('sudoku', _mpSeedS || AZMulti.makeSeed(), elapsed, pname, DIFF);
+    var txt = '🔷 Sudoku ('+DIFF+') in '+Math.floor(elapsed/60)+'m '+elapsed%60+'s · Beat me! '+link;
+    if (navigator.share) navigator.share({title:'Sudoku Challenge', text:txt}).catch(function(){});
+    else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ CoinEngine.toast('Challenge link copied!','info'); });
+    return;
+  }
   var txt = '🔷 I solved Sudoku ('+DIFF+') in '+Math.floor(elapsed/60)+'m '+elapsed%60+'s on Arcade Zone!\nPlay free: '+window.location.origin;
   if (navigator.share) navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
   else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ CoinEngine.toast('Copied!','info'); });
@@ -767,8 +835,11 @@ function isValid(g, pos, num) {
   }
   return true;
 }
+/* _sdkRng is set to seeded rng when in challenge mode, else null (uses Math.random) */
+var _sdkRng = null;
 function shuffle(a) {
-  for (var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
+  var rng = _sdkRng || Math.random.bind(Math);
+  for (var i=a.length-1;i>0;i--){var j=Math.floor(rng()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
   return a;
 }
 
@@ -789,6 +860,11 @@ function spawnConfetti() {
 }
 
 /* ════════════════════════ INIT ════════════════════════════ */
+/* Sync diff button UI (DIFF may be set from ?diff= URL param) */
+['easy','medium','hard'].forEach(function(d){
+  var el = document.getElementById('d-'+d);
+  if (el) el.className = 'dbtn' + (d===DIFF?' on':'');
+});
 newGame();
 </script>
 </body>

@@ -79,43 +79,34 @@
 <div class="page" style="padding-top:12px;align-items:center;">
 <div class="lb-wrap">
 
-  <div class="lb-header">MY SCORES</div>
+  <div class="lb-header">LEADERBOARD</div>
 
   <!-- Summary cards -->
   <div class="lb-summary" id="lb-summary"></div>
 
-  <!-- Category tabs -->
-  <div class="lb-tabs" id="lb-tabs">
-    <button class="lb-tab on" onclick="setCategory('all',this)">ALL GAMES</button>
-    <button class="lb-tab" onclick="setCategory('classic',this)">🕹 CLASSIC</button>
-    <button class="lb-tab" onclick="setCategory('board',this)">🎲 BOARD</button>
-    <button class="lb-tab" onclick="setCategory('puzzle',this)">🧩 PUZZLE</button>
-    <button class="lb-tab" onclick="setCategory('skill',this)">⚡ SKILL</button>
+  <!-- Personal / Global tabs -->
+  <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
+    <button class="lb-tab on" id="tab-personal" onclick="switchView('personal')">👤 MY SCORES</button>
+    <button class="lb-tab"    id="tab-global"   onclick="switchView('global')">🌍 GLOBAL</button>
+    <div id="online-badge" style="display:none;font-family:var(--font-mono);font-size:.5rem;color:var(--neon-d);padding:4px 8px;border-radius:6px;background:color-mix(in srgb,var(--neon-d) 10%,transparent);border:1px solid color-mix(in srgb,var(--neon-d) 30%,transparent);">● LIVE</div>
+    <span id="lb-refresh-time" style="font-family:var(--font-mono);font-size:.48rem;color:var(--muted);margin-left:auto;"></span>
   </div>
 
-  <!-- Sort row -->
-  <div class="lb-sort-row">
-    <span class="lb-sort-label">SORT:</span>
-    <button class="lb-sort-btn on" id="sort-score" onclick="setSort('score',this)">HIGH SCORE</button>
-    <button class="lb-sort-btn" id="sort-plays" onclick="setSort('plays',this)">PLAYS</button>
-    <button class="lb-sort-btn" id="sort-win"   onclick="setSort('win',this)">WIN RATE</button>
+  <!-- Game filter pills -->
+  <div style="display:flex;gap:5px;flex-wrap:wrap;">
+    <button class="lb-tab game-filter-btn on" onclick="filterGame('all',this)">ALL</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('tetris',this)">🟦</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('flappy',this)">🐦</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('speedmath',this)">🧮</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('wordguess',this)">📝</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('sudoku',this)">🔷</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('2048',this)">🔢</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('memory',this)">🃏</button>
+    <button class="lb-tab game-filter-btn" onclick="filterGame('breakout',this)">🟠</button>
   </div>
 
   <!-- Table -->
-  <div id="lb-table-wrap">
-    <table class="lb-table" id="lb-table">
-      <thead>
-        <tr>
-          <th style="width:44px">#</th>
-          <th>GAME</th>
-          <th style="text-align:right">BEST SCORE</th>
-          <th style="text-align:right">PLAYS</th>
-          <th style="text-align:right">WIN RATE</th>
-        </tr>
-      </thead>
-      <tbody id="lb-body"></tbody>
-    </table>
-  </div>
+  <div id="lb-table-wrap"></div>
 
 </div>
 </div>
@@ -126,114 +117,139 @@ function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
 _tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
 
 var ALL_GAMES=[
-  {id:'asteroids', icon:'🚀', name:'Asteroids',       cat:'classic'},
-  {id:'tetris',    icon:'🟦', name:'Tetris',           cat:'classic'},
-  {id:'breakout',  icon:'🟠', name:'Breakout',         cat:'classic'},
-  {id:'flappy',    icon:'🐦', name:'Flappy Bird',      cat:'classic'},
-  {id:'pong',      icon:'🏓', name:'Pong',             cat:'classic'},
-  {id:'tictactoe', icon:'❎', name:'Tic Tac Toe',      cat:'board'},
-  {id:'connect4',  icon:'🟡', name:'Connect Four',     cat:'board'},
-  {id:'snakesladders',icon:'🎲',name:'Snakes & Ladders',cat:'board'},
-  {id:'2048',      icon:'🔢', name:'2048',             cat:'puzzle'},
-  {id:'sudoku',    icon:'🔷', name:'Sudoku',           cat:'puzzle'},
-  {id:'wordguess', icon:'📝', name:'Word Guess',       cat:'puzzle'},
-  {id:'hanoi',     icon:'🗼', name:'Tower of Hanoi',   cat:'puzzle'},
-  {id:'minesweeper',icon:'💣',name:'Minesweeper',      cat:'puzzle'},
-  {id:'memory',    icon:'🃏', name:'Memory Match',     cat:'puzzle'},
-  {id:'speedmath', icon:'🧮', name:'Speed Math',       cat:'skill'},
-  {id:'mole',      icon:'🦔', name:'Whack-a-Mole',    cat:'skill'},
-  {id:'reaction',  icon:'⚡', name:'Reaction Test',    cat:'skill'},
-  {id:'typing',    icon:'⌨️', name:'Typing Speed',     cat:'skill'},
-  {id:'simon',     icon:'🔴', name:'Simon Says',       cat:'skill'},
+  {id:'tetris',     icon:'🟦', name:'Tetris',        cat:'arcade'},
+  {id:'breakout',   icon:'🟠', name:'Breakout',       cat:'arcade'},
+  {id:'flappy',     icon:'🐦', name:'Flappy Bird',    cat:'arcade'},
+  {id:'2048',       icon:'🔢', name:'2048',           cat:'puzzle'},
+  {id:'sudoku',     icon:'🔷', name:'Sudoku',         cat:'puzzle'},
+  {id:'wordguess',  icon:'📝', name:'Word Guess',     cat:'puzzle'},
+  {id:'minesweeper',icon:'💣', name:'Minesweeper',    cat:'puzzle'},
+  {id:'memory',     icon:'🃏', name:'Memory Match',   cat:'puzzle'},
+  {id:'tictactoe',  icon:'❎', name:'Tic Tac Toe',    cat:'board'},
+  {id:'connect4',   icon:'🟡', name:'Connect Four',   cat:'board'},
+  {id:'speedmath',  icon:'🧮', name:'Speed Math',     cat:'skill'},
+  {id:'mole',       icon:'🦔', name:'Whack-a-Mole',  cat:'skill'},
+  {id:'reaction',   icon:'⚡', name:'Reaction Test',  cat:'skill'},
+  {id:'simon',      icon:'🔴', name:'Simon Says',     cat:'skill'},
 ];
 
-var currentCat='all', currentSort='score';
+var GAME_MAP = {};
+ALL_GAMES.forEach(function(g){ GAME_MAP[g.id] = g; });
 
-function getGameData(id){
-  var stats=CoinEngine.getStats();
+var _view='personal', _filterGame='all', _globalData=[], _loading=false, _refreshTimer=null;
+
+function getMyPid(){ return localStorage.getItem('az_mp_pid')||''; }
+
+/* ═══ PERSONAL ════════════════════════════════════════════════ */
+function getLocalGameData(id){
+  var stats=CoinEngine.getStats?CoinEngine.getStats():{};
   var s=stats[id]||{};
-  return {
-    plays:s.plays||0,
-    wins:s.wins||0,
-    bestScore:s.best||0,
-    winRate: s.plays>0?Math.round((s.wins||0)/s.plays*100):0
-  };
+  return {plays:s.plays||0,wins:s.wins||0,best:s.best||0,
+    winRate:s.plays>0?Math.round((s.wins||0)/s.plays*100):0};
 }
 
-function setCategory(cat,el){
-  currentCat=cat;
-  document.querySelectorAll('.lb-tab').forEach(function(t){t.classList.remove('on');});
-  el.classList.add('on');
-  render();
-}
-
-function setSort(s,el){
-  currentSort=s;
-  document.querySelectorAll('.lb-sort-btn').forEach(function(t){t.classList.remove('on');});
-  el.classList.add('on');
-  render();
-}
-
-function render(){
-  var games=ALL_GAMES.filter(function(g){return currentCat==='all'||g.cat===currentCat;});
-  var data=games.map(function(g){return Object.assign({},g,getGameData(g.id));});
-  /* Sort */
-  if(currentSort==='score') data.sort(function(a,b){return b.bestScore-a.bestScore;});
-  else if(currentSort==='plays') data.sort(function(a,b){return b.plays-a.plays;});
-  else data.sort(function(a,b){return b.winRate-a.winRate;});
-  /* Filter to played games only if any played, otherwise show all */
-  var played=data.filter(function(d){return d.plays>0;});
-  var toShow=played.length>0?played:data;
-  var tbody=document.getElementById('lb-body');
-  if(played.length===0){
-    tbody.innerHTML='';
-    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">🎮 No games played yet!<br>Head to the Hub and start playing.<br><a href="index.html" style="color:var(--neon-c);font-weight:700;">→ Go to Hub</a></div>';
+function renderPersonal(){
+  var games=_filterGame==='all'?ALL_GAMES:ALL_GAMES.filter(function(g){return g.id===_filterGame;});
+  var rows=games.map(function(g){return Object.assign({},g,getLocalGameData(g.id));})
+    .filter(function(g){return g.plays>0;})
+    .sort(function(a,b){return b.best-a.best;});
+  var wrap=document.getElementById('lb-table-wrap');
+  if(!rows.length){
+    wrap.innerHTML='<div class="lb-empty">🎮 No games played yet!<br>Head to the Hub and start playing.<br><a href="index.html" style="color:var(--neon-c);font-weight:700;">→ Go to Hub</a></div>';
     return;
   }
-  /* restore table if needed */
-  if(!document.getElementById('lb-body')){
-    document.getElementById('lb-table-wrap').innerHTML='<table class="lb-table" id="lb-table"><thead><tr><th style="width:44px">#</th><th>GAME</th><th style="text-align:right">BEST SCORE</th><th style="text-align:right">PLAYS</th><th style="text-align:right">WIN RATE</th></tr></thead><tbody id="lb-body"></tbody></table>';
-  }
-  document.getElementById('lb-body').innerHTML=toShow.map(function(g,i){
-    var rankClass=i===0?'top1':i===1?'top2':i===2?'top3':'';
-    var rankText=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-    var winPct=g.winRate;
-    return '<tr class="lb-row">'+
-      '<td class="lb-rank '+rankClass+'">'+rankText+'</td>'+
-      '<td><span class="lb-game-icon">'+g.icon+'</span><a href="'+g.id+'.html" style="color:inherit;text-decoration:none;" class="lb-game-name">'+g.name+'</a></td>'+
-      '<td class="lb-val" style="color:var(--neon-c)">'+g.bestScore.toLocaleString()+'<div class="lb-sub">BEST</div></td>'+
-      '<td class="lb-val" style="color:var(--neon-a)">'+g.plays+'<div class="lb-sub">PLAYS</div></td>'+
-      '<td><div style="text-align:right;"><span style="font-family:var(--font-display);font-size:1.1rem;color:'+(winPct>=60?'var(--neon-d)':winPct>=40?'var(--neon-c)':'var(--muted)')+'">'+winPct+'%</span></div>'+
-      '<div class="win-bar-wrap"><div class="win-bar-fill" style="width:'+winPct+'%;background:'+(winPct>=60?'var(--neon-d)':winPct>=40?'var(--neon-c)':'var(--neon-b)')+'"></div></div></td>'+
-      '</tr>';
-  }).join('');
-}
-
-function renderSummary(){
-  var stats=CoinEngine.getStats();
-  var totalPlays=0,totalWins=0,totalScore=0,gamesPlayed=0;
-  ALL_GAMES.forEach(function(g){
-    var s=stats[g.id]||{};
-    totalPlays+=(s.plays||0);
-    totalWins+=(s.wins||0);
-    totalScore+=(s.best||0);
-    if((s.plays||0)>0)gamesPlayed++;
+  var html='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>GAME</th><th style="text-align:right">BEST</th><th style="text-align:right">PLAYS</th><th style="text-align:right">WIN%</th></tr></thead><tbody>';
+  rows.forEach(function(g,i){
+    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var rc=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    var wc=g.winRate>=60?'var(--neon-d)':g.winRate>=40?'var(--neon-c)':'var(--muted)';
+    html+='<tr class="lb-row"><td class="lb-rank '+rc+'">'+(medal)+'</td><td><span class="lb-game-icon">'+g.icon+'</span><a href="'+g.id+'.html" style="color:inherit;text-decoration:none" class="lb-game-name">'+g.name+'</a></td><td class="lb-val" style="color:var(--neon-c)">'+g.best.toLocaleString()+'<div class="lb-sub">BEST</div></td><td class="lb-val" style="color:var(--neon-a)">'+g.plays+'<div class="lb-sub">PLAYS</div></td><td><span style="font-family:var(--font-display);font-size:1.1rem;color:'+wc+'">'+g.winRate+'%</span><div class="win-bar-wrap"><div class="win-bar-fill" style="width:'+g.winRate+'%"></div></div></td></tr>';
   });
-  var overallWR=totalPlays>0?Math.round(totalWins/totalPlays*100):0;
-  var xpData=CoinEngine.getXPData();
-  document.getElementById('lb-summary').innerHTML=[
-    {v:totalPlays,l:'TOTAL PLAYS'},
-    {v:totalWins,l:'TOTAL WINS'},
-    {v:overallWR+'%',l:'WIN RATE'},
-    {v:gamesPlayed,l:'GAMES TRIED'},
-    {v:'Lv.'+xpData.level,l:'LEVEL',c:'var(--neon-e)'},
-    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
-  ].map(function(s){
-    return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';
-  }).join('');
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
 }
 
-renderSummary(); render();
+/* ═══ GLOBAL ══════════════════════════════════════════════════ */
+function fetchGlobal(force){
+  if(_loading&&!force)return;
+  _loading=true;
+  document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty" style="display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--neon-c);border-radius:50%;animation:lbspin .7s linear infinite"></div><div>Loading global scores…</div></div>';
+  var url=window._AZ_SB_URL+'/rest/v1/az_scores?order=score.desc&limit=100&select=game,player_id,player_name,score,meta,created_at';
+  if(_filterGame!=='all') url+='&game=eq.'+encodeURIComponent(_filterGame);
+  fetch(url,{headers:{apikey:window._AZ_SB_KEY,Authorization:'Bearer '+window._AZ_SB_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(rows){
+      _loading=false; _globalData=rows||[]; renderGlobal();
+      var el=document.getElementById('lb-refresh-time');
+      if(el)el.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    }).catch(function(){
+      _loading=false;
+      var cfg=window._AZ_SB_URL&&window._AZ_SB_URL!=='YOUR_SUPABASE_URL';
+      document.getElementById('lb-table-wrap').innerHTML=cfg
+        ?'<div class="lb-empty">⚠️ Could not load scores.<br><button class="btn" style="--c:var(--neon-c);margin-top:10px" onclick="fetchGlobal(true)">↻ Retry</button></div>'
+        :'<div class="lb-empty">🔒 <b>Supabase not configured.</b><br>Global scores need your Supabase key.<br>Personal scores always work offline.</div>';
+    });
+}
+
+function renderGlobal(){
+  var myId=getMyPid();
+  var rows=_globalData;
+  if(_filterGame!=='all') rows=rows.filter(function(r){return r.game===_filterGame;});
+  var seen={},deduped=[];
+  rows.forEach(function(r){var k=r.player_id+'_'+r.game;if(!seen[k]){seen[k]=true;deduped.push(r);}});
+  deduped.sort(function(a,b){return b.score-a.score;});
+  var top=deduped.slice(0,50);
+  if(!top.length){
+    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">No global scores yet — be the first!<br><a href="index.html" style="color:var(--neon-c)">→ Play now</a></div>';
+    return;
+  }
+  var myRank=-1;
+  top.forEach(function(r,i){if(r.player_id===myId)myRank=i+1;});
+  var html='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>PLAYER</th><th>GAME</th><th style="text-align:right">SCORE</th></tr></thead><tbody>';
+  top.forEach(function(r,i){
+    var isMe=r.player_id===myId;
+    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var rc=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    var gi=GAME_MAP[r.game]||{icon:'🎮',name:r.game};
+    var ds=r.game==='sudoku'?(function(){var s=100000-r.score;return Math.floor(s/60)+'m '+s%60+'s'+(r.meta&&r.meta.diff?' · '+r.meta.diff:'');}()):r.score.toLocaleString();
+    html+='<tr class="lb-row'+(isMe?' lb-me':'')+'" '+(isMe?'style="background:color-mix(in srgb,var(--neon-b) 7%,var(--card-bg));border-color:var(--neon-b)"':'')+'><td class="lb-rank '+rc+'">'+(medal)+'</td><td style="font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:'+(isMe?'var(--neon-b)':'var(--text)')+";">'+(isMe?'⭐ ':'')+((r.player_name||'Anonymous'))+'</td><td><span class="lb-game-icon">'+gi.icon+'</span><span style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted)">'+gi.name+'</span></td><td class="lb-val" style="color:var(--neon-c)">'+ds+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  if(myRank>0) html+='<div style="font-family:var(--font-mono);font-size:.58rem;color:var(--neon-b);text-align:center;margin-top:8px;">⭐ Your rank: #'+myRank+'</div>';
+  document.getElementById('lb-table-wrap').innerHTML=html;
+}
+
+/* ═══ CONTROLS ════════════════════════════════════════════════ */
+function switchView(v){
+  _view=v;
+  ['personal','global'].forEach(function(x){document.getElementById('tab-'+x).classList.toggle('on',x===v);});
+  var b=document.getElementById('online-badge');if(b)b.style.display=v==='global'?'':'none';
+  v==='global'?fetchGlobal():renderPersonal();
+}
+function filterGame(id,el){
+  _filterGame=id;
+  document.querySelectorAll('.game-filter-btn').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');
+  _view==='global'?fetchGlobal(true):renderPersonal();
+}
+
+/* ═══ SUMMARY ══════════════════════════════════════════════════ */
+function renderSummary(){
+  var stats=CoinEngine.getStats?CoinEngine.getStats():{};
+  var tp=0,tw=0,gp=0;
+  ALL_GAMES.forEach(function(g){var s=stats[g.id]||{};tp+=(s.plays||0);tw+=(s.wins||0);if(s.plays>0)gp++;});
+  var wr=tp>0?Math.round(tw/tp*100):0;
+  var xp=CoinEngine.getXPData?CoinEngine.getXPData():{level:1};
+  document.getElementById('lb-summary').innerHTML=[
+    {v:tp,l:'TOTAL PLAYS'},{v:tw,l:'TOTAL WINS'},{v:wr+'%',l:'WIN RATE'},
+    {v:gp,l:'GAMES TRIED'},{v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
+    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
+  ].map(function(s){return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+(s.v)+'</div><div class="sl">'+s.l+'</div></div>';}).join('');
+}
+
+document.head.insertAdjacentHTML('beforeend','<style>@keyframes lbspin{to{transform:rotate(360deg)}}</style>');
+setInterval(function(){if(_view==='global')fetchGlobal(true);},30000);
+renderSummary(); renderPersonal();
 </script>
 </body>
 </html>

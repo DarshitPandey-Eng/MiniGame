@@ -13,6 +13,7 @@
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
+<script src="mp.js"></script>
 <style>
 :root{--accent:var(--neon-c);}
 .sm-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:680px;padding:0 12px 20px;}
@@ -153,6 +154,37 @@ var DIFF_CFG={
 var BEST_KEY='az_sm_best';
 var bestScore=+localStorage.getItem(BEST_KEY)||0;
 
+/* ── Multiplayer ── */
+var _MP     = AZMulti.parseParams();
+var _mpSeed = _MP.seed  || null;
+var _mpRoom = _MP.room  || null;
+var _mpPid  = _MP.pid   || 1;
+var _mpCMode= _MP.cscore !== null;
+var _mpCScore = _MP.cscore || 0;
+var _mpCName  = _MP.cname  || 'Challenger';
+var _mpCGen   = !!_MP.seed && (new URLSearchParams(location.search)).get('cmode');
+var _mpRng    = _mpSeed ? AZMulti.seededRng(_mpSeed) : null;
+var _stopPoll = null;
+/* Seeded question sequence — pre-generate op/a/b pairs */
+var _seedQs = [], _seedQIdx = 0;
+function buildSeedQuestions() {
+  if (!_mpRng) return;
+  _seedQs = [];
+  var cfg = getDynCfg();
+  var allOps = ['+','-','×','÷'];
+  var rng = AZMulti.seededRng(_mpSeed + '_q');
+  for (var i = 0; i < 120; i++) {
+    var op = allOps[Math.floor(rng() * cfg.ops.length)];
+    var a, b, ans;
+    if (op==='÷'){ b=2+Math.floor(rng()*(cfg.maxB-1)); ans=1+Math.floor(rng()*cfg.maxA); a=b*ans; }
+    else if (op==='×'){ a=2+Math.floor(rng()*(cfg.maxA-1)); b=2+Math.floor(rng()*(cfg.maxB-1)); ans=a*b; }
+    else if (op==='-'){ a=Math.floor(rng()*cfg.maxA)+cfg.maxB; b=Math.floor(rng()*cfg.maxB); ans=a-b; }
+    else { a=Math.floor(rng()*cfg.maxA)+1; b=Math.floor(rng()*cfg.maxB)+1; ans=a+b; }
+    _seedQs.push({ op:op, a:a, b:b, ans:ans });
+  }
+  _seedQIdx = 0;
+}
+
 /*
   Dynamic question config based on current score + player level.
   - Every 10 correct answers: numbers grow, ops expand
@@ -222,8 +254,15 @@ function startGame(){
   timerInt=setInterval(tick,1000);
   document.getElementById('sm-start-btn').textContent='↺ RESTART';
   SoundEngine.play('start');
+  buildSeedQuestions();
   nextQuestion();
   updateHUD(); updateRing();
+  if (_mpCMode) setTimeout(function(){
+    CoinEngine.toast('🎯 Beat '+_mpCName+"'s score of "+_mpCScore+'!','info');
+  }, 600);
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+    _stopPoll = AZMulti.pollRoom(_mpRoom, function(room){ updateOpponentSM(room); });
+  }
 }
 
 function tick(){
@@ -263,25 +302,19 @@ function nextQuestion(){
   if(!running)return;
   answerLocked=false;
   document.getElementById('sm-question').className='sm-question';
-  var cfg=getDynCfg(); /* dynamic: grows with correct answers + player level */
-  var op=cfg.ops[Math.floor(Math.random()*cfg.ops.length)];
-  var a,b,ans;
-  if(op==='÷'){
-    b=2+Math.floor(Math.random()*(cfg.maxB-1));
-    ans=1+Math.floor(Math.random()*(cfg.maxA));
-    a=b*ans;
-  } else if(op==='×'){
-    a=2+Math.floor(Math.random()*(cfg.maxA-1));
-    b=2+Math.floor(Math.random()*(cfg.maxB-1));
-    ans=a*b;
-  } else if(op==='-'){
-    a=Math.floor(Math.random()*cfg.maxA)+cfg.maxB;
-    b=Math.floor(Math.random()*cfg.maxB);
-    ans=a-b;
+
+  var a, b, ans, op;
+  if (_mpRng && _seedQs.length > 0) {
+    /* Seeded mode — everyone gets same questions */
+    var q = _seedQs[_seedQIdx % _seedQs.length]; _seedQIdx++;
+    op=q.op; a=q.a; b=q.b; ans=q.ans;
   } else {
-    a=Math.floor(Math.random()*cfg.maxA)+1;
-    b=Math.floor(Math.random()*cfg.maxB)+1;
-    ans=a+b;
+    var cfg=getDynCfg();
+    op=cfg.ops[Math.floor(Math.random()*cfg.ops.length)];
+    if(op==='÷'){ b=2+Math.floor(Math.random()*(cfg.maxB-1)); ans=1+Math.floor(Math.random()*(cfg.maxA)); a=b*ans; }
+    else if(op==='×'){ a=2+Math.floor(Math.random()*(cfg.maxA-1)); b=2+Math.floor(Math.random()*(cfg.maxB-1)); ans=a*b; }
+    else if(op==='-'){ a=Math.floor(Math.random()*cfg.maxA)+cfg.maxB; b=Math.floor(Math.random()*cfg.maxB); ans=a-b; }
+    else { a=Math.floor(Math.random()*cfg.maxA)+1; b=Math.floor(Math.random()*cfg.maxB)+1; ans=a+b; }
   }
   currentAnswer=ans;
   document.getElementById('sm-q-text').textContent=a+' '+op+' '+b+' = ?';
@@ -354,6 +387,7 @@ function answer(val,btn){
 function endGame(){
   running=false;gameOver=true;
   clearInterval(timerInt);
+  if (_stopPoll) { _stopPoll(); _stopPoll = null; }
   if(score>bestScore){bestScore=score;localStorage.setItem(BEST_KEY,bestScore);}
   var accuracy=correct+wrong>0?Math.round(correct/(correct+wrong)*100):0;
   var reward=Math.floor(score*0.05+correct*0.5);
@@ -362,6 +396,15 @@ function endGame(){
     CoinEngine.toast('+'+reward+' 🪙 · '+accuracy+'% accuracy!','success');
   }
   CoinEngine.recordGame('speedmath',score,score>0,{correct:correct,accuracy:accuracy});
+  var pname=localStorage.getItem('az_mp_name')||'Player';
+  AZMulti.submitScore('speedmath',score,pname,{correct:correct,accuracy:accuracy});
+  if(_mpRoom&&_mpRoom!=='OFFLINE'&&AZMulti.isConfigured()) AZMulti.updateMyScore(_mpRoom,_mpPid,score,true);
+  if(_mpCMode){
+    var beat=score>_mpCScore,tie=score===_mpCScore;
+    setTimeout(function(){
+      CoinEngine.toast(beat?'🏆 You beat '+_mpCName+'! ('+score+' vs '+_mpCScore+')':tie?'🤝 Tie!':'❌ '+_mpCName+' wins ('+_mpCScore+' vs '+score+')',beat||tie?'coin':'info');
+    },500);
+  }
   document.getElementById('sm-q-text').textContent='DONE!';
   document.getElementById('sm-answers').innerHTML='<div style="grid-column:1/-1;text-align:center;font-family:var(--font-mono);font-size:.78rem;color:var(--text2);padding:16px 0;">'
     +'Score: <b style="color:var(--neon-c)">'+score+'</b>  ·  Correct: <b style="color:var(--neon-d)">'+correct+'</b>  ·  Accuracy: <b>'+accuracy+'%</b><br>Coins earned: <b style="color:var(--neon-c)">+'+reward+'</b></div>';
@@ -377,9 +420,25 @@ function updateHUD(){
 }
 
 function doShare(){
-  var txt='🧮 Speed Math: scored '+score+' with '+correct+' correct answers on Arcade Zone!\nPlay free: '+window.location.origin;
+  var pname=localStorage.getItem('az_mp_name')||'Player';
+  if(_mpSeed||_mpCGen){
+    var link=AZMulti.buildChallengeLink('speedmath',_mpSeed||AZMulti.makeSeed(),score,pname,DIFF);
+    var txt='🧮 Speed Math: '+score+' pts · Beat me! '+link;
+    if(navigator.share){navigator.share({title:'Speed Math Challenge',text:txt}).catch(function(){});}
+    else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Challenge link copied!','info');});}
+    return;
+  }
+  var txt='🧮 Speed Math: scored '+score+' with '+correct+' correct answers!\nPlay free: '+window.location.origin;
   if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
+}
+
+function updateOpponentSM(room){
+  var oppScore=_mpPid===1?room.p2_score:room.p1_score;
+  var oppName=_mpPid===1?room.p2_name:room.p1_name;
+  var oppDone=_mpPid===1?room.p2_done:room.p1_done;
+  var el=document.getElementById('sm-opp');
+  if(el) el.textContent=(oppName||'Opponent')+': '+(oppDone?'✓ '+oppScore+' pts':'playing…');
 }
 
 /* Keyboard support */

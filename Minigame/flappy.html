@@ -13,6 +13,7 @@
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
+<script src="mp.js"></script>
 <style>
 :root { --accent: var(--neon-d); }
 #cv { display:block; touch-action:none; }
@@ -102,6 +103,34 @@ resizeCanvas();
 window.addEventListener('resize', () => { if (!gameState || gameState==='idle') resizeCanvas(); });
 
 /* ── Constants (logical px) ── */
+/* ── Multiplayer / Challenge ── */
+const _MP_F     = AZMulti.parseParams();
+const _mpSeedF  = _MP_F.seed  || null;
+const _mpRoomF  = _MP_F.room  || null;
+const _mpPidF   = _MP_F.pid   || 1;
+const _mpCModeF = _MP_F.cscore !== null;
+const _mpCScoreF= _MP_F.cscore || 0;
+const _mpCNameF = _MP_F.cname  || 'Challenger';
+const _mpCGenF  = !!_MP_F.seed && (new URLSearchParams(location.search)).get('cmode');
+let _mpRngF = _mpSeedF ? AZMulti.seededRng(_mpSeedF) : null;
+let _stopPollF = null;
+/* Seeded pipe positions */
+let _seedPipes = [], _seedPipeIdx = 0;
+function buildSeedPipes() {
+  if (!_mpRngF) return;
+  _seedPipes = [];
+  const rng = AZMulti.seededRng(_mpSeedF + '_pipes');
+  for (let i = 0; i < 500; i++) {
+    const gap  = Math.max(90, 155 - Math.floor(i/5)*6);
+    const minT = LH*0.15, maxT = LH*0.85 - gap;
+    _seedPipes.push({ topH: minT + rng()*(maxT-minT), gap });
+  }
+  _seedPipeIdx = 0;
+}
+
+/* Opponent ghost state (battle mode) */
+let oppGhost = null; /* { x: float, y: float, score: int, name: string } */
+
 const GRAV   = 0.38;
 const FLAP_V = -7.2;
 const PIPE_W = 54;
@@ -155,12 +184,26 @@ function startGame() {
   particles = [];
   stars     = makeStars();
   pipeTimer = 0;
+  oppGhost  = null;
   gameState = 'playing';
+  _mpRngF   = _mpSeedF ? AZMulti.seededRng(_mpSeedF) : null;
+  buildSeedPipes();
 
   setScore(0);
   cancelAnimationFrame(raf);
-  lastTs = performance.now(); /* critical: prevent first-frame dt spike */
+  lastTs = performance.now();
   raf = requestAnimationFrame(loop);
+
+  if (_mpCModeF) setTimeout(function(){
+    CoinEngine.toast('🎯 Beat '+_mpCNameF+"'s score of "+_mpCScoreF+' pipes!','info');
+  }, 600);
+  if (_mpRoomF && _mpRoomF !== 'OFFLINE' && AZMulti.isConfigured()) {
+    _stopPollF = AZMulti.pollRoom(_mpRoomF, function(room){
+      const os = _mpPidF===1 ? room.p2_score : room.p1_score;
+      const on = _mpPidF===1 ? room.p2_name  : room.p1_name;
+      oppGhost = { score: os, name: on || 'Opponent' };
+    });
+  }
 }
 
 /* ── Main loop ── */
@@ -228,15 +271,17 @@ function update(dt) {
 }
 
 function addPipe() {
-  const { gap } = getDifficulty(score);
-  const minTop = LH * 0.15;
-  const maxTop = LH * 0.85 - gap;
-  pipes.push({
-    x: LW + PIPE_W,
-    topH: minTop + Math.random() * (maxTop - minTop),
-    gap,
-    scored: false
-  });
+  let topH, gap;
+  if (_mpRngF && _seedPipes.length > 0) {
+    const sp = _seedPipes[_seedPipeIdx % _seedPipes.length]; _seedPipeIdx++;
+    topH = sp.topH; gap = sp.gap;
+  } else {
+    const d = getDifficulty(score);
+    gap = d.gap;
+    const minTop = LH * 0.15, maxTop = LH * 0.85 - gap;
+    topH = minTop + Math.random() * (maxTop - minTop);
+  }
+  pipes.push({ x: LW + PIPE_W, topH, gap, scored: false });
 }
 
 function circleRect(cx, cy, cr, rx, ry, rw, rh) {
@@ -249,12 +294,29 @@ function die() {
   gameState = 'dead';
   SoundEngine.stopBGM();
   SoundEngine.play('gameover');
+  if (_stopPollF) { _stopPollF(); _stopPollF = null; }
   if (score > hi) hi = score;
 
-  // reward coins: 8 per pipe cleared
   const earned = score * 8;
-  if (earned > 0) CoinEngine.add(earned);
+  if (earned > 0) CoinEngine.add(earned, 'Flappy Bird — '+score+' pipes', '🐦');
   CoinEngine.recordGame('flappy', score, false);
+
+  /* Leaderboard + room */
+  const pname = localStorage.getItem('az_mp_name') || 'Player';
+  AZMulti.submitScore('flappy', score, pname, { pipes: score });
+  if (_mpRoomF && _mpRoomF !== 'OFFLINE' && AZMulti.isConfigured()) {
+    AZMulti.updateMyScore(_mpRoomF, _mpPidF, score, true);
+  }
+  /* Challenge result */
+  if (_mpCModeF) {
+    const beat = score > _mpCScoreF, tie = score === _mpCScoreF;
+    setTimeout(() => {
+      const msg = beat ? `🏆 You beat ${_mpCNameF}! (${score} vs ${_mpCScoreF} pipes)`
+                : tie  ? `🤝 Tie with ${_mpCNameF}!`
+                :        `❌ ${_mpCNameF} wins (${_mpCScoreF} vs ${score} pipes)`;
+      CoinEngine.toast(msg, beat || tie ? 'coin' : 'info');
+    }, 500);
+  }
 
   document.getElementById('sc-final').textContent = score;
   document.getElementById('hi-final').textContent = hi;
@@ -307,6 +369,20 @@ function draw() {
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0, p.r), 0, Math.PI * 2); ctx.fill();
   });
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+  /* Opponent ghost (battle mode) */
+  if (oppGhost && gameState === 'playing') {
+    ctx.save();
+    ctx.globalAlpha = 0.38;
+    ctx.translate(bird.x + 28, LH * 0.42);
+    ctx.fillStyle = '#ff2d78'; ctx.shadowColor='#ff2d78'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(0,0,BIRD_R,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+    ctx.globalAlpha=0.7; ctx.fillStyle='#fff';
+    ctx.font='bold 9px monospace'; ctx.textAlign='center';
+    ctx.fillText(oppGhost.name||'Opp', 0, -BIRD_R-4);
+    ctx.fillText('🏁'+oppGhost.score, 0, BIRD_R+11);
+    ctx.restore(); ctx.globalAlpha=1;
+  }
 
   /* Bird */
   const skin = getBirdSkin();
@@ -443,14 +519,18 @@ document.getElementById('ov-start').classList.remove('hidden');
 
 /* ── Share Score ── */
 function shareScore(game, val) {
-  var txt = '🎮 I scored ' + val + ' in ' + game + ' on Arcade Zone!\nPlay free: ' + window.location.origin;
-  if(navigator.share) {
-    navigator.share({title:'Arcade Zone', text:txt}).catch(function(){});
-  } else {
-    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){
-      CoinEngine.toast('Score copied to clipboard!','info');
-    });
+  const pname = localStorage.getItem('az_mp_name') || 'Player';
+  if (_mpSeedF || _mpCGenF) {
+    const seed = _mpSeedF || AZMulti.makeSeed();
+    const link = AZMulti.buildChallengeLink('flappy', seed, val, pname);
+    const txt = `🐦 Flappy Bird: ${val} pipes · Beat me! ${link}`;
+    if (navigator.share) navigator.share({title:'Flappy Challenge', text:txt}).catch(()=>{});
+    else navigator.clipboard && navigator.clipboard.writeText(txt).then(()=>{ CoinEngine.toast('Challenge link copied!','info'); });
+    return;
   }
+  const txt = `🎮 I scored ${val} pipes in ${game} on Arcade Zone!\nPlay free: ${window.location.origin}`;
+  if (navigator.share) navigator.share({title:'Arcade Zone', text:txt}).catch(()=>{});
+  else navigator.clipboard && navigator.clipboard.writeText(txt).then(()=>{ CoinEngine.toast('Copied!','info'); });
 }
 </script>
 </body>
