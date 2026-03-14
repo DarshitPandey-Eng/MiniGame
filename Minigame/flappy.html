@@ -301,21 +301,24 @@ function die() {
   if (earned > 0) CoinEngine.add(earned, 'Flappy Bird — '+score+' pipes', '🐦');
   CoinEngine.recordGame('flappy', score, false);
 
-  /* Leaderboard + room */
   const pname = localStorage.getItem('az_mp_name') || 'Player';
   AZMulti.submitScore('flappy', score, pname, { pipes: score });
-  if (_mpRoomF && _mpRoomF !== 'OFFLINE' && AZMulti.isConfigured()) {
-    AZMulti.updateMyScore(_mpRoomF, _mpPidF, score, true);
-  }
-  /* Challenge result */
-  if (_mpCModeF) {
+  /* Challenge-only (no room) */
+  if (_mpCModeF && !_mpRoomF) {
     const beat = score > _mpCScoreF, tie = score === _mpCScoreF;
     setTimeout(() => {
-      const msg = beat ? `🏆 You beat ${_mpCNameF}! (${score} vs ${_mpCScoreF} pipes)`
-                : tie  ? `🤝 Tie with ${_mpCNameF}!`
-                :        `❌ ${_mpCNameF} wins (${_mpCScoreF} vs ${score} pipes)`;
-      CoinEngine.toast(msg, beat || tie ? 'coin' : 'info');
+      const msg = beat ? `🏆 You beat ${_mpCNameF}! (${score} vs ${_mpCScoreF})`
+                : tie  ? `🤝 Tie!`
+                :        `❌ ${_mpCNameF} wins`;
+      CoinEngine.toast(msg, beat||tie ? 'coin' : 'info');
     }, 500);
+  }
+  /* Battle room — submit then redirect to result */
+  if (_mpRoomF && _mpRoomF !== 'OFFLINE' && AZMulti.isConfigured()) {
+    AZMulti.markDoneAndCheck(_mpRoomF, _mpPidF, score, 'flappy').then(function(result){
+      if (result) { window.location.href = AZMulti.resultUrl(result, _mpPidF); }
+      else { window.location.href = 'result.html?room='+encodeURIComponent(_mpRoomF)+'&game=flappy&me='+_mpPidF; }
+    }).catch(function(){ CoinEngine.toast('Score submitted! Waiting for opponent…','info'); });
   }
 
   document.getElementById('sc-final').textContent = score;

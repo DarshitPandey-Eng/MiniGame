@@ -74,6 +74,25 @@
 .wg-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:7px;text-align:center;}
 .wg-stat .v{font-family:var(--font-display);font-size:1.4rem;color:var(--neon-a);}
 .wg-stat .l{font-family:var(--font-mono);font-size:.48rem;color:var(--muted);letter-spacing:.1em;}
+
+/* ── Battle HUD (shown in battle/room mode) ── */
+.battle-hud {
+  position:fixed; top:56px; left:0; right:0; z-index:200;
+  display:none;
+  background:color-mix(in srgb,var(--neon-b) 12%,var(--bg1));
+  border-bottom:1.5px solid color-mix(in srgb,var(--neon-b) 35%,transparent);
+  padding:6px 14px;
+  font-family:var(--font-mono); font-size:.62rem;
+  display:none; align-items:center; gap:12px;
+}
+.battle-hud.show { display:flex; }
+.bh-vs { color:var(--muted); font-size:.54rem; }
+.bh-me  { color:var(--neon-b); font-weight:700; }
+.bh-opp { color:var(--text2); }
+.bh-opp.done { color:var(--neon-d); }
+.bh-dot { width:7px;height:7px;border-radius:50%;background:var(--neon-b);
+  animation:bhPulse 1s ease infinite; flex-shrink:0; }
+@keyframes bhPulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -84,6 +103,15 @@
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
+<div class="battle-hud" id="battle-hud">
+  <div class="bh-dot"></div>
+  <span class="bh-vs">⚔ BATTLE</span>
+  <span class="bh-me" id="bh-me">You: —</span>
+  <span class="bh-vs">vs</span>
+  <span class="bh-opp" id="bh-opp">Opponent: playing…</span>
+  <span style="margin-left:auto;color:var(--muted);font-size:.52rem" id="bh-time">⏱ 0s</span>
+</div>
+
 <div class="page" style="padding-top:12px;align-items:center;">
 <div class="wg-wrap">
 
@@ -404,33 +432,37 @@ function doShare(){
 /* ── Multiplayer helpers ─────────────────────────────── */
 function mpGameDone(score, won) {
   if (_stopPoll) { _stopPoll(); _stopPoll = null; }
-  /* Submit to leaderboard */
   var name = localStorage.getItem('az_mp_name') || 'Player';
   AZMulti.submitScore('wordguess', won ? (7-score) : 0, name, {tries: score, word: target});
-  /* Update room */
-  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
-    AZMulti.updateMyScore(_mpRoom, _mpPid, score, true);
-  }
-  /* Show challenge result vs challenger */
-  if (_mpCMode) {
-    var beat = won && score < _mpCScore;
-    var tie  = won && score === _mpCScore;
+  /* Challenge-only mode (no room) */
+  if (_mpCMode && !_mpRoom) {
+    var beat = won && score < _mpCScore, tie = won && score === _mpCScore;
     setTimeout(function(){
-      var msg = beat ? '🏆 You beat ' + _mpCName + '! (' + score + ' vs ' + _mpCScore + ' tries)'
-              : tie  ? '🤝 Tie with ' + _mpCName + '! (' + score + ' tries)'
-              : won  ? '✅ Solved but ' + _mpCName + ' was faster (' + _mpCScore + ' tries)'
-              :        '❌ ' + _mpCName + ' wins this round (' + _mpCScore + ' tries)';
-      CoinEngine.toast(msg, beat || tie ? 'coin' : 'info');
-    }, 600);
+      CoinEngine.toast(beat?'🏆 You beat '+_mpCName+'! ('+score+' vs '+_mpCScore+' tries)':
+        tie?'🤝 Tie!':won?'✅ Solved but '+_mpCName+' was faster':'❌ '+_mpCName+' wins',beat||tie?'coin':'info');
+    },500);
+    return;
   }
-  /* Generate fresh challenge link if in challenge-gen mode */
   if (_mpCGen) {
-    var seed = _mpSeed;
-    var link = AZMulti.buildChallengeLink('wordguess', seed, score, localStorage.getItem('az_mp_name')||'Friend');
     setTimeout(function(){
-      document.getElementById('share-btn').textContent = '📤 Share Challenge';
-      CoinEngine.toast('Share link ready — tap Share!', 'info');
-    }, 400);
+      document.getElementById('share-btn').textContent='📤 Share Challenge';
+      CoinEngine.toast('Share link ready!','info');
+    },400);
+    return;
+  }
+  /* Battle room — submit score then redirect to result */
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+    AZMulti.markDoneAndCheck(_mpRoom, _mpPid, score, 'wordguess').then(function(result){
+      if (result) {
+        /* Both done — go to result page */
+        window.location.href = AZMulti.resultUrl(result, _mpPid);
+      } else {
+        /* Waiting for opponent — go to result page which will poll */
+        window.location.href = 'result.html?room='+encodeURIComponent(_mpRoom)+'&game=wordguess&me='+_mpPid+'&p1n='+encodeURIComponent(_mpPname||'You');
+      }
+    }).catch(function(){
+      CoinEngine.toast('Score submitted! Waiting for opponent…','info');
+    });
   }
 }
 
@@ -439,14 +471,42 @@ function updateOpponentPanel(room) {
   var oppDone  = _mpPid === 1 ? room.p2_done  : room.p1_done;
   var oppName  = _mpPid === 1 ? room.p2_name  : room.p1_name;
   var panel = document.getElementById('opp-panel');
-  if (!panel) return;
-  panel.innerHTML = (oppName||'Opponent') + ': ' + (oppDone ? '✓ ' + oppScore + ' tries' : 'playing…');
+  if (panel) panel.innerHTML = (oppName||'Opponent') + ': ' + (oppDone ? '✓ ' + oppScore + ' tries' : 'playing…');
+  updateBattleHud(oppName, oppScore + (oppDone ? ' tries' : ' tries so far'), oppDone);
   if (oppDone && !gameOver) {
-    CoinEngine.toast('⚔️ ' + (oppName||'Opponent') + ' finished in ' + oppScore + ' tries — hurry!','info');
+    CoinEngine.toast('⚔️ ' + (oppName||'Opponent') + ' finished in ' + oppScore + ' tries!','info');
   }
 }
 
 newGame();
+
+/* ── Battle HUD init ── */
+(function(){
+  var roomParam = (new URLSearchParams(location.search)).get('room');
+  if (!roomParam || roomParam === 'OFFLINE') return;
+  var hud = document.getElementById('battle-hud');
+  if (!hud) return;
+  hud.classList.add('show');
+  var myN = localStorage.getItem('az_mp_name') || 'You';
+  var hudStart = Date.now();
+  var hudTimer = setInterval(function(){
+    var el = document.getElementById('bh-time');
+    if (el) el.textContent = '⏱ ' + Math.floor((Date.now()-hudStart)/1000) + 's';
+  }, 1000);
+  document.getElementById('bh-me').textContent = '👤 ' + myN + ': playing';
+})();
+
+function updateBattleHud(oppName, oppScore, oppDone) {
+  var el = document.getElementById('bh-opp');
+  if (!el) return;
+  el.textContent = (oppName||'Opponent') + ': ' + (oppDone ? '✅ '+oppScore : '⌛ '+oppScore);
+  el.className = 'bh-opp' + (oppDone ? ' done' : '');
+}
+function updateBattleHudMe(myScore) {
+  var el = document.getElementById('bh-me');
+  var myN = localStorage.getItem('az_mp_name') || 'You';
+  if (el) el.textContent = '👤 ' + myN + ': ' + myScore;
+}
 </script>
 </body>
 </html>

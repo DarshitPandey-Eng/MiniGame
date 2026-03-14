@@ -450,6 +450,24 @@ function showStatus(msg, type) {
 }
 function hideStatus(){ document.getElementById('bt-status').classList.add('hidden'); }
 
+/* ── Handle rematch redirect from result.html ── */
+(function(){
+  var rematchCode = (new URLSearchParams(location.search)).get('rematch');
+  if (!rematchCode) return;
+  /* Pre-fill join code and auto-join */
+  history.replaceState(null, '', 'battle.html');
+  document.addEventListener('DOMContentLoaded', function(){}, {once:true});
+  setTimeout(function(){
+    document.getElementById('join-code').value = rematchCode;
+    /* Auto-join if P2, auto-show if P1 */
+    if (!myName) {
+      CoinEngine.toast('Enter your name to join the rematch!','info');
+    } else {
+      joinRoom();
+    }
+  }, 200);
+})();
+
 /* Show warning if Supabase not configured */
 if (!AZMulti.isConfigured()) {
   showStatus('⚡ <b>Offline mode</b> — Challenge links work perfectly. Live rooms need your Supabase key. <a href="https://supabase.com" target="_blank" style="color:inherit;text-decoration:underline">Get key →</a>', 'warn');

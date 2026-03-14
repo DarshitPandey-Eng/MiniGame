@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle Result — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
+<script src="supabase.js"></script>
+<script src="auth.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<script src="mp.js"></script>
+<style>
+:root { --acc: var(--neon-b); }
+
+/* ── Page ── */
+.result-page {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; min-height:calc(100vh - 56px);
+  gap:0; padding:20px 16px 80px; box-sizing:border-box;
+  max-width:560px; margin:0 auto;
+}
+
+/* ── Outcome banner ── */
+.result-banner {
+  text-align:center; margin-bottom:24px;
+  animation: bannerIn .5s cubic-bezier(.16,1,.3,1);
+}
+@keyframes bannerIn {
+  from{opacity:0;transform:translateY(-30px) scale(.85);}
+  to  {opacity:1;transform:none;}
+}
+.result-emoji { font-size:clamp(3.5rem,14vw,6rem); line-height:1; margin-bottom:8px; }
+.result-title {
+  font-family:var(--font-display);
+  font-size:clamp(2.2rem,10vw,4.5rem);
+  letter-spacing:.1em; line-height:1;
+}
+.result-title.win  { color:var(--neon-d); text-shadow:0 0 40px color-mix(in srgb,var(--neon-d) 60%,transparent); animation:titlePulse 1.5s ease infinite alternate; }
+.result-title.lose { color:var(--neon-b); text-shadow:0 0 30px color-mix(in srgb,var(--neon-b) 40%,transparent); }
+.result-title.tie  { color:var(--neon-c); text-shadow:0 0 30px color-mix(in srgb,var(--neon-c) 40%,transparent); }
+@keyframes titlePulse {
+  from{text-shadow:0 0 20px color-mix(in srgb,var(--neon-d) 40%,transparent);}
+  to  {text-shadow:0 0 60px color-mix(in srgb,var(--neon-d) 90%,transparent);}
+}
+.result-sub {
+  font-family:var(--font-mono); font-size:.7rem;
+  color:var(--text2); margin-top:6px; letter-spacing:.05em;
+}
+
+/* ── Score cards ── */
+.score-cards {
+  display:flex; gap:12px; width:100%; margin-bottom:20px;
+  animation: cardsIn .5s .15s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes cardsIn {
+  from{opacity:0;transform:translateY(20px);}
+  to  {opacity:1;transform:none;}
+}
+.score-card {
+  flex:1; background:var(--card-bg); border:2px solid var(--line2);
+  border-radius:16px; padding:18px 14px; text-align:center;
+  transition:border-color .3s, box-shadow .3s;
+  position:relative; overflow:hidden;
+}
+.score-card.winner-card {
+  border-color:var(--neon-d);
+  box-shadow:0 0 32px color-mix(in srgb,var(--neon-d) 22%,transparent);
+  background:color-mix(in srgb,var(--neon-d) 6%,var(--card-bg));
+}
+.score-card.loser-card {
+  opacity:.7;
+}
+.score-card.me-card:not(.winner-card) {
+  border-color:var(--neon-b);
+}
+.sc-crown {
+  position:absolute; top:-2px; left:50%; transform:translateX(-50%);
+  font-size:1.4rem; line-height:1;
+}
+.sc-name {
+  font-family:var(--font-mono); font-size:.65rem; font-weight:800;
+  color:var(--text2); letter-spacing:.06em; margin-top:4px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.sc-you { font-size:.5rem; color:var(--neon-b); font-weight:700; margin-top:2px; }
+.sc-score {
+  font-family:var(--font-display); font-size:clamp(2rem,8vw,3rem);
+  line-height:1.1; margin:8px 0 4px; letter-spacing:.04em;
+}
+.score-card.winner-card .sc-score { color:var(--neon-d); }
+.score-card.loser-card  .sc-score { color:var(--muted); }
+.score-card.me-card:not(.winner-card) .sc-score { color:var(--text2); }
+.sc-label {
+  font-family:var(--font-mono); font-size:.48rem;
+  color:var(--muted); letter-spacing:.12em;
+}
+/* VS divider */
+.vs-divider {
+  font-family:var(--font-display); font-size:1.2rem;
+  color:var(--muted); align-self:center; flex-shrink:0;
+}
+
+/* ── Stat strip ── */
+.result-stats {
+  display:flex; gap:8px; width:100%; margin-bottom:20px;
+  animation: cardsIn .5s .25s cubic-bezier(.16,1,.3,1) both;
+}
+.rs-chip {
+  flex:1; background:var(--bg2); border:1px solid var(--line2);
+  border-radius:10px; padding:10px 8px; text-align:center;
+}
+.rs-chip .rv { font-family:var(--font-display); font-size:1.2rem; color:var(--neon-c); line-height:1; }
+.rs-chip .rl { font-family:var(--font-mono); font-size:.46rem; color:var(--muted); letter-spacing:.1em; margin-top:2px; }
+
+/* ── Action buttons ── */
+.result-actions {
+  display:flex; flex-direction:column; gap:10px; width:100%;
+  animation: cardsIn .5s .35s cubic-bezier(.16,1,.3,1) both;
+}
+.rematch-btn {
+  width:100%; padding:16px; border-radius:14px;
+  background:var(--neon-b); color:#000; border:none;
+  font-family:var(--font-display); font-size:1.3rem; letter-spacing:.08em;
+  cursor:pointer; transition:all .14s;
+  box-shadow:0 4px 24px color-mix(in srgb,var(--neon-b) 30%,transparent);
+}
+.rematch-btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px color-mix(in srgb,var(--neon-b) 50%,transparent); }
+.rematch-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.rematch-waiting {
+  font-family:var(--font-mono); font-size:.62rem; color:var(--muted);
+  text-align:center; display:none; align-items:center; justify-content:center; gap:8px;
+}
+.rematch-waiting.show { display:flex; }
+
+/* ── Confetti ── */
+.cfp {
+  position:fixed; border-radius:2px; pointer-events:none; z-index:800;
+  animation:cfDrop var(--d) ease-in var(--dl) forwards;
+}
+@keyframes cfDrop {
+  0%  { transform:translateY(-10px) rotate(0deg);  opacity:1; }
+  85% { opacity:1; }
+  100%{ transform:translateY(108vh) rotate(800deg); opacity:0; }
+}
+
+/* ── Ticker ── */
+@keyframes countUp { from{opacity:0;transform:scale(.5)} to{opacity:1;transform:scale(1)} }
+.score-card .sc-score { animation:countUp .4s .3s cubic-bezier(.34,1.56,.64,1) both; }
+</style>
+</head>
+<body>
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="battle.html">← Battle</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>RESULT
+  </div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:0;align-items:center;">
+<div class="result-page">
+
+  <!-- Loading state (shown while waiting for result) -->
+  <div id="loading-state" style="text-align:center;padding:40px 0;">
+    <div style="width:36px;height:36px;border:3px solid var(--line2);border-top-color:var(--neon-b);border-radius:50%;animation:rspin .7s linear infinite;margin:0 auto 16px;"></div>
+    <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--muted);" id="loading-msg">Waiting for opponent to finish…</div>
+    <style>@keyframes rspin{to{transform:rotate(360deg)}}</style>
+  </div>
+
+  <!-- Result state (hidden until both done) -->
+  <div id="result-state" style="width:100%;display:none;flex-direction:column;align-items:center;gap:0;">
+
+    <!-- Outcome banner -->
+    <div class="result-banner">
+      <div class="result-emoji" id="r-emoji">🏆</div>
+      <div class="result-title" id="r-title">YOU WIN!</div>
+      <div class="result-sub"  id="r-sub">Word Guess · Room XXXX</div>
+    </div>
+
+    <!-- Score cards -->
+    <div class="score-cards">
+      <div class="score-card" id="card-p1">
+        <div class="sc-crown" id="crown-p1" style="display:none">👑</div>
+        <div class="sc-name" id="p1-name">Player 1</div>
+        <div class="sc-you" id="p1-you"></div>
+        <div class="sc-score" id="p1-score">0</div>
+        <div class="sc-label" id="p1-label">SCORE</div>
+      </div>
+      <div class="vs-divider">VS</div>
+      <div class="score-card" id="card-p2">
+        <div class="sc-crown" id="crown-p2" style="display:none">👑</div>
+        <div class="sc-name" id="p2-name">Player 2</div>
+        <div class="sc-you" id="p2-you"></div>
+        <div class="sc-score" id="p2-score">0</div>
+        <div class="sc-label" id="p2-label">SCORE</div>
+      </div>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="result-stats">
+      <div class="rs-chip"><div class="rv" id="stat-game">—</div><div class="rl">GAME</div></div>
+      <div class="rs-chip"><div class="rv" id="stat-coins">+0</div><div class="rl">COINS WON</div></div>
+      <div class="rs-chip"><div class="rv" id="stat-diff">—</div><div class="rl">MARGIN</div></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="result-actions">
+      <button class="rematch-btn" id="rematch-btn" onclick="requestRematch()">
+        ⚔ REMATCH
+      </button>
+      <div class="rematch-waiting" id="rematch-waiting">
+        <div style="width:16px;height:16px;border:2px solid var(--line2);border-top-color:var(--neon-b);border-radius:50%;animation:rspin .7s linear infinite;flex-shrink:0"></div>
+        Waiting for opponent to accept…
+      </div>
+      <div class="btn-row" style="width:100%">
+        <a class="btn filled" style="--c:var(--neon-e);flex:1" id="play-again-btn" href="battle.html">🎮 PLAY AGAIN</a>
+        <a class="btn" style="--c:var(--muted);flex:1" href="leaderboard.html">🏆 LEADERBOARD</a>
+        <a class="btn" style="--c:var(--muted);flex:1" href="index.html">HUB</a>
+      </div>
+    </div>
+
+  </div><!-- /result-state -->
+
+</div>
+</div>
+
+<script>
+/* ── Theme ── */
+(function(){
+  var tb = document.getElementById('tb');
+  function s(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); s(); }); s();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+  });
+})();
+
+/* ── Parse URL params ── */
+var P = (function(){
+  var q = new URLSearchParams(location.search);
+  return {
+    game:    q.get('game')   || 'unknown',
+    winner:  q.get('winner') || null,    /* '1' | '2' | 'tie' */
+    p1n:     q.get('p1n')    || 'Player 1',
+    p1s:     parseInt(q.get('p1s')) || 0,
+    p2n:     q.get('p2n')    || 'Player 2',
+    p2s:     parseInt(q.get('p2s')) || 0,
+    me:      parseInt(q.get('me'))  || 1,  /* which pid is me */
+    room:    q.get('room')   || null,
+    seed:    q.get('seed')   || null,
+    diff:    q.get('diff')   || null,
+  };
+})();
+
+var GAME_LABELS = {
+  wordguess:'📝 Word Guess', speedmath:'🧮 Speed Math',
+  flappy:'🐦 Flappy Bird', sudoku:'🔷 Sudoku'
+};
+var SCORE_LABELS = {
+  wordguess:'TRIES', speedmath:'POINTS', flappy:'PIPES', sudoku:'TIME (s)'
+};
+var LOWER_BETTER = { wordguess:true, sudoku:true };
+
+/* ── Render result ── */
+function renderResult() {
+  var winner  = P.winner; /* '1', '2', 'tie', or null */
+  var iAmP1   = P.me === 1;
+  var myScore = iAmP1 ? P.p1s : P.p2s;
+  var oppScore= iAmP1 ? P.p2s : P.p1s;
+  var myName  = iAmP1 ? P.p1n : P.p2n;
+  var oppName = iAmP1 ? P.p2n : P.p1n;
+  var iWon    = (winner === '1' && iAmP1) || (winner === '2' && !iAmP1);
+  var iLost   = (winner === '1' && !iAmP1) || (winner === '2' && iAmP1);
+  var isTie   = winner === 'tie';
+
+  /* Title + emoji */
+  var titleEl = document.getElementById('r-title');
+  var emojiEl = document.getElementById('r-emoji');
+  if (isTie) {
+    titleEl.textContent = 'TIE GAME!'; titleEl.className = 'result-title tie';
+    emojiEl.textContent = '🤝';
+  } else if (iWon) {
+    titleEl.textContent = 'YOU WIN!'; titleEl.className = 'result-title win';
+    emojiEl.textContent = '🏆';
+    confetti();
+    SoundEngine.play('success');
+  } else {
+    titleEl.textContent = 'YOU LOSE'; titleEl.className = 'result-title lose';
+    emojiEl.textContent = '😤';
+    SoundEngine.play('gameover');
+  }
+
+  /* Sub-title */
+  var gLabel = GAME_LABELS[P.game] || P.game;
+  document.getElementById('r-sub').textContent = gLabel + (P.seed ? ' · Seed ' + P.seed.slice(0,4) : '');
+
+  /* Score cards */
+  var sLabel = SCORE_LABELS[P.game] || 'SCORE';
+  var lowerBetter = !!LOWER_BETTER[P.game];
+
+  function fillCard(pid, name, score, isMe, isWinner) {
+    var card  = document.getElementById('card-p'+pid);
+    var crown = document.getElementById('crown-p'+pid);
+    document.getElementById('p'+pid+'-name').textContent  = name;
+    document.getElementById('p'+pid+'-you').textContent   = isMe ? '(YOU)' : '';
+    var dispScore = P.game === 'sudoku' && score >= 999999 ? 'DNF'
+                  : P.game === 'sudoku' ? Math.floor(score/60)+'m '+(score%60)+'s'
+                  : score;
+    document.getElementById('p'+pid+'-score').textContent = dispScore;
+    document.getElementById('p'+pid+'-label').textContent = sLabel;
+    if (isWinner && winner !== 'tie') {
+      card.classList.add('winner-card');
+      crown.style.display = '';
+    } else if (!isWinner && winner !== 'tie') {
+      card.classList.add('loser-card');
+    }
+    if (isMe) card.classList.add('me-card');
+  }
+
+  var p1wins = (winner === '1');
+  var p2wins = (winner === '2');
+  fillCard(1, P.p1n, P.p1s, P.me===1, p1wins);
+  fillCard(2, P.p2n, P.p2s, P.me===2, p2wins);
+
+  /* Stats strip */
+  document.getElementById('stat-game').textContent = gLabel.split(' ').slice(1).join(' ') || gLabel;
+
+  /* Coins earned */
+  var coinsEarned = 0;
+  if (iWon)  coinsEarned = 50;
+  else if (isTie) coinsEarned = 15;
+  if (coinsEarned > 0) {
+    CoinEngine.add(coinsEarned, 'Battle — ' + (iWon ? 'WIN' : 'TIE') + ' vs ' + oppName, '⚔️');
+    document.getElementById('stat-coins').textContent = '+' + coinsEarned;
+  } else {
+    document.getElementById('stat-coins').textContent = '+0';
+  }
+
+  /* Margin */
+  var margin;
+  if (isTie || winner === null) {
+    margin = '—';
+  } else if (P.game === 'wordguess') {
+    var diff = Math.abs(P.p1s - P.p2s);
+    margin = diff === 0 ? 'TIE' : diff + ' try' + (diff>1?'s':'');
+  } else if (P.game === 'sudoku') {
+    var diff = Math.abs(P.p1s - P.p2s);
+    margin = diff >= 999999 ? 'DNF' : Math.floor(diff/60)+'m '+(diff%60)+'s';
+  } else {
+    var diff = Math.abs(P.p1s - P.p2s);
+    margin = diff.toLocaleString() + ' pts';
+  }
+  document.getElementById('stat-diff').textContent = margin;
+
+  /* Play again link */
+  var againBtn = document.getElementById('play-again-btn');
+  if (P.seed && P.game !== 'unknown') {
+    againBtn.href = P.game + '.html?seed=' + AZMulti.makeSeed() + '&cmode=1&cname=' + encodeURIComponent(iAmP1 ? P.p1n : P.p2n);
+    againBtn.textContent = '🎮 SOLO CHALLENGE';
+  }
+
+  /* Show result, hide loading */
+  document.getElementById('loading-state').style.display = 'none';
+  var rs = document.getElementById('result-state');
+  rs.style.display = 'flex';
+}
+
+/* ── Main logic ── */
+(function(){
+  if (P.winner !== null) {
+    /* Result params already in URL — render immediately */
+    renderResult();
+    return;
+  }
+
+  /* Arrived here from a game with ?room= but without winner params yet */
+  /* Poll the room until both players are done */
+  var roomCode = P.room;
+  if (!roomCode || !AZMulti.isConfigured()) {
+    document.getElementById('loading-msg').textContent = 'Waiting for opponent… (check battle.html if this takes too long)';
+    return;
+  }
+
+  document.getElementById('loading-msg').textContent = 'Waiting for opponent to finish…';
+
+  var stop = AZMulti.watchForResult(roomCode, P.game, function(result) {
+    stop();
+    /* Update URL with result params (no reload) */
+    var url = AZMulti.resultUrl(result, P.me);
+    history.replaceState(null, '', url);
+    /* Reparse */
+    var q = new URLSearchParams(url.split('?')[1]);
+    P.winner = q.get('winner');
+    P.p1n    = q.get('p1n'); P.p1s = parseInt(q.get('p1s'));
+    P.p2n    = q.get('p2n'); P.p2s = parseInt(q.get('p2s'));
+    renderResult();
+  });
+
+  /* Timeout after 3 minutes — show partial result */
+  setTimeout(function(){
+    stop();
+    AZMulti.getRoom(roomCode).then(function(room){
+      if (!room) return;
+      /* Force-render with whatever scores we have */
+      P.p1n = room.p1_name || 'Player 1'; P.p1s = room.p1_score || 0;
+      P.p2n = room.p2_name || 'Player 2'; P.p2s = room.p2_score || 0;
+      var r = AZMulti.resolveWinner(
+        Object.assign({}, room, {p1_done:true, p2_done:true}), P.game
+      );
+      P.winner = r ? String(r.winner) : 'tie';
+      document.getElementById('loading-msg').textContent = 'Time up — showing current scores.';
+      setTimeout(renderResult, 800);
+    });
+  }, 3 * 60 * 1000);
+})();
+
+/* ── Rematch ── */
+var _rematchPoll = null;
+function requestRematch() {
+  if (!P.room || !AZMulti.isConfigured()) {
+    /* Offline / no room — just go to battle.html */
+    window.location.href = 'battle.html';
+    return;
+  }
+  var btn = document.getElementById('rematch-btn');
+  btn.disabled = true;
+  document.getElementById('rematch-waiting').classList.add('show');
+
+  /* Create a fresh room with same game but new seed, then redirect to battle to invite */
+  var newSeed = AZMulti.makeSeed();
+  var myName  = localStorage.getItem('az_mp_name') || 'Player';
+  AZMulti.createRoom(P.game, newSeed, P.diff || 'medium', myName).then(function(code){
+    window.location.href = 'battle.html?rematch=' + code;
+  }).catch(function(){
+    btn.disabled = false;
+    document.getElementById('rematch-waiting').classList.remove('show');
+    window.location.href = 'battle.html';
+  });
+}
+
+/* ── Confetti ── */
+function confetti() {
+  var cols = ['#00e5ff','#ff2d78','#ffe135','#00e676','#bf5af2','#ff6b35'];
+  for (var i = 0; i < 90; i++) {
+    var el = document.createElement('div');
+    el.className = 'cfp';
+    el.style.left     = Math.random()*100+'vw';
+    el.style.top      = '-10px';
+    el.style.width    = (5+Math.random()*8)+'px';
+    el.style.height   = (8+Math.random()*10)+'px';
+    el.style.background = cols[i%cols.length];
+    el.style.setProperty('--d',  (1.1+Math.random()*1.8)+'s');
+    el.style.setProperty('--dl', (Math.random()*1)+'s');
+    el.style.transform = 'rotate('+(Math.random()*360)+'deg)';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 4000);
+  }
+}
+</script>
+</body>
+</html>

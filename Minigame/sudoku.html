@@ -695,20 +695,21 @@ function endGame(won) {
     reward = Math.max(5, reward - errors*4);
     CoinEngine.add(reward, 'Sudoku — '+DIFF, '🔷');
     CoinEngine.recordGame('sudoku', reward, true, {diff:DIFF, errors:errors, time:elapsed});
-    /* Leaderboard: lower time = better score, store as negative elapsed so DESC sort works */
     AZMulti.submitScore('sudoku', 100000 - elapsed, pname, {diff:DIFF, errors:errors, time:elapsed, timeStr:timeStr});
-    if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
-      AZMulti.updateMyScore(_mpRoomS, _mpPidS, elapsed, true);
-    }
-    /* Challenge result (cscore = opponent's elapsed seconds) */
-    if (_mpCModeS) {
-      var beat = elapsed < _mpCScoreS, tie = elapsed === _mpCScoreS;
+    /* Challenge-only (no room) */
+    if (_mpCModeS && !_mpRoomS) {
+      var beat=elapsed<_mpCScoreS, tie=elapsed===_mpCScoreS;
       setTimeout(function(){
-        var msg = beat ? '🏆 You beat '+_mpCNameS+'! ('+elapsed+'s vs '+_mpCScoreS+'s)'
-                : tie  ? '🤝 Tie with '+_mpCNameS+'!'
-                :        '❌ '+_mpCNameS+' was faster ('+_mpCScoreS+'s vs '+elapsed+'s)';
-        CoinEngine.toast(msg, beat||tie ? 'coin' : 'info');
-      }, 600);
+        CoinEngine.toast(beat?'🏆 You beat '+_mpCNameS+'! ('+elapsed+'s vs '+_mpCScoreS+'s)':
+          tie?'🤝 Tie!':'❌ '+_mpCNameS+' was faster',beat||tie?'coin':'info');
+      },600);
+    }
+    /* Battle room */
+    if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
+      AZMulti.markDoneAndCheck(_mpRoomS, _mpPidS, elapsed, 'sudoku').then(function(result){
+        if(result){ window.location.href=AZMulti.resultUrl(result,_mpPidS); }
+        else{ window.location.href='result.html?room='+encodeURIComponent(_mpRoomS)+'&game=sudoku&me='+_mpPidS; }
+      }).catch(function(){ CoinEngine.toast('Score submitted! Waiting for opponent…','info'); });
     }
     document.getElementById('w-time').textContent   = timeStr;
     document.getElementById('w-errors').textContent = errors;
@@ -720,7 +721,10 @@ function endGame(won) {
     SoundEngine.play('gameover');
     CoinEngine.recordGame('sudoku', 0, false, {diff:DIFF});
     if (_mpRoomS && _mpRoomS !== 'OFFLINE' && AZMulti.isConfigured()) {
-      AZMulti.updateMyScore(_mpRoomS, _mpPidS, 999999, true);
+      AZMulti.markDoneAndCheck(_mpRoomS, _mpPidS, 999999, 'sudoku').then(function(result){
+        if(result){ window.location.href=AZMulti.resultUrl(result,_mpPidS); }
+        else{ window.location.href='result.html?room='+encodeURIComponent(_mpRoomS)+'&game=sudoku&me='+_mpPidS; }
+      }).catch(function(){});
     }
     var pct = Math.round(puzzle.filter(function(v,i){return v===solution[i];}).length/81*100);
     document.getElementById('l-time').textContent     = timeStr;

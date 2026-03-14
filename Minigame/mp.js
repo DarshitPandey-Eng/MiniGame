@@ -310,6 +310,85 @@ window.AZMulti = (function () {
     return rest('PATCH', BASE_ROOMS + '?code=eq.' + code, { status: status });
   }
 
+  /* ══ Winner resolution ════════════════════════════════════════
+     Call resolveWinner(room, gameId) to figure out who won.
+     Returns { winner: 1|2|'tie'|null, p1: {...}, p2: {...} }
+     null means not both done yet.
+     
+     Scoring rules per game:
+       wordguess  — lower tries = better (7 = failed)
+       speedmath  — higher score = better
+       flappy     — higher score = better
+       sudoku     — lower time = better (999999 = failed/lost)
+  ══════════════════════════════════════════════════════════════ */
+  function resolveWinner(room, gameId) {
+    if (!room.p1_done || !room.p2_done) return null;
+
+    var s1 = room.p1_score, s2 = room.p2_score;
+    var lowerIsBetter = (gameId === 'wordguess' || gameId === 'sudoku');
+    var winner;
+
+    if (s1 === s2) {
+      winner = 'tie';
+    } else if (lowerIsBetter) {
+      winner = s1 < s2 ? 1 : 2;
+    } else {
+      winner = s1 > s2 ? 1 : 2;
+    }
+
+    return {
+      winner: winner,
+      p1: { id: room.p1_id, name: room.p1_name, score: s1, done: room.p1_done },
+      p2: { id: room.p2_id, name: room.p2_name, score: s2, done: room.p2_done },
+      game: gameId,
+      seed: room.seed
+    };
+  }
+
+  /* Mark player done + score, then poll once more to check if both done.
+     Returns a promise that resolves with { result, redirect } once 
+     the result is known, or null if opponent hasn't finished yet. */
+  function markDoneAndCheck(code, pid, score, gameId) {
+    return updateMyScore(code, pid, score, true)
+      .then(function () { return getRoom(code); })
+      .then(function (room) {
+        if (!room) return null;
+        var result = resolveWinner(room, gameId);
+        if (!result) return null; /* opponent not done yet */
+        /* Mark room finished */
+        setRoomStatus(code, 'finished').catch(function(){});
+        return result;
+      });
+  }
+
+  /* Watch room until both players done, then call cb(result).
+     Returns a stop function. */
+  function watchForResult(code, gameId, cb) {
+    var fired = false;
+    var stop = pollRoom(code, function (room) {
+      if (fired) return;
+      var result = resolveWinner(room, gameId);
+      if (result) {
+        fired = true;
+        cb(result);
+      }
+    });
+    return stop;
+  }
+
+  /* Build URL to result page with encoded result */
+  function resultUrl(result, myPid) {
+    return 'result.html?room=' + encodeURIComponent(result.p1.id || '')
+      + '&game='    + encodeURIComponent(result.game || '')
+      + '&winner='  + encodeURIComponent(result.winner)
+      + '&p1n='     + encodeURIComponent(result.p1.name || 'Player 1')
+      + '&p1s='     + encodeURIComponent(result.p1.score)
+      + '&p2n='     + encodeURIComponent(result.p2.name || 'Player 2')
+      + '&p2s='     + encodeURIComponent(result.p2.score)
+      + '&me='      + encodeURIComponent(myPid)
+      + '&seed='    + encodeURIComponent(result.seed || '');
+  }
+
   return {
     /* Config */
     isConfigured:   isConfigured,
@@ -331,6 +410,10 @@ window.AZMulti = (function () {
     updateMyScore:  updateMyScore,
     testConnection: testConnection,
     setRoomStatus:  setRoomStatus,
+    resolveWinner:  resolveWinner,
+    markDoneAndCheck: markDoneAndCheck,
+    watchForResult: watchForResult,
+    resultUrl:      resultUrl,
     pollRoom:       pollRoom,
     /* Leaderboard */
     submitScore:    submitScore,
