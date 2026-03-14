@@ -143,22 +143,68 @@
   <button class="theme-btn" id="theme-btn">🌙</button>
 </nav>
 
+<!-- ═══ HUB HERO ═══════════════════════════════════════════════ -->
 <div class="hub-hero">
   <div class="hub-hero-bg"></div>
+
+  <!-- Greeting + Logo -->
+  <div class="hub-greeting" id="hub-greeting">Good morning 👋</div>
   <div class="hub-headline"><span class="a">ARCADE</span><span class="b">ZONE</span></div>
-  <p class="hub-tagline">14 GAMES · DAILY SPIN · LEVEL UP · NO ADS EVER</p>
-  <div class="xp-hero-bar"><div class="xp-hero-fill az-xp-bar" style="width:0%"></div></div>
+  <p class="hub-tagline">14 GAMES · NO ADS · FREE FOREVER</p>
+
+  <!-- XP progress -->
+  <div class="hero-xp-wrap">
+    <div class="hero-xp-bar-bg">
+      <div class="hero-xp-bar-fill az-xp-bar" style="width:0%"></div>
+    </div>
+    <div class="hero-xp-label">
+      <span class="az-level">Lv.1</span>
+      <span id="xp-to-next" style="color:var(--muted)">0 XP to next</span>
+    </div>
+  </div>
+
+  <!-- Stats pills -->
   <div class="hub-stats">
-    <div class="hub-stat"><div class="n az-bal">0</div><div class="t">COINS</div></div>
-    <div class="hub-stat"><div class="n az-level">Lv.1</div><div class="t">LEVEL</div></div>
-    <div class="hub-stat"><div class="n" id="s-played">0</div><div class="t">PLAYED</div></div>
-    <div class="hub-stat"><div class="n" id="s-wins">0</div><div class="t">WINS</div></div>
+    <div class="hub-stat">
+      <div class="hs-val az-bal">0</div>
+      <div class="hs-lbl">🪙 COINS</div>
+    </div>
+    <div class="hub-stat">
+      <div class="hs-val" id="s-played">0</div>
+      <div class="hs-lbl">🎮 PLAYED</div>
+    </div>
+    <div class="hub-stat">
+      <div class="hs-val" id="s-wins">0</div>
+      <div class="hs-lbl">🏆 WINS</div>
+    </div>
+    <div class="hub-stat">
+      <div class="hs-val" id="hero-streak">0</div>
+      <div class="hs-lbl">🔥 STREAK</div>
+    </div>
   </div>
 </div>
 
+<!-- ═══ MAIN CONTENT ════════════════════════════════════════════ -->
 <main>
 <div class="hub-inner">
 
+  <!-- ── Daily Challenge ──────────────────────────────────── -->
+  <div id="daily-challenge-wrap"></div>
+
+  <!-- ── Streak Card (moved out of hero, sits here as a card) -->
+  <div class="streak-card" id="streak-card">
+    <div class="streak-card-header">
+      <div class="streak-card-title">
+        <span class="streak-fire-anim" id="streak-fire">🔥</span>
+        <span id="streak-track-text">0 day streak</span>
+      </div>
+      <span class="streak-card-best" id="streak-track-best"></span>
+    </div>
+    <div class="streak-dots" id="streak-dots"></div>
+    <div class="streak-card-tip" id="streak-tip">Play any game today to keep your streak!</div>
+  </div>
+
+  <!-- ── Quick Actions ── -->
   <div class="hub-stitle">⚡ QUICK ACTIONS</div>
   <div class="quick-actions-grid">
     <a class="qa-item" href="spin.html" style="--lc:var(--neon-e)" id="ql-spin">
@@ -187,7 +233,6 @@
     </a>
   </div>
 
-  <div id="streak-wrap"></div>
 
   <div class="hub-stitle">🎮 GAMES</div>
 
@@ -381,15 +426,57 @@ function renderAll(){
 
 /* ── Streak ── */
 function renderStreak(){
-  var s = CoinEngine.getStreak();
-  var cur = Math.min(s.current, 7);
-  var html = '<div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.1em;margin-bottom:7px;text-align:center">🔥 '+s.current+' DAY STREAK · BEST: '+s.best+'</div>';
-  html += '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">';
-  for (var i = 1; i <= 7; i++) {
-    html += '<div class="streak-day'+(i<=cur?' done':'')+'">'+( i<=cur?'🔥':'·')+'</div>';
+  var s = CoinEngine.getStreak ? CoinEngine.getStreak() : {current:0,best:0};
+  var cur = s.current || 0;
+  var best = s.best || 0;
+
+  /* Hero stat */
+  var heroEl = document.getElementById('hero-streak');
+  if (heroEl) heroEl.textContent = cur;
+
+  /* Streak card title */
+  var trackText = document.getElementById('streak-track-text');
+  if (trackText) {
+    if (cur === 0) trackText.textContent = 'No streak yet';
+    else if (cur === 1) trackText.textContent = '1 day streak — keep it up!';
+    else trackText.textContent = cur + ' day streak 🔥';
   }
-  html += '</div>';
-  document.getElementById('streak-wrap').innerHTML = html;
+  var bestEl = document.getElementById('streak-track-best');
+  if (bestEl) bestEl.textContent = best > 1 ? 'Best: ' + best + ' days' : '';
+
+  /* Tip line */
+  var tipEl = document.getElementById('streak-tip');
+  if (tipEl) {
+    if (cur >= 7)       tipEl.textContent = '🌟 Amazing! 7+ day streak!';
+    else if (cur >= 3)  tipEl.textContent = '🔥 You're on a roll! Don't break it.';
+    else if (cur === 1) tipEl.textContent = 'Play again tomorrow to build your streak.';
+    else                tipEl.textContent = 'Play any game today to start your streak!';
+  }
+
+  /* 7-day dots */
+  var dotsEl = document.getElementById('streak-dots');
+  if (!dotsEl) return;
+  var today = new Date().getDay();
+  var labels = ['S','M','T','W','T','F','S'];
+  var html = '';
+  for (var i = 0; i < 7; i++) {
+    var dayLabel = labels[i];
+    var isToday  = (i === today);
+    var daysAgo  = (today - i + 7) % 7;
+    var active   = daysAgo < cur;
+    html += '<div class="sd' + (active?' sd-on':'') + (isToday?' sd-today':'') + '">'
+          + '<div class="sd-icon">' + (active ? (isToday?'🔥':'✓') : (isToday?'○':'·')) + '</div>'
+          + '<div class="sd-label">' + dayLabel + '</div>'
+          + '</div>';
+  }
+  dotsEl.innerHTML = html;
+
+  /* Update streak fire animation speed based on streak length */
+  var fire = document.getElementById('streak-fire');
+  if (fire) {
+    fire.style.display = cur === 0 ? 'none' : '';
+    fire.style.animation = cur >= 7 ? 'fireBlaze .5s ease infinite alternate' : '';
+  }
 }
 
 /* ── Activity ── */
@@ -416,11 +503,34 @@ function refreshStats(){
   Object.keys(stats).forEach(function(k){ tp += (stats[k].plays||0); tw += (stats[k].wins||0); });
   var pe = document.getElementById('s-played'); if (pe) pe.textContent = tp;
   var we = document.getElementById('s-wins');   if (we) we.textContent = tw;
-  var xd = CoinEngine.getXPData ? CoinEngine.getXPData() : {xp:0,level:1};
-  document.querySelectorAll('.az-xp-bar').forEach(function(e){ e.style.width = ((xd.xp%500)/500*100).toFixed(1)+'%'; });
+  var xd = CoinEngine.getXPData ? CoinEngine.getXPData() : {xp:0,level:1,xp_next:500};
+  /* XP bar */
+  var xpPerLv = 500; /* approximate */
+  var xpInLevel = xd.xp % xpPerLv;
+  var pct = Math.min(100, (xpInLevel / xpPerLv * 100)).toFixed(1);
+  document.querySelectorAll('.hero-xp-bar-fill,.az-xp-bar').forEach(function(e){ e.style.width = pct+'%'; });
   document.querySelectorAll('.az-level').forEach(function(e){ e.textContent = 'Lv.'+xd.level; });
+  var xpLeft = document.getElementById('xp-to-next');
+  if (xpLeft) xpLeft.textContent = (xpPerLv - xpInLevel) + ' XP to next level';
   var st = CoinEngine.getStreak ? CoinEngine.getStreak() : {current:0};
   document.querySelectorAll('.az-streak').forEach(function(e){ e.textContent = st.current; });
+  /* Greeting */
+  renderGreeting();
+  renderStreak();
+}
+
+/* ── Greeting ── */
+function renderGreeting(){
+  var el = document.getElementById('hub-greeting'); if (!el) return;
+  var hour = new Date().getHours();
+  var time = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  var user = window.AZAuth && window.AZAuth.getUser();
+  var name = user
+    ? ((user.user_metadata && user.user_metadata.full_name)
+       ? user.user_metadata.full_name.split(' ')[0]
+       : user.email.split('@')[0])
+    : localStorage.getItem('az_mp_name') || null;
+  el.textContent = name ? time + ', ' + name + '!' : time + ' 👋';
 }
 
 document.addEventListener('az:balance', refreshStats);
@@ -467,11 +577,58 @@ tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
   el.appendChild(badge);
 })();
 
+/* ── Daily Challenge ── */
+function renderDailyChallenge(){
+  var wrap = document.getElementById('daily-challenge-wrap'); if (!wrap) return;
+  var GOTD_game = GAMES.find(function(g){ return g.id === GOTD; });
+  if (!GOTD_game) return;
+  var today = new Date().toISOString().slice(0,10);
+  var claimed = false;
+  try { claimed = localStorage.getItem('az_dc_' + today) === '1'; } catch(_){}
+
+  var bonus = 30;
+  wrap.innerHTML = '<div class="daily-challenge-card' + (claimed?' dc-claimed':'') + '" id="dc-card">'
+    + '<div class="dc-badge">⭐ DAILY CHALLENGE</div>'
+    + '<div class="dc-content">'
+    + '<div class="dc-game-icon">' + GOTD_game.icon + '</div>'
+    + '<div class="dc-info">'
+    + '<div class="dc-game-name">' + GOTD_game.name + '</div>'
+    + '<div class="dc-desc">' + GOTD_game.desc + '</div>'
+    + '<div class="dc-reward">' + (claimed ? '✅ Bonus claimed today!' : '🪙 +' + bonus + ' bonus coins for playing today') + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="dc-countdown" id="dc-countdown"></div>'
+  + (claimed ? '' : '<a class="dc-btn" href="' + GOTD_game.id + '.html" onclick="claimDailyChallenge(\'' + today + '\',' + bonus + ')">PLAY NOW →</a>')
+    + '</div>';
+}
+
+function claimDailyChallenge(today, bonus){
+  try { localStorage.setItem('az_dc_' + today, '1'); } catch(_){}
+  CoinEngine.add(bonus, 'Daily Challenge bonus', '⭐');
+  CoinEngine.toast('+' + bonus + ' 🪙 Daily challenge bonus!', 'coin');
+}
+
+/* ── Daily countdown timer ── */
+function startDailyCountdown(){
+  function tick(){
+    var el = document.getElementById('dc-countdown'); if (!el) return;
+    var now  = new Date();
+    var midnight = new Date(now); midnight.setHours(24,0,0,0);
+    var diff = midnight - now;
+    var h = Math.floor(diff/3600000);
+    var m = Math.floor((diff%3600000)/60000);
+    var s = Math.floor((diff%60000)/1000);
+    el.textContent = 'Resets in ' + h + 'h ' + (m<10?'0':'') + m + 'm ' + (s<10?'0':'') + s + 's';
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
 /* ── Init ── */
 if (CoinEngine.checkStreak) CoinEngine.checkStreak();
 refreshStats();
-renderStreak();
 renderActivity();
+renderDailyChallenge();
 renderAll();
 </script>
 
