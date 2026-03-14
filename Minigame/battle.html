@@ -453,6 +453,25 @@ function hideStatus(){ document.getElementById('bt-status').classList.add('hidde
 /* Show warning if Supabase not configured */
 if (!AZMulti.isConfigured()) {
   showStatus('⚡ <b>Offline mode</b> — Challenge links work perfectly. Live rooms need your Supabase key. <a href="https://supabase.com" target="_blank" style="color:inherit;text-decoration:underline">Get key →</a>', 'warn');
+} else {
+  /* Test the connection immediately — checks that az_rooms table exists */
+  AZMulti.testConnection().then(function(result) {
+    if (result.ok) {
+      showStatus('✅ Connected to Supabase — live rooms ready!', '');
+      setTimeout(hideStatus, 3000);
+    } else {
+      var isTableMissing = result.error && (result.error.indexOf('does not exist') >= 0 || result.error.indexOf('42P01') >= 0);
+      if (isTableMissing) {
+        showStatus(
+          '⚠️ <b>Database tables not set up yet.</b> Run the SQL setup in your ' +
+          '<a href="https://supabase.com/dashboard/project/rcyxjalllqatqddeztvv/sql" target="_blank" style="color:inherit;text-decoration:underline">Supabase SQL Editor →</a>',
+          'err'
+        );
+      } else {
+        showStatus('⚠️ Supabase connected but returned an error: ' + result.error, 'warn');
+      }
+    }
+  });
 }
 
 /* ══ CREATE ROOM ══════════════════════════════════════════════ */
@@ -475,7 +494,15 @@ function createRoom() {
     showWaitingScreen(code, seed);
     startPolling(code);
   }).catch(function(err){
-    showStatus('❌ Could not create room. Check your Supabase key.','err');
+    var msg = err.message || 'Unknown error';
+    /* Common case: tables not created yet */
+    if (msg.indexOf('does not exist') >= 0 || msg.indexOf('42P01') >= 0) {
+      showStatus('❌ Tables not found. Run the SQL setup in your Supabase dashboard first.','err');
+    } else if (err.message === 'not_configured') {
+      showStatus('❌ Supabase not configured. Check your key in supabase.js','err');
+    } else {
+      showStatus('❌ Could not create room: ' + msg, 'err');
+    }
     document.getElementById('btn-create').disabled = false;
   });
 }
@@ -497,7 +524,9 @@ function joinRoom() {
   }).catch(function(err){
     var msg = err.message === 'room_not_found' ? 'Room not found — check the code'
             : err.message === 'room_full'      ? 'Room is full or already started'
-            : 'Could not join room';
+            : err.message === 'not_configured' ? 'Supabase not configured'
+            : (err.message && err.message.indexOf('does not exist') >= 0) ? 'Tables not set up — run SQL setup first'
+            : 'Could not join: ' + (err.message || 'unknown error');
     CoinEngine.toast(msg,'warn');
   });
 }

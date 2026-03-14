@@ -63,9 +63,12 @@ window.AZMulti = (function () {
   var HEADERS = {
     'Content-Type': 'application/json',
     'apikey': _cfg.key,
-    'Authorization': 'Bearer ' + _cfg.key,
-    'Prefer': 'resolution=merge-duplicates,return=representation'
+    'Authorization': 'Bearer ' + _cfg.key
   };
+  /* PostgREST Prefer headers — set per-request type */
+  var HEADERS_INSERT = Object.assign({}, HEADERS, { 'Prefer': 'return=representation' });
+  var HEADERS_PATCH  = Object.assign({}, HEADERS, { 'Prefer': 'return=minimal' });
+  var HEADERS_GET    = HEADERS;
 
   function isConfigured() { return _cfg.ok; }
 
@@ -149,13 +152,23 @@ window.AZMulti = (function () {
   /* ══ REST helpers ══════════════════════════════════════════════ */
   function rest(method, url, body) {
     if (!isConfigured()) return Promise.reject(new Error('not_configured'));
+    var hdrs = method === 'POST'  ? HEADERS_INSERT
+              : method === 'PATCH' ? HEADERS_PATCH
+              : HEADERS_GET;
     return fetch(url, {
       method: method,
-      headers: HEADERS,
+      headers: hdrs,
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) {
       return r.text().then(function (t) {
-        try { return t ? JSON.parse(t) : null; } catch (_) { return null; }
+        var parsed = null;
+        try { parsed = t ? JSON.parse(t) : null; } catch (_) {}
+        if (!r.ok) {
+          var msg = (parsed && (parsed.message || parsed.hint || parsed.details))
+                    || ('HTTP ' + r.status);
+          return Promise.reject(new Error(msg));
+        }
+        return parsed;
       });
     });
   }
@@ -172,7 +185,11 @@ window.AZMulti = (function () {
       p1_score: 0, p1_done: false,
       p2_score: 0, p2_done: false
     };
-    return rest('POST', BASE_ROOMS, body).then(function () { return code; });
+    return rest('POST', BASE_ROOMS, body).then(function (result) {
+      /* Verify the row was actually inserted — result should be the new row */
+      if (!result) return Promise.reject(new Error('insert_returned_empty'));
+      return code;
+    });
   }
 
   function joinRoom(code, myName) {
@@ -270,6 +287,13 @@ window.AZMulti = (function () {
   }
 
   /* ══ Public API ════════════════════════════════════════════════ */
+  /* Test that the az_rooms table exists — call this on battle page load */
+  function testConnection() {
+    return rest('GET', BASE_ROOMS + '?limit=1&select=code', null)
+      .then(function () { return { ok: true }; })
+      .catch(function (err) { return { ok: false, error: err.message }; });
+  }
+
   function setRoomStatus(code, status) {
     return rest('PATCH', BASE_ROOMS + '?code=eq.' + code, { status: status });
   }
@@ -293,6 +317,7 @@ window.AZMulti = (function () {
     joinRoom:       joinRoom,
     getRoom:        getRoom,
     updateMyScore:  updateMyScore,
+    testConnection: testConnection,
     setRoomStatus:  setRoomStatus,
     pollRoom:       pollRoom,
     /* Leaderboard */
