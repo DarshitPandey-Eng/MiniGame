@@ -13,6 +13,7 @@
 <meta name="theme-color" content="#07070f">
 <meta name="description" content="15 free browser minigames. No ads, no downloads.">
 <script src="supabase.js"></script>
+<script src="auth.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
@@ -140,6 +141,7 @@
   <div class="level-badge" style="font-size:.7rem">⭐ <span class="az-level">Lv.1</span></div>
   <div class="streak-badge" style="font-size:.68rem">🔥 <span class="az-streak">0</span></div>
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <a id="auth-nav-btn" href="login.html" style="font-family:var(--font-mono);font-size:.58rem;padding:5px 10px;border-radius:8px;border:1px solid var(--line2);color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .14s;" onmouseover="this.style.borderColor='var(--neon-e)';this.style.color='var(--neon-e)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--muted)'">SIGN IN</a>
   <button class="theme-btn" id="theme-btn">🌙</button>
 </nav>
 
@@ -417,6 +419,28 @@ tb.addEventListener('click', function(){
   tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
 });
 tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
+
+/* Auth nav button */
+(function(){
+  var btn = document.getElementById('auth-nav-btn');
+  if (!btn) return;
+  function updateAuthNav() {
+    var user = window.AZAuth && window.AZAuth.getUser();
+    if (user) {
+      var name = (user.user_metadata && user.user_metadata.full_name)
+                 ? user.user_metadata.full_name.split(' ')[0]
+                 : user.email.split('@')[0];
+      btn.textContent = '👤 ' + name;
+      btn.href = 'profile.html';
+    } else {
+      btn.textContent = 'SIGN IN';
+      btn.href = 'login.html';
+    }
+  }
+  updateAuthNav();
+  document.addEventListener('az:auth',  updateAuthNav);
+  document.addEventListener('az:logout', updateAuthNav);
+})();
 
 /* ── Daily spin badge ── */
 (function(){

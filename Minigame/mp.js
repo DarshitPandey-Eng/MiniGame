@@ -152,9 +152,16 @@ window.AZMulti = (function () {
   /* ══ REST helpers ══════════════════════════════════════════════ */
   function rest(method, url, body) {
     if (!isConfigured()) return Promise.reject(new Error('not_configured'));
-    var hdrs = method === 'POST'  ? HEADERS_INSERT
-              : method === 'PATCH' ? HEADERS_PATCH
-              : HEADERS_GET;
+    /* Use auth JWT when logged in, anon key otherwise */
+    var baseToken = (window.AZAuth && window.AZAuth.isLoggedIn())
+                    ? window.AZAuth.getToken()
+                    : _cfg.key;
+    var hdrs = Object.assign({},
+      method === 'POST'  ? HEADERS_INSERT
+    : method === 'PATCH' ? HEADERS_PATCH
+    : HEADERS_GET,
+      { 'Authorization': 'Bearer ' + baseToken }
+    );
     return fetch(url, {
       method: method,
       headers: hdrs,
@@ -231,6 +238,11 @@ window.AZMulti = (function () {
   /* ══ Leaderboard ══════════════════════════════════════════════ */
 
   function submitScore(game, score, name, meta) {
+    /* Prefer authenticated user name */
+    var user = window.AZAuth && window.AZAuth.getUser();
+    if (user) {
+      name = (user.user_metadata && user.user_metadata.full_name) || user.email || name;
+    }
     if (!isConfigured()) {
       /* Store locally for offline leaderboard */
       try {

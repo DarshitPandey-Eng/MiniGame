@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
+<script src="auth.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
@@ -277,6 +278,47 @@ document.addEventListener('az:xp',renderPage);
 document.addEventListener('az:achievement',renderPage);
 document.addEventListener('az:balance',renderPage);
 renderPage();
+/* ── Auth integration ─────────────────────────────── */
+(function(){
+  var user = window.AZAuth && window.AZAuth.getUser();
+  if (user) {
+    /* Pre-fill name from auth */
+    var name = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
+    var nameEl = document.getElementById('prof-name-display');
+    if (nameEl) nameEl.textContent = name;
+    var nameInput = document.getElementById('prof-name-input');
+    if (nameInput) nameInput.value = name;
+
+    /* Show email + sign out in hero */
+    var hero = document.querySelector('.prof-hero');
+    if (hero) {
+      var authBadge = document.createElement('div');
+      authBadge.style.cssText = 'font-family:var(--font-mono);font-size:.56rem;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;';
+      authBadge.innerHTML = '<span style="color:var(--neon-d)">✅ '+user.email+'</span>'
+        + ' · <a href="javascript:void(0)" onclick="doSignOut()" style="color:var(--neon-b);text-decoration:underline;cursor:pointer">Sign out</a>';
+      hero.appendChild(authBadge);
+    }
+  } else {
+    /* Show sign in prompt */
+    var hero = document.querySelector('.prof-hero');
+    if (hero) {
+      var signInBox = document.createElement('div');
+      signInBox.style.cssText = 'font-family:var(--font-mono);font-size:.58rem;text-align:center;padding:8px 16px;border-radius:9px;border:1px solid color-mix(in srgb,var(--neon-e) 30%,transparent);background:color-mix(in srgb,var(--neon-e) 8%,transparent);';
+      signInBox.innerHTML = '🔒 <a href="login.html" style="color:var(--neon-e);text-decoration:underline;">Sign in</a> to sync your profile and appear on global leaderboards';
+      hero.appendChild(signInBox);
+    }
+  }
+
+  document.addEventListener('az:auth', function() { location.reload(); });
+  document.addEventListener('az:logout', function() { location.reload(); });
+})();
+
+function doSignOut() {
+  if (window.AZAuth) {
+    window.AZAuth.signOut().then(function(){ window.location.href = 'login.html'; });
+  }
+}
+
 </script>
 </body>
 </html>

@@ -10,9 +10,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
+<script src="auth.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
+<script src="mp.js"></script>
 <style>
 :root{--accent:var(--neon-c);}
 .lb-wrap{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;padding:0 12px 24px;}
@@ -176,19 +178,35 @@ function fetchGlobal(force){
   document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty" style="display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--neon-c);border-radius:50%;animation:lbspin .7s linear infinite"></div><div>Loading global scores…</div></div>';
   var url=window._AZ_SB_URL+'/rest/v1/az_scores?order=score.desc&limit=100&select=game,player_id,player_name,score,meta,created_at';
   if(_filterGame!=='all') url+='&game=eq.'+encodeURIComponent(_filterGame);
-  fetch(url,{headers:{apikey:window._AZ_SB_KEY,Authorization:'Bearer '+window._AZ_SB_KEY}})
-    .then(function(r){return r.json();})
-    .then(function(rows){
-      _loading=false; _globalData=rows||[]; renderGlobal();
-      var el=document.getElementById('lb-refresh-time');
-      if(el)el.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    }).catch(function(){
-      _loading=false;
-      var cfg=window._AZ_SB_URL&&window._AZ_SB_URL!=='YOUR_SUPABASE_URL';
-      document.getElementById('lb-table-wrap').innerHTML=cfg
-        ?'<div class="lb-empty">⚠️ Could not load scores.<br><button class="btn" style="--c:var(--neon-c);margin-top:10px" onclick="fetchGlobal(true)">↻ Retry</button></div>'
-        :'<div class="lb-empty">🔒 <b>Supabase not configured.</b><br>Global scores need your Supabase key.<br>Personal scores always work offline.</div>';
+  /* Use auth token when available */
+  var token = (window.AZAuth && window.AZAuth.isLoggedIn())
+              ? window.AZAuth.getToken()
+              : window._AZ_SB_KEY;
+  fetch(url, {
+    headers: {
+      'apikey': window._AZ_SB_KEY,
+      'Authorization': 'Bearer ' + token
+    }
+  }).then(function(r) {
+    return r.text().then(function(t) {
+      var d = null;
+      try { d = JSON.parse(t); } catch(_) {}
+      if (!r.ok) return Promise.reject(new Error((d && d.message) || 'HTTP ' + r.status));
+      if (!Array.isArray(d)) return Promise.reject(new Error('Unexpected response format'));
+      return d;
     });
+  }).then(function(rows){
+    _loading=false; _globalData=rows; renderGlobal();
+    var el=document.getElementById('lb-refresh-time');
+    if(el) el.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }).catch(function(err){
+    _loading=false;
+    var msg = err.message || 'Unknown error';
+    var isTableMissing = msg.indexOf('does not exist') >= 0 || msg.indexOf('schema cache') >= 0;
+    document.getElementById('lb-table-wrap').innerHTML = isTableMissing
+      ? '<div class="lb-empty">⚠️ <b>Tables not set up yet.</b><br>Run the SQL setup in your Supabase dashboard first.</div>'
+      : '<div class="lb-empty">⚠️ Could not load scores: '+msg+'<br><button class="btn" style="--c:var(--neon-c);margin-top:10px" onclick="fetchGlobal(true)">↻ Retry</button></div>';
+  });
 }
 
 function renderGlobal(){
@@ -240,11 +258,18 @@ function renderSummary(){
   ALL_GAMES.forEach(function(g){var s=stats[g.id]||{};tp+=(s.plays||0);tw+=(s.wins||0);if(s.plays>0)gp++;});
   var wr=tp>0?Math.round(tw/tp*100):0;
   var xp=CoinEngine.getXPData?CoinEngine.getXPData():{level:1};
+  var user=window.AZAuth?window.AZAuth.getUser():null;
+  var playerName=user?(user.user_metadata&&user.user_metadata.full_name?user.user_metadata.full_name:user.email):localStorage.getItem('az_mp_name')||'Guest';
   document.getElementById('lb-summary').innerHTML=[
     {v:tp,l:'TOTAL PLAYS'},{v:tw,l:'TOTAL WINS'},{v:wr+'%',l:'WIN RATE'},
     {v:gp,l:'GAMES TRIED'},{v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
     {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
-  ].map(function(s){return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+(s.v)+'</div><div class="sl">'+s.l+'</div></div>';}).join('');
+  ].map(function(s){return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';}).join('')
+  +'<div class="lb-sum-card" style="grid-column:1/-1;text-align:left;display:flex;align-items:center;gap:10px;">'
+  +'<div style="font-size:1.8rem">'+( user ? '✅' : '👤')+'</div>'
+  +'<div><div style="font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--text)">'+playerName+'</div>'
+  +'<div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted)">'+(user?'Signed in · <a href='javascript:AZAuth.signOut().then(()=>location.reload())' style='color:var(--neon-b)'>Sign out</a>':'Guest · <a href='login.html' style='color:var(--neon-e)'>Sign in for global leaderboards</a>')+'</div>'
+  +'</div></div>';
 }
 
 document.head.insertAdjacentHTML('beforeend','<style>@keyframes lbspin{to{transform:rotate(360deg)}}</style>');
