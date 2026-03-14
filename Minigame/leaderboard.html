@@ -259,17 +259,27 @@ function renderSummary(){
   var wr=tp>0?Math.round(tw/tp*100):0;
   var xp=CoinEngine.getXPData?CoinEngine.getXPData():{level:1};
   var user=window.AZAuth?window.AZAuth.getUser():null;
-  var playerName=user?(user.user_metadata&&user.user_metadata.full_name?user.user_metadata.full_name:user.email):localStorage.getItem('az_mp_name')||'Guest';
-  document.getElementById('lb-summary').innerHTML=[
+  var playerName=user?((user.user_metadata&&user.user_metadata.full_name)?user.user_metadata.full_name:user.email):(localStorage.getItem('az_mp_name')||'Guest');
+  var cards=[
     {v:tp,l:'TOTAL PLAYS'},{v:tw,l:'TOTAL WINS'},{v:wr+'%',l:'WIN RATE'},
     {v:gp,l:'GAMES TRIED'},{v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
     {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
-  ].map(function(s){return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';}).join('')
-  +'<div class="lb-sum-card" style="grid-column:1/-1;text-align:left;display:flex;align-items:center;gap:10px;">'
-  +'<div style="font-size:1.8rem">'+( user ? '✅' : '👤')+'</div>'
-  +'<div><div style="font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--text)">'+playerName+'</div>'
-  +'<div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted)">'+(user?'Signed in · <a href='javascript:AZAuth.signOut().then(()=>location.reload())' style='color:var(--neon-b)'>Sign out</a>':'Guest · <a href='login.html' style='color:var(--neon-e)'>Sign in for global leaderboards</a>')+'</div>'
-  +'</div></div>';
+  ].map(function(s){
+    return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';
+  }).join('');
+  var authRow='<div class="lb-sum-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;">'
+    +'<div style="font-size:1.6rem">'+(user?'✅':'👤')+'</div>'
+    +'<div>'
+      +'<div style="font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--text)">'+playerName+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted)">'
+      +(user
+        ?'Signed in &nbsp;<a href="profile.html" style="color:var(--neon-e)">Profile</a> &nbsp;·&nbsp; <a href="javascript:void(0)" onclick="AZAuth.signOut().then(function(){location.reload()})" style="color:var(--neon-b)">Sign out</a>'
+        :'<a href="login.html" style="color:var(--neon-e)">Sign in</a> for global leaderboards')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+  document.getElementById('lb-summary').innerHTML = cards + authRow;
+}
 }
 
 document.head.insertAdjacentHTML('beforeend','<style>@keyframes lbspin{to{transform:rotate(360deg)}}</style>');

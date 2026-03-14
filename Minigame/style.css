@@ -1083,14 +1083,7 @@ canvas { max-width: 100%; touch-action: none; }
   animation:spinResultPop .45s cubic-bezier(.17,.67,.35,1.4) both !important;
 }
 
-/* ── Game canvas entrance ── */
-canvas {
-  animation:canvasFadeIn .3s ease both;
-}
-@keyframes canvasFadeIn {
-  from { opacity:0; filter:blur(8px); }
-  to   { opacity:1; filter:none; }
-}
+/* canvas entrance animation removed — broke game rendering */
 
 /* ── Difficulty modal spring ── */
 .pgm-card {
