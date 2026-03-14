@@ -17,57 +17,42 @@
 <script src="mp.js"></script>
 <style>
 :root{--accent:var(--neon-c);}
-.lb-wrap{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;padding:0 12px 24px;}
-.lb-header{font-family:var(--font-display);font-size:clamp(2rem,8vw,4rem);color:var(--neon-c);
-  text-shadow:0 0 24px color-mix(in srgb,var(--neon-c) 40%,transparent);
-  letter-spacing:.06em;margin-bottom:4px;}
-
-/* Filter tabs */
-.lb-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.lb-wrap{width:100%;max-width:720px;display:flex;flex-direction:column;gap:12px;padding:0 12px 80px;}
+.lb-header{font-family:var(--font-display);font-size:clamp(2rem,8vw,3.5rem);color:var(--neon-c);
+  text-shadow:0 0 24px color-mix(in srgb,var(--neon-c) 40%,transparent);letter-spacing:.06em;margin-bottom:4px;}
 .lb-tab{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 14px;
   border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
   cursor:pointer;transition:all .12s;}
 .lb-tab.on{border-color:var(--neon-c);color:var(--neon-c);background:color-mix(in srgb,var(--neon-c) 10%,transparent);}
-
-/* Table */
 .lb-table{width:100%;border-collapse:separate;border-spacing:0 4px;}
-.lb-table th{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.14em;
-  text-align:left;padding:6px 10px;}
+.lb-table th{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.14em;text-align:left;padding:6px 10px;}
 .lb-table td{padding:0;}
-.lb-row{background:var(--card-bg);transition:background .1s;}
+.lb-row{background:var(--card-bg);}
 .lb-row:hover{background:var(--card-hover);}
-.lb-row td:first-child{border-radius:10px 0 0 10px;}
-.lb-row td:last-child{border-radius:0 10px 10px 0;}
 .lb-row td{padding:11px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
-.lb-row td:first-child{border-left:1px solid var(--line);}
-.lb-row td:last-child{border-right:1px solid var(--line);}
+.lb-row td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px;}
+.lb-row td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0;}
 .lb-rank{font-family:var(--font-display);font-size:1.1rem;color:var(--muted);width:40px;text-align:center;}
 .lb-rank.top1{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,.5);}
 .lb-rank.top2{color:#c0c0c0;}
 .lb-rank.top3{color:#cd7f32;}
-.lb-game-name{font-family:var(--font-ui);font-size:.82rem;font-weight:700;color:var(--text);}
-.lb-game-icon{font-size:1.2rem;margin-right:8px;}
 .lb-val{font-family:var(--font-display);font-size:1.1rem;text-align:right;}
 .lb-sub{font-family:var(--font-mono);font-size:.5rem;color:var(--muted);letter-spacing:.08em;}
-/* Win bar */
 .win-bar-wrap{width:100px;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-top:3px;}
-.win-bar-fill{height:100%;background:var(--neon-d);border-radius:3px;transition:width .6s ease;}
-
-/* Empty state */
+.win-bar-fill{height:100%;background:var(--neon-d);border-radius:3px;}
 .lb-empty{text-align:center;padding:48px 20px;font-family:var(--font-mono);font-size:.78rem;color:var(--muted);line-height:2;}
-
-/* Sort controls */
-.lb-sort-row{display:flex;gap:6px;align-items:center;}
-.lb-sort-label{font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.1em;}
-.lb-sort-btn{font-family:var(--font-mono);font-size:.58rem;padding:5px 10px;border-radius:6px;
-  border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .1s;}
-.lb-sort-btn.on{border-color:var(--neon-a);color:var(--neon-a);}
-
-/* Personal summary */
-.lb-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+.lb-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
 .lb-sum-card{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:12px 10px;text-align:center;}
 .lb-sum-card .sv{font-family:var(--font-display);font-size:1.6rem;color:var(--neon-c);line-height:1;}
 .lb-sum-card .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.1em;margin-top:3px;}
+.lb-auth-card{background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:10px;grid-column:1/-1;}
+.lb-auth-name{font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--text);}
+.lb-auth-sub{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);margin-top:2px;}
+.lb-auth-sub a{color:var(--neon-e);text-decoration:underline;cursor:pointer;}
+@keyframes lbspin{to{transform:rotate(360deg);}}
+.lb-spinner{width:28px;height:28px;border:3px solid var(--line2);border-top-color:var(--neon-c);
+  border-radius:50%;animation:lbspin .7s linear infinite;margin:0 auto 12px;}
 </style>
 </head>
 <body>
@@ -80,211 +65,207 @@
 </nav>
 <div class="page" style="padding-top:12px;align-items:center;">
 <div class="lb-wrap">
-
   <div class="lb-header">LEADERBOARD</div>
-
-  <!-- Summary cards -->
   <div class="lb-summary" id="lb-summary"></div>
-
-  <!-- Personal / Global tabs -->
-  <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap;">
-    <button class="lb-tab on" id="tab-personal" onclick="switchView('personal')">👤 MY SCORES</button>
-    <button class="lb-tab"    id="tab-global"   onclick="switchView('global')">🌍 GLOBAL</button>
-    <div id="online-badge" style="display:none;font-family:var(--font-mono);font-size:.5rem;color:var(--neon-d);padding:4px 8px;border-radius:6px;background:color-mix(in srgb,var(--neon-d) 10%,transparent);border:1px solid color-mix(in srgb,var(--neon-d) 30%,transparent);">● LIVE</div>
-    <span id="lb-refresh-time" style="font-family:var(--font-mono);font-size:.48rem;color:var(--muted);margin-left:auto;"></span>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+    <button class="lb-tab on" id="tab-personal" onclick="switchView('personal')">MY SCORES</button>
+    <button class="lb-tab"    id="tab-global"   onclick="switchView('global')">GLOBAL</button>
+    <span id="live-badge" style="display:none;font-family:var(--font-mono);font-size:.5rem;color:var(--neon-d);padding:3px 8px;border-radius:6px;background:color-mix(in srgb,var(--neon-d) 10%,transparent);border:1px solid color-mix(in srgb,var(--neon-d) 30%,transparent);">LIVE</span>
+    <span id="lb-updated" style="margin-left:auto;font-family:var(--font-mono);font-size:.48rem;color:var(--muted);"></span>
   </div>
-
-  <!-- Game filter pills -->
   <div style="display:flex;gap:5px;flex-wrap:wrap;">
-    <button class="lb-tab game-filter-btn on" onclick="filterGame('all',this)">ALL</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('tetris',this)">🟦</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('flappy',this)">🐦</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('speedmath',this)">🧮</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('wordguess',this)">📝</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('sudoku',this)">🔷</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('2048',this)">🔢</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('memory',this)">🃏</button>
-    <button class="lb-tab game-filter-btn" onclick="filterGame('breakout',this)">🟠</button>
+    <button class="lb-tab on" onclick="setGF('all',this)">ALL</button>
+    <button class="lb-tab" onclick="setGF('tetris',this)">🟦</button>
+    <button class="lb-tab" onclick="setGF('flappy',this)">🐦</button>
+    <button class="lb-tab" onclick="setGF('speedmath',this)">🧮</button>
+    <button class="lb-tab" onclick="setGF('wordguess',this)">📝</button>
+    <button class="lb-tab" onclick="setGF('sudoku',this)">🔷</button>
+    <button class="lb-tab" onclick="setGF('2048',this)">🔢</button>
+    <button class="lb-tab" onclick="setGF('memory',this)">🃏</button>
+    <button class="lb-tab" onclick="setGF('breakout',this)">🟠</button>
   </div>
-
-  <!-- Table -->
   <div id="lb-table-wrap"></div>
-
 </div>
 </div>
-
 <script>
-var _tb=document.getElementById('tb');
-function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
-_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
+(function(){
+  var tb=document.getElementById('tb');
+  function s(){tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
+  tb.addEventListener('click',function(){CoinEngine.toggleTheme();s();}); s();
+  document.addEventListener('az:balance',function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){el.textContent=e.detail;});
+  });
+})();
 
-var ALL_GAMES=[
-  {id:'tetris',     icon:'🟦', name:'Tetris',        cat:'arcade'},
-  {id:'breakout',   icon:'🟠', name:'Breakout',       cat:'arcade'},
-  {id:'flappy',     icon:'🐦', name:'Flappy Bird',    cat:'arcade'},
-  {id:'2048',       icon:'🔢', name:'2048',           cat:'puzzle'},
-  {id:'sudoku',     icon:'🔷', name:'Sudoku',         cat:'puzzle'},
-  {id:'wordguess',  icon:'📝', name:'Word Guess',     cat:'puzzle'},
-  {id:'minesweeper',icon:'💣', name:'Minesweeper',    cat:'puzzle'},
-  {id:'memory',     icon:'🃏', name:'Memory Match',   cat:'puzzle'},
-  {id:'tictactoe',  icon:'❎', name:'Tic Tac Toe',    cat:'board'},
-  {id:'connect4',   icon:'🟡', name:'Connect Four',   cat:'board'},
-  {id:'speedmath',  icon:'🧮', name:'Speed Math',     cat:'skill'},
-  {id:'mole',       icon:'🦔', name:'Whack-a-Mole',  cat:'skill'},
-  {id:'reaction',   icon:'⚡', name:'Reaction Test',  cat:'skill'},
-  {id:'simon',      icon:'🔴', name:'Simon Says',     cat:'skill'},
+var GAMES=[
+  {id:'tetris',icon:'🟦',name:'Tetris'},{id:'breakout',icon:'🟠',name:'Breakout'},
+  {id:'flappy',icon:'🐦',name:'Flappy Bird'},{id:'2048',icon:'🔢',name:'2048'},
+  {id:'sudoku',icon:'🔷',name:'Sudoku'},{id:'wordguess',icon:'📝',name:'Word Guess'},
+  {id:'minesweeper',icon:'💣',name:'Minesweeper'},{id:'memory',icon:'🃏',name:'Memory Match'},
+  {id:'tictactoe',icon:'❎',name:'Tic Tac Toe'},{id:'connect4',icon:'🟡',name:'Connect Four'},
+  {id:'speedmath',icon:'🧮',name:'Speed Math'},{id:'mole',icon:'🦔',name:'Whack-a-Mole'},
+  {id:'reaction',icon:'⚡',name:'Reaction Test'},{id:'simon',icon:'🔴',name:'Simon Says'}
 ];
+var GM={};
+GAMES.forEach(function(g){GM[g.id]=g;});
 
-var GAME_MAP = {};
-ALL_GAMES.forEach(function(g){ GAME_MAP[g.id] = g; });
+var _view='personal', _gf='all', _data=[], _loading=false;
 
-var _view='personal', _filterGame='all', _globalData=[], _loading=false, _refreshTimer=null;
+function myPid(){return localStorage.getItem('az_mp_pid')||'';}
 
-function getMyPid(){ return localStorage.getItem('az_mp_pid')||''; }
+function sdkTime(score,meta){
+  if(meta&&meta.timeStr) return meta.timeStr+(meta.diff?' · '+meta.diff:'');
+  var s=100000-score;
+  if(s>=999999) return 'DNF';
+  return Math.floor(s/60)+'m '+(s%60)+'s';
+}
 
-/* ═══ PERSONAL ════════════════════════════════════════════════ */
-function getLocalGameData(id){
+function renderSummary(){
   var stats=CoinEngine.getStats?CoinEngine.getStats():{};
-  var s=stats[id]||{};
-  return {plays:s.plays||0,wins:s.wins||0,best:s.best||0,
-    winRate:s.plays>0?Math.round((s.wins||0)/s.plays*100):0};
+  var tp=0,tw=0,gp=0;
+  GAMES.forEach(function(g){var s=stats[g.id]||{};tp+=(s.plays||0);tw+=(s.wins||0);if(s.plays>0)gp++;});
+  var wr=tp>0?Math.round(tw/tp*100):0;
+  var xp=CoinEngine.getXPData?CoinEngine.getXPData():{level:1};
+  var user=window.AZAuth?window.AZAuth.getUser():null;
+  var pname=user?((user.user_metadata&&user.user_metadata.full_name)||user.email):(localStorage.getItem('az_mp_name')||'Guest');
+
+  var cards=[
+    {v:tp,l:'TOTAL PLAYS'},{v:tw,l:'TOTAL WINS'},{v:wr+'%',l:'WIN RATE'},
+    {v:gp,l:'GAMES TRIED'},{v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
+    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'}
+  ].map(function(s){
+    return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';
+  }).join('');
+
+  var authSub=user
+    ? '<a href="profile.html">Profile</a> &nbsp;&middot;&nbsp; <a href="#" onclick="doSignOut();return false;" style="color:var(--neon-b)">Sign out</a>'
+    : '<a href="login.html">Sign in</a> for global leaderboards';
+
+  var authCard='<div class="lb-auth-card"><div style="font-size:1.5rem">'+(user?'✅':'👤')+'</div>'
+    +'<div><div class="lb-auth-name">'+pname+'</div><div class="lb-auth-sub">'+authSub+'</div></div></div>';
+
+  document.getElementById('lb-summary').innerHTML=cards+authCard;
+}
+
+function doSignOut(){
+  if(window.AZAuth) window.AZAuth.signOut().then(function(){location.reload();});
 }
 
 function renderPersonal(){
-  var games=_filterGame==='all'?ALL_GAMES:ALL_GAMES.filter(function(g){return g.id===_filterGame;});
-  var rows=games.map(function(g){return Object.assign({},g,getLocalGameData(g.id));})
-    .filter(function(g){return g.plays>0;})
-    .sort(function(a,b){return b.best-a.best;});
   var wrap=document.getElementById('lb-table-wrap');
+  var list=(_gf==='all'?GAMES:GAMES.filter(function(g){return g.id===_gf;}));
+  var rows=list.map(function(g){
+    var s=(CoinEngine.getStats?CoinEngine.getStats():{})[g.id]||{};
+    return {id:g.id,icon:g.icon,name:g.name,plays:s.plays||0,wins:s.wins||0,best:s.best||0,
+      wr:s.plays>0?Math.round((s.wins||0)/s.plays*100):0};
+  }).filter(function(r){return r.plays>0;}).sort(function(a,b){return b.best-a.best;});
+
   if(!rows.length){
-    wrap.innerHTML='<div class="lb-empty">🎮 No games played yet!<br>Head to the Hub and start playing.<br><a href="index.html" style="color:var(--neon-c);font-weight:700;">→ Go to Hub</a></div>';
+    wrap.innerHTML='<div class="lb-empty">🎮 No games played yet!<br>Head to the Hub and start playing.<br><a href="index.html" style="color:var(--neon-c);font-weight:700;">Go to Hub</a></div>';
     return;
   }
-  var html='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>GAME</th><th style="text-align:right">BEST</th><th style="text-align:right">PLAYS</th><th style="text-align:right">WIN%</th></tr></thead><tbody>';
+  var h='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>GAME</th><th style="text-align:right">BEST</th><th style="text-align:right">PLAYS</th><th style="text-align:right">WIN%</th></tr></thead><tbody>';
   rows.forEach(function(g,i){
-    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var m=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
     var rc=i===0?'top1':i===1?'top2':i===2?'top3':'';
-    var wc=g.winRate>=60?'var(--neon-d)':g.winRate>=40?'var(--neon-c)':'var(--muted)';
-    html+='<tr class="lb-row"><td class="lb-rank '+rc+'">'+(medal)+'</td><td><span class="lb-game-icon">'+g.icon+'</span><a href="'+g.id+'.html" style="color:inherit;text-decoration:none" class="lb-game-name">'+g.name+'</a></td><td class="lb-val" style="color:var(--neon-c)">'+g.best.toLocaleString()+'<div class="lb-sub">BEST</div></td><td class="lb-val" style="color:var(--neon-a)">'+g.plays+'<div class="lb-sub">PLAYS</div></td><td><span style="font-family:var(--font-display);font-size:1.1rem;color:'+wc+'">'+g.winRate+'%</span><div class="win-bar-wrap"><div class="win-bar-fill" style="width:'+g.winRate+'%"></div></div></td></tr>';
+    var wc=g.wr>=60?'var(--neon-d)':g.wr>=40?'var(--neon-c)':'var(--muted)';
+    h+='<tr class="lb-row"><td class="lb-rank '+rc+'">'+m+'</td>'
+      +'<td><span class="lb-game-icon">'+g.icon+'</span><a href="'+g.id+'.html" style="color:inherit;text-decoration:none;font-family:var(--font-ui);font-size:.82rem;font-weight:700;">'+g.name+'</a></td>'
+      +'<td class="lb-val" style="color:var(--neon-c)">'+g.best.toLocaleString()+'<div class="lb-sub">BEST</div></td>'
+      +'<td class="lb-val" style="color:var(--neon-a)">'+g.plays+'<div class="lb-sub">PLAYS</div></td>'
+      +'<td><span style="font-family:var(--font-display);font-size:1.1rem;color:'+wc+'">'+g.wr+'%</span>'
+      +'<div class="win-bar-wrap"><div class="win-bar-fill" style="width:'+g.wr+'%"></div></div></td></tr>';
   });
-  html+='</tbody></table>';
-  wrap.innerHTML=html;
+  h+='</tbody></table>';
+  wrap.innerHTML=h;
 }
 
-/* ═══ GLOBAL ══════════════════════════════════════════════════ */
 function fetchGlobal(force){
-  if(_loading&&!force)return;
+  if(_loading&&!force) return;
   _loading=true;
-  document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty" style="display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--neon-c);border-radius:50%;animation:lbspin .7s linear infinite"></div><div>Loading global scores…</div></div>';
-  var url=window._AZ_SB_URL+'/rest/v1/az_scores?order=score.desc&limit=100&select=game,player_id,player_name,score,meta,created_at';
-  if(_filterGame!=='all') url+='&game=eq.'+encodeURIComponent(_filterGame);
-  /* Use auth token when available */
-  var token = (window.AZAuth && window.AZAuth.isLoggedIn())
-              ? window.AZAuth.getToken()
-              : window._AZ_SB_KEY;
-  fetch(url, {
-    headers: {
-      'apikey': window._AZ_SB_KEY,
-      'Authorization': 'Bearer ' + token
-    }
-  }).then(function(r) {
-    return r.text().then(function(t) {
-      var d = null;
-      try { d = JSON.parse(t); } catch(_) {}
-      if (!r.ok) return Promise.reject(new Error((d && d.message) || 'HTTP ' + r.status));
-      if (!Array.isArray(d)) return Promise.reject(new Error('Unexpected response format'));
-      return d;
-    });
-  }).then(function(rows){
-    _loading=false; _globalData=rows; renderGlobal();
-    var el=document.getElementById('lb-refresh-time');
-    if(el) el.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  }).catch(function(err){
+  document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty"><div class="lb-spinner"></div>Loading global scores…</div>';
+  var url=(window._AZ_SB_URL||'')+'/rest/v1/az_scores?order=score.desc&limit=100&select=game,player_id,player_name,score,meta,created_at';
+  if(!window._AZ_SB_URL||window._AZ_SB_URL==='YOUR_SUPABASE_URL'){
     _loading=false;
-    var msg = err.message || 'Unknown error';
-    var isTableMissing = msg.indexOf('does not exist') >= 0 || msg.indexOf('schema cache') >= 0;
-    document.getElementById('lb-table-wrap').innerHTML = isTableMissing
-      ? '<div class="lb-empty">⚠️ <b>Tables not set up yet.</b><br>Run the SQL setup in your Supabase dashboard first.</div>'
-      : '<div class="lb-empty">⚠️ Could not load scores: '+msg+'<br><button class="btn" style="--c:var(--neon-c);margin-top:10px" onclick="fetchGlobal(true)">↻ Retry</button></div>';
-  });
+    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">🔒 Supabase not configured.<br>Global scores need your Supabase key.</div>';
+    return;
+  }
+  if(_gf!=='all') url+='&game=eq.'+encodeURIComponent(_gf);
+  var token=(window.AZAuth&&window.AZAuth.isLoggedIn())?window.AZAuth.getToken():window._AZ_SB_KEY;
+  fetch(url,{headers:{'apikey':window._AZ_SB_KEY,'Authorization':'Bearer '+token}})
+    .then(function(r){return r.text().then(function(t){
+      var d=null; try{d=JSON.parse(t);}catch(_){}
+      if(!r.ok){var m=(d&&(d.message||d.hint))||('HTTP '+r.status);return Promise.reject(new Error(m));}
+      if(!Array.isArray(d)) return Promise.reject(new Error('Bad response'));
+      return d;
+    });})
+    .then(function(rows){
+      _loading=false; _data=rows; renderGlobal();
+      var el=document.getElementById('lb-updated');
+      if(el) el.textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    })
+    .catch(function(err){
+      _loading=false;
+      var m=err.message||'Error';
+      var missing=m.indexOf('does not exist')>=0||m.indexOf('schema cache')>=0;
+      document.getElementById('lb-table-wrap').innerHTML=missing
+        ?'<div class="lb-empty">⚠️ Tables not set up yet.<br>Run the SQL setup in your Supabase SQL Editor first.</div>'
+        :'<div class="lb-empty">⚠️ '+m+'<br><button class="btn" style="--c:var(--neon-c);margin-top:10px" onclick="fetchGlobal(true)">↻ Retry</button></div>';
+    });
 }
 
 function renderGlobal(){
-  var myId=getMyPid();
-  var rows=_globalData;
-  if(_filterGame!=='all') rows=rows.filter(function(r){return r.game===_filterGame;});
+  var myId=myPid();
+  var rows=_gf==='all'?_data:_data.filter(function(r){return r.game===_gf;});
   var seen={},deduped=[];
-  rows.forEach(function(r){var k=r.player_id+'_'+r.game;if(!seen[k]){seen[k]=true;deduped.push(r);}});
+  rows.forEach(function(r){var k=(r.player_id||r.player_name)+'_'+r.game;if(!seen[k]){seen[k]=true;deduped.push(r);}});
   deduped.sort(function(a,b){return b.score-a.score;});
   var top=deduped.slice(0,50);
   if(!top.length){
-    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">No global scores yet — be the first!<br><a href="index.html" style="color:var(--neon-c)">→ Play now</a></div>';
+    document.getElementById('lb-table-wrap').innerHTML='<div class="lb-empty">No global scores yet — be the first!<br><a href="index.html" style="color:var(--neon-c)">Play now</a></div>';
     return;
   }
   var myRank=-1;
   top.forEach(function(r,i){if(r.player_id===myId)myRank=i+1;});
-  var html='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>PLAYER</th><th>GAME</th><th style="text-align:right">SCORE</th></tr></thead><tbody>';
+  var h='<table class="lb-table"><thead><tr><th style="width:44px">#</th><th>PLAYER</th><th>GAME</th><th style="text-align:right">SCORE</th></tr></thead><tbody>';
   top.forEach(function(r,i){
     var isMe=r.player_id===myId;
-    var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    var m=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
     var rc=i===0?'top1':i===1?'top2':i===2?'top3':'';
-    var gi=GAME_MAP[r.game]||{icon:'🎮',name:r.game};
-    var ds=r.game==='sudoku'?(function(){var s=100000-r.score;return Math.floor(s/60)+'m '+s%60+'s'+(r.meta&&r.meta.diff?' · '+r.meta.diff:'');}()):r.score.toLocaleString();
-    html+='<tr class="lb-row'+(isMe?' lb-me':'')+'" '+(isMe?'style="background:color-mix(in srgb,var(--neon-b) 7%,var(--card-bg));border-color:var(--neon-b)"':'')+'><td class="lb-rank '+rc+'">'+(medal)+'</td><td style="font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:'+(isMe?'var(--neon-b)':'var(--text)')+";">'+(isMe?'⭐ ':'')+((r.player_name||'Anonymous'))+'</td><td><span class="lb-game-icon">'+gi.icon+'</span><span style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted)">'+gi.name+'</span></td><td class="lb-val" style="color:var(--neon-c)">'+ds+'</td></tr>';
+    var gi=GM[r.game]||{icon:'🎮',name:r.game};
+    var ds=r.game==='sudoku'?sdkTime(r.score,r.meta):r.score.toLocaleString();
+    var rs=isMe?' style="background:color-mix(in srgb,var(--neon-b) 7%,var(--card-bg))"':'';
+    h+='<tr class="lb-row"'+rs+'>'
+      +'<td class="lb-rank '+rc+'">'+m+'</td>'
+      +'<td style="font-family:var(--font-mono);font-size:.75rem;font-weight:700;color:'+(isMe?'var(--neon-b)':'var(--text)')+';">'+(isMe?'⭐ ':'')+((r.player_name||'Anonymous'))+'</td>'
+      +'<td><span class="lb-game-icon">'+gi.icon+'</span><span style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted)">'+gi.name+'</span></td>'
+      +'<td class="lb-val" style="color:var(--neon-c)">'+ds+'</td></tr>';
   });
-  html+='</tbody></table>';
-  if(myRank>0) html+='<div style="font-family:var(--font-mono);font-size:.58rem;color:var(--neon-b);text-align:center;margin-top:8px;">⭐ Your rank: #'+myRank+'</div>';
-  document.getElementById('lb-table-wrap').innerHTML=html;
+  h+='</tbody></table>';
+  if(myRank>0) h+='<div style="font-family:var(--font-mono);font-size:.58rem;color:var(--neon-b);text-align:center;margin-top:8px;">Your rank: #'+myRank+'</div>';
+  document.getElementById('lb-table-wrap').innerHTML=h;
 }
 
-/* ═══ CONTROLS ════════════════════════════════════════════════ */
 function switchView(v){
   _view=v;
-  ['personal','global'].forEach(function(x){document.getElementById('tab-'+x).classList.toggle('on',x===v);});
-  var b=document.getElementById('online-badge');if(b)b.style.display=v==='global'?'':'none';
+  document.getElementById('tab-personal').classList.toggle('on',v==='personal');
+  document.getElementById('tab-global').classList.toggle('on',v==='global');
+  document.getElementById('live-badge').style.display=v==='global'?'':'none';
   v==='global'?fetchGlobal():renderPersonal();
 }
-function filterGame(id,el){
-  _filterGame=id;
-  document.querySelectorAll('.game-filter-btn').forEach(function(b){b.classList.remove('on');});
+
+function setGF(id,el){
+  _gf=id;
+  document.querySelectorAll('.lb-wrap button.lb-tab').forEach(function(b){
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').indexOf('setGF')>=0) b.classList.remove('on');
+  });
   el.classList.add('on');
   _view==='global'?fetchGlobal(true):renderPersonal();
 }
 
-/* ═══ SUMMARY ══════════════════════════════════════════════════ */
-function renderSummary(){
-  var stats=CoinEngine.getStats?CoinEngine.getStats():{};
-  var tp=0,tw=0,gp=0;
-  ALL_GAMES.forEach(function(g){var s=stats[g.id]||{};tp+=(s.plays||0);tw+=(s.wins||0);if(s.plays>0)gp++;});
-  var wr=tp>0?Math.round(tw/tp*100):0;
-  var xp=CoinEngine.getXPData?CoinEngine.getXPData():{level:1};
-  var user=window.AZAuth?window.AZAuth.getUser():null;
-  var playerName=user?((user.user_metadata&&user.user_metadata.full_name)?user.user_metadata.full_name:user.email):(localStorage.getItem('az_mp_name')||'Guest');
-  var cards=[
-    {v:tp,l:'TOTAL PLAYS'},{v:tw,l:'TOTAL WINS'},{v:wr+'%',l:'WIN RATE'},
-    {v:gp,l:'GAMES TRIED'},{v:'Lv.'+xp.level,l:'LEVEL',c:'var(--neon-e)'},
-    {v:CoinEngine.getBalance(),l:'COINS',c:'var(--neon-c)'},
-  ].map(function(s){
-    return '<div class="lb-sum-card"><div class="sv" style="color:'+(s.c||'var(--neon-a)')+'">'+s.v+'</div><div class="sl">'+s.l+'</div></div>';
-  }).join('');
-  var authRow='<div class="lb-sum-card" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;">'
-    +'<div style="font-size:1.6rem">'+(user?'✅':'👤')+'</div>'
-    +'<div>'
-      +'<div style="font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--text)">'+playerName+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted)">'
-      +(user
-        ?'Signed in &nbsp;<a href="profile.html" style="color:var(--neon-e)">Profile</a> &nbsp;·&nbsp; <a href="javascript:void(0)" onclick="AZAuth.signOut().then(function(){location.reload()})" style="color:var(--neon-b)">Sign out</a>'
-        :'<a href="login.html" style="color:var(--neon-e)">Sign in</a> for global leaderboards')
-      +'</div>'
-    +'</div>'
-  +'</div>';
-  document.getElementById('lb-summary').innerHTML = cards + authRow;
-}
-}
-
-document.head.insertAdjacentHTML('beforeend','<style>@keyframes lbspin{to{transform:rotate(360deg)}}</style>');
+renderSummary();
+renderPersonal();
 setInterval(function(){if(_view==='global')fetchGlobal(true);},30000);
-renderSummary(); renderPersonal();
 </script>
 </body>
 </html>
