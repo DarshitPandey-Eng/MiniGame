@@ -138,10 +138,8 @@
 <nav class="nav" id="main-nav">
   <div class="nav-logo">ARCADE<em>ZONE</em></div>
   <div class="nav-sep"></div>
-  <div class="level-badge" style="font-size:.7rem">⭐ <span class="az-level">Lv.1</span></div>
-  <div class="streak-badge" style="font-size:.68rem">🔥 <span class="az-streak">0</span></div>
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
-  <a id="auth-nav-btn" href="login.html" style="font-family:var(--font-mono);font-size:.58rem;padding:5px 10px;border-radius:8px;border:1px solid var(--line2);color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .14s;" onmouseover="this.style.borderColor='var(--neon-e)';this.style.color='var(--neon-e)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--muted)'">SIGN IN</a>
+  <a id="auth-nav-btn" href="login.html" style="font-family:var(--font-mono);font-size:.56rem;padding:5px 9px;border-radius:8px;border:1px solid var(--line2);color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .14s;flex-shrink:0;">SIGN IN</a>
   <button class="theme-btn" id="theme-btn">🌙</button>
 </nav>
 
@@ -161,16 +159,32 @@
 <main>
 <div class="hub-inner">
 
-  <div class="hub-stitle" style="margin-top:8px">⚡ QUICK ACTIONS</div>
-  <div style="display:flex;gap:7px;flex-wrap:wrap;">
-    <a class="quick-btn" href="spin.html"        style="--lc:var(--neon-e)" id="ql-spin">🎡 Daily Spin</a>
-    <a class="quick-btn" href="wallet.html"      style="--lc:var(--neon-c)">🪙 Wallet</a>
-    <a class="quick-btn" href="leaderboard.html" style="--lc:var(--neon-c)">🏆 Leaderboard</a>
-    <a class="quick-btn" href="battle.html"      style="--lc:var(--neon-b)">⚔ Battle</a>
-    <a class="quick-btn" href="casino.html"      style="--lc:var(--neon-b)">🎰 Casino</a>
-    <a class="quick-btn" href="profile.html"     style="--lc:var(--neon-e)">👤 Profile</a>
-    <a class="quick-btn" href="settings.html"    style="--lc:var(--muted)">⚙ Settings</a>
-    <a class="quick-btn" href="shop.html"        style="--lc:var(--neon-f)">🛍 Shop</a>
+  <div class="hub-stitle">⚡ QUICK ACTIONS</div>
+  <div class="quick-actions-grid">
+    <a class="qa-item" href="spin.html" style="--lc:var(--neon-e)" id="ql-spin">
+      <div class="qa-icon">🎡</div><div class="qa-label">SPIN</div>
+    </a>
+    <a class="qa-item" href="wallet.html" style="--lc:var(--neon-c)">
+      <div class="qa-icon">🪙</div><div class="qa-label">WALLET</div>
+    </a>
+    <a class="qa-item" href="battle.html" style="--lc:var(--neon-b)">
+      <div class="qa-icon">⚔️</div><div class="qa-label">BATTLE</div>
+    </a>
+    <a class="qa-item" href="leaderboard.html" style="--lc:var(--neon-c)">
+      <div class="qa-icon">🏆</div><div class="qa-label">RANKS</div>
+    </a>
+    <a class="qa-item" href="casino.html" style="--lc:var(--neon-b)">
+      <div class="qa-icon">🎰</div><div class="qa-label">CASINO</div>
+    </a>
+    <a class="qa-item" href="shop.html" style="--lc:var(--neon-f)">
+      <div class="qa-icon">🛍️</div><div class="qa-label">SHOP</div>
+    </a>
+    <a class="qa-item" href="profile.html" style="--lc:var(--neon-e)">
+      <div class="qa-icon">👤</div><div class="qa-label">PROFILE</div>
+    </a>
+    <a class="qa-item" href="settings.html" style="--lc:var(--muted)">
+      <div class="qa-icon">⚙️</div><div class="qa-label">SETTINGS</div>
+    </a>
   </div>
 
   <div id="streak-wrap"></div>
@@ -444,9 +458,13 @@ tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
 
 /* ── Daily spin badge ── */
 (function(){
-  if (!CoinEngine.canSpin || !CoinEngine.canSpin()) return;
   var el = document.getElementById('ql-spin'); if (!el) return;
-  el.innerHTML = '🎡 Daily Spin <span class="qb-badge">!</span>';
+  if (!CoinEngine.canSpin || !CoinEngine.canSpin()) return;
+  /* Add notification badge to new qa-item structure */
+  var badge = document.createElement('div');
+  badge.className = 'qa-badge';
+  badge.textContent = '!';
+  el.appendChild(badge);
 })();
 
 /* ── Init ── */

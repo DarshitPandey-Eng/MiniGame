@@ -17,12 +17,15 @@
 :root{--accent:var(--neon-b);}
 /* Wheel canvas */
 #wheel-cv{display:block;border-radius:50%;border:4px solid var(--line2);box-shadow:0 0 40px rgba(0,0,0,.6),inset 0 0 20px rgba(0,0,0,.4);}
-.wheel-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:260px;height:260px;}
-.wheel-pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);z-index:10;
-  width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;
-  border-top:20px solid var(--neon-c);filter:drop-shadow(0 0 5px var(--neon-c));}
+.wheel-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
+.wheel-pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:10;
+  width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;
+  border-top:24px solid var(--neon-c);filter:drop-shadow(0 0 8px var(--neon-c));
+  animation:ptrGlow 1.5s ease infinite alternate;}
+@keyframes ptrGlow{from{filter:drop-shadow(0 0 4px var(--neon-c))}to{filter:drop-shadow(0 0 14px var(--neon-c))}}
 /* Bet board */
-.bet-board{width:100%;max-width:560px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.bet-board{width:100%;max-width:560px;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+@media(max-width:400px){.bet-board{grid-template-columns:repeat(2,1fr);}}
 .bet-btn{font-family:var(--font-mono);font-size:.72rem;font-weight:700;padding:12px 8px;
   border-radius:8px;border:2px solid var(--line2);background:var(--bg2);color:var(--muted);
   cursor:pointer;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;}
@@ -36,13 +39,14 @@
 .bet-btn.green{border-color:#006600;color:#00e676;}
 /* Chip selector */
 .chip-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
-.chip{width:48px;height:48px;border-radius:50%;border:3px dashed;display:flex;align-items:center;
-  justify-content:center;font-family:var(--font-mono);font-size:.68rem;font-weight:700;
+.chip{width:clamp(42px,11vw,54px);height:clamp(42px,11vw,54px);border-radius:50%;border:3px dashed;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:.7rem;font-weight:700;
   cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
 .chip:hover{transform:scale(1.08);}
-.chip.sel{transform:scale(1.18);box-shadow:0 0 16px currentColor;}
+.chip.sel{transform:scale(1.18);box-shadow:0 0 18px currentColor;}
 /* Result display */
-.result-num{font-family:var(--font-display);font-size:4rem;letter-spacing:.04em;line-height:1;min-height:1em;}
+.result-num{font-family:var(--font-display);font-size:clamp(3rem,12vw,4.5rem);letter-spacing:.04em;line-height:1;min-height:1em;transition:color .3s;}
 .result-num.red{color:#ff2d78;text-shadow:0 0 20px rgba(255,45,120,.5);}
 .result-num.black{color:#e0e0e0;text-shadow:0 0 20px rgba(255,255,255,.2);}
 .result-num.green{color:#00e676;text-shadow:0 0 20px rgba(0,230,118,.5);}
@@ -65,7 +69,7 @@
 
   <!-- Wheel -->
   <div class="wheel-wrap">
-    <canvas id="wheel-cv" width="240" height="240"></canvas>
+    <canvas id="wheel-cv"></canvas>
     <div class="wheel-pointer"></div>
   </div>
 
@@ -139,9 +143,12 @@ function numColor(n){if(n===0)return'green';return RED_NUMS.indexOf(n)>=0?'red':
 var cv=document.getElementById('wheel-cv');
 var ctx=cv.getContext('2d');
 var DPR=Math.min(window.devicePixelRatio||1,2);
-cv.width=240*DPR; cv.height=240*DPR; cv.style.width='240px'; cv.style.height='240px';
+/* Responsive wheel size */
+var WS = Math.min(300, window.innerWidth - 32);
+cv.width=WS*DPR; cv.height=WS*DPR;
+cv.style.width=WS+'px'; cv.style.height=WS+'px';
 ctx.setTransform(DPR,0,0,DPR,0,0);
-var CX=120,CY=120,R=112,IR=40;
+var CX=WS/2, CY=WS/2, R=WS/2-6, IR=WS*0.14;
 var wheelAngle=0;
 
 function drawWheel(angle){
@@ -270,12 +277,17 @@ function spin(){
   var resultIdx=Math.floor(Math.random()*WHEEL_ORDER.length);
   var resultNum=WHEEL_ORDER[resultIdx];
 
-  /* Animate wheel */
-  var targetAngle=-resultIdx*(Math.PI*2/WHEEL_ORDER.length);
-  /* Add several full rotations */
-  var spins_count=5+Math.floor(Math.random()*4);
-  var finalAngle=targetAngle-spins_count*Math.PI*2;
-  var startAngle=wheelAngle;
+  /* Animate wheel — pointer is at top (canvas -PI/2),
+     so we need: startAngle + i*slice + slice/2 = -PI/2
+     => finalAngle = -PI/2 - i*slice - slice/2 */
+  var slice = Math.PI*2/WHEEL_ORDER.length;
+  var targetAngle = -Math.PI/2 - resultIdx*slice - slice/2;
+  /* Normalise to same modular plane as current angle, then add full spins */
+  var spins_count = 6 + Math.floor(Math.random()*3);
+  /* Ensure we always spin forward (CCW = negative direction) */
+  while (targetAngle > wheelAngle) targetAngle -= Math.PI*2;
+  var finalAngle = targetAngle - spins_count*Math.PI*2;
+  var startAngle = wheelAngle;
   var startTs=performance.now();
   var duration=4000+Math.random()*1000;
 
