@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Word Guess — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
@@ -15,113 +17,210 @@
 <script src="game-ui.js"></script>
 <script src="mp.js"></script>
 <style>
-:root{--accent:var(--neon-a);}
-.wg-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:500px;padding:0 12px 24px;}
+:root { --accent: var(--neon-a); }
 
-/* Board */
-.wg-board{display:flex;flex-direction:column;gap:6px;}
-.wg-row{display:flex;gap:6px;}
-.wg-cell{
-  width:clamp(48px,13vw,64px); height:clamp(48px,13vw,64px);
-  border:2.5px solid var(--line2); border-radius:8px;
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--font-display); font-size:clamp(1.4rem,5vw,2rem);
-  font-weight:900; background:var(--card-bg); color:var(--text);
-  user-select:none; -webkit-user-select:none;
-  transition:border-color .1s, background .3s, color .3s;
+/* ── Page wrap ── */
+.wg-page {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; width: 100%; max-width: 420px; padding: 0 12px 32px;
+  margin: 0 auto;
 }
-.wg-cell.active{border-color:var(--text2);}
-.wg-cell.pop{animation:cellPop .1s ease;}
-@keyframes cellPop{0%,100%{transform:scale(1)}50%{transform:scale(1.12);border-color:var(--text);}}
-.wg-cell.shake{animation:cellShake .4s ease;}
-@keyframes cellShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
-.wg-cell.correct{background:#538d4e;border-color:#538d4e;color:#fff;}
-.wg-cell.present{background:#b59f3b;border-color:#b59f3b;color:#fff;}
-.wg-cell.absent{background:#3a3a3c;border-color:#3a3a3c;color:#999;}
 
-/* Keyboard */
-.wg-kbd{display:flex;flex-direction:column;gap:6px;width:100%;}
-.kbd-row{display:flex;gap:5px;justify-content:center;}
-.kbd-key{
-  height:clamp(44px,11vw,56px); min-width:clamp(28px,8vw,40px);
-  border-radius:6px; border:1px solid var(--line2);
-  background:var(--bg2); color:var(--text);
-  font-family:var(--font-mono); font-size:.72rem; font-weight:700;
-  cursor:pointer; -webkit-tap-highlight-color:transparent;
-  transition:background .15s, color .15s, transform .08s;
-  display:flex; align-items:center; justify-content:center;
-  padding:0 4px; flex:1; max-width:clamp(28px,8vw,40px);
+/* ── Header ── */
+.wg-header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--line2); padding-bottom: 8px;
 }
-.kbd-key.wide{max-width:60px; font-size:.6rem;}
-.kbd-key:active{transform:scale(.9);}
-.kbd-key.correct{background:#538d4e;color:#fff;border-color:#538d4e;}
-.kbd-key.present{background:#b59f3b;color:#fff;border-color:#b59f3b;}
-.kbd-key.absent{background:#3a3a3c;color:#777;border-color:#3a3a3c;}
+.wg-title { font-family: var(--font-display); font-size: 1.6rem; letter-spacing: .1em; color: var(--text); }
+.wg-stats { display: flex; gap: 14px; }
+.wg-stat .v { font-family: var(--font-display); font-size: 1.1rem; color: var(--neon-a); }
+.wg-stat .l { font-family: var(--font-mono); font-size: .42rem; color: var(--muted); letter-spacing: .1em; }
+.wg-stat { text-align: center; }
 
-/* Message */
-.wg-msg{font-family:var(--font-mono);font-size:.8rem;font-weight:700;color:var(--text);text-align:center;min-height:1.4rem;letter-spacing:.04em;}
-.wg-msg.error{color:var(--neon-b);}
-.wg-msg.win{color:var(--neon-d);}
+/* ── Message bar ── */
+.wg-msg {
+  font-family: var(--font-mono); font-size: .75rem; font-weight: 700;
+  color: var(--text); text-align: center; min-height: 22px;
+  letter-spacing: .04em; padding: 2px 0;
+}
 
-/* Stats */
-.wg-stats{display:flex;gap:8px;width:100%;}
-.wg-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:8px;text-align:center;}
-.wg-stat .v{font-family:var(--font-display);font-size:1.5rem;color:var(--neon-a);}
-.wg-stat .l{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.1em;}
+/* ── Board ── */
+.wg-board {
+  display: flex; flex-direction: column; gap: 6px;
+  /* perspective for flip animation */
+  perspective: 250px;
+}
+.wg-row { display: flex; gap: 6px; }
 
-/* Battle HUD */
-.battle-hud{position:fixed;top:56px;left:0;right:0;z-index:200;display:none;
-  background:color-mix(in srgb,var(--neon-b) 12%,var(--bg1));
-  border-bottom:1.5px solid color-mix(in srgb,var(--neon-b) 35%,transparent);
-  padding:6px 14px;font-family:var(--font-mono);font-size:.62rem;align-items:center;gap:12px;}
-.battle-hud.show{display:flex;}
-.bh-dot{width:7px;height:7px;border-radius:50%;background:var(--neon-b);animation:bhPulse 1s ease infinite;flex-shrink:0;}
-@keyframes bhPulse{0%,100%{opacity:1}50%{opacity:.3}}
+.wg-cell {
+  width: clamp(52px, 14vw, 64px);
+  height: clamp(52px, 14vw, 64px);
+  border: 2px solid var(--line2);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5.5vw, 2rem);
+  font-weight: 900;
+  color: var(--text);
+  background: transparent;
+  user-select: none;
+  /* for flip */
+  transform-style: preserve-3d;
+  transition: border-color .05s;
+  box-sizing: border-box;
+}
+
+/* Typed letter — border becomes bright */
+.wg-cell.has-letter { border-color: var(--text2); }
+
+/* Pop when letter typed */
+.wg-cell.pop { animation: wgPop .1s ease; }
+@keyframes wgPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* Shake on invalid word */
+.wg-cell.shake { animation: wgShake .5s ease; }
+@keyframes wgShake {
+  0%,100% { transform: translateX(0); }
+  10%,30%,50%,70%,90% { transform: translateX(-4px); }
+  20%,40%,60%,80% { transform: translateX(4px); }
+}
+
+/* Flip in (face down) */
+.wg-cell.flip-down {
+  animation: wgFlipDown .25s ease-in forwards;
+}
+@keyframes wgFlipDown {
+  from { transform: rotateX(0deg); }
+  to   { transform: rotateX(-90deg); }
+}
+
+/* Flip out (face up with color) */
+.wg-cell.flip-up {
+  animation: wgFlipUp .25s ease-out forwards;
+}
+@keyframes wgFlipUp {
+  from { transform: rotateX(-90deg); }
+  to   { transform: rotateX(0deg); }
+}
+
+/* Result colors */
+.wg-cell.correct { background: #538d4e; border-color: #538d4e; color: #fff; }
+.wg-cell.present { background: #b59f3b; border-color: #b59f3b; color: #fff; }
+.wg-cell.absent  { background: #3a3a3c; border-color: #3a3a3c; color: #aaa; }
+
+/* Bounce on win */
+.wg-cell.bounce { animation: wgBounce .4s ease forwards; }
+@keyframes wgBounce {
+  0%,100% { transform: translateY(0); }
+  40%     { transform: translateY(-20px); }
+  60%     { transform: translateY(-10px); }
+}
+
+/* ── On-screen Keyboard ── */
+.wg-kbd { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+.wg-kb-row { display: flex; gap: 5px; justify-content: center; }
+
+.wg-key {
+  height: clamp(46px, 12vw, 58px);
+  min-width: clamp(30px, 8vw, 42px);
+  flex: 1;
+  max-width: clamp(30px, 8vw, 42px);
+  border-radius: 5px;
+  border: none;
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s, transform .08s;
+  padding: 0 3px;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+}
+.wg-key.wide { max-width: 66px; font-size: .6rem; }
+.wg-key:active { transform: scale(.88); }
+
+/* Keyboard colors */
+.wg-key.correct { background: #538d4e; color: #fff; border-color: #538d4e; }
+.wg-key.present { background: #b59f3b; color: #fff; border-color: #b59f3b; }
+.wg-key.absent  { background: #3a3a3c; color: #777; border-color: #3a3a3c; }
+
+/* ── Legend ── */
+.wg-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  font-family: var(--font-mono); font-size: .56rem; color: var(--muted);
+}
+.wg-legend span { display: flex; align-items: center; gap: 4px; }
+.wg-legend-box {
+  width: 14px; height: 14px; border-radius: 3px;
+  display: inline-block; flex-shrink: 0;
+}
+
+/* ── Toast (in-game notification) ── */
+.wg-toast {
+  position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg1);
+  font-family: var(--font-mono); font-size: .74rem; font-weight: 700;
+  padding: 9px 20px; border-radius: 8px; z-index: 500;
+  pointer-events: none;
+  animation: wgToastIn .15s ease, wgToastOut .3s ease 1.2s forwards;
+}
+@keyframes wgToastIn  { from { opacity:0; transform:translateX(-50%) translateY(-8px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes wgToastOut { to   { opacity:0; transform:translateX(-50%) translateY(-8px); } }
 </style>
 </head>
 <body>
+
 <nav class="nav" id="main-nav">
   <a class="nav-back" href="index.html">← Hub</a>
   <div class="nav-sep"></div>
-  <div class="nav-title"><span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>WORD GUESS</div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-a);box-shadow:0 0 8px var(--neon-a)"></span>WORD GUESS
+  </div>
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
 
-<div class="battle-hud" id="battle-hud">
-  <div class="bh-dot"></div>
-  <span style="color:var(--muted);font-size:.54rem">⚔ BATTLE</span>
-  <span style="color:var(--neon-b);font-weight:700" id="bh-me">You: —</span>
-  <span style="color:var(--muted);font-size:.54rem">vs</span>
-  <span style="color:var(--text2)" id="bh-opp">Opponent: playing…</span>
-  <span style="margin-left:auto;color:var(--muted);font-size:.52rem" id="bh-time">⏱ 0s</span>
-</div>
+<div class="page" style="padding-top:14px; align-items:center;">
+<div class="wg-page">
 
-<div class="page" style="padding-top:14px;align-items:center;">
-<div class="wg-wrap">
-
-  <div class="wg-stats">
-    <div class="wg-stat"><div class="v" id="wg-wins">0</div><div class="l">WINS</div></div>
-    <div class="wg-stat"><div class="v" id="wg-streak" style="color:var(--neon-c)">0</div><div class="l">STREAK</div></div>
-    <div class="wg-stat"><div class="v" id="wg-played">0</div><div class="l">PLAYED</div></div>
+  <!-- Header -->
+  <div class="wg-header">
+    <div class="wg-title">WORDLE</div>
+    <div class="wg-stats">
+      <div class="wg-stat"><div class="v" id="s-played">0</div><div class="l">PLAYED</div></div>
+      <div class="wg-stat"><div class="v" id="s-wins">0</div><div class="l">WINS</div></div>
+      <div class="wg-stat"><div class="v" id="s-streak" style="color:var(--neon-c)">0</div><div class="l">STREAK</div></div>
+    </div>
   </div>
 
-  <div class="wg-msg" id="wg-msg">Guess the 5-letter word!</div>
+  <!-- Message -->
+  <div class="wg-msg" id="wg-msg"></div>
 
+  <!-- Board: 6 rows × 5 cols -->
   <div class="wg-board" id="wg-board"></div>
 
+  <!-- Keyboard -->
   <div class="wg-kbd" id="wg-kbd"></div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-    <button class="btn filled" style="--c:var(--neon-a)" onclick="newGame()">▶ NEW WORD</button>
-    <button class="btn" style="--c:var(--neon-a);font-size:.72rem;display:none" id="share-btn" onclick="doShare()">📤 Share</button>
-    <a class="btn" style="--c:var(--neon-e);font-size:.72rem" href="battle.html">⚔ Battle</a>
+  <!-- Legend -->
+  <div class="wg-legend">
+    <span><span class="wg-legend-box" style="background:#538d4e"></span> Correct spot</span>
+    <span><span class="wg-legend-box" style="background:#b59f3b"></span> Wrong spot</span>
+    <span><span class="wg-legend-box" style="background:#3a3a3c"></span> Not in word</span>
   </div>
 
-  <div id="opp-panel" style="font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;min-height:1rem;"></div>
-
-  <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);text-align:center;line-height:2;">
-    🟩 Correct spot &nbsp;·&nbsp; 🟨 Wrong spot &nbsp;·&nbsp; ⬛ Not in word
+  <!-- Action buttons -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;">
+    <button class="btn filled" style="--c:var(--neon-a)" id="new-btn" onclick="newGame()">▶ NEW GAME</button>
+    <button class="btn" style="--c:var(--neon-a);display:none" id="share-btn" onclick="doShare()">📤 Share</button>
+    <a class="btn" style="--c:var(--neon-e);font-size:.72rem" href="battle.html">⚔ Battle</a>
   </div>
 
 </div>
@@ -129,400 +228,500 @@
 
 <script>
 /* ── Theme ── */
-var _tb=document.getElementById('tb');
-function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
-_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();}); _sT();
-
-/* ══ WORD LISTS ══ */
-var WORDS = [
-  'APPLE','BRAVE','FLAME','GRACE','HEART','KNIFE','LEMON','MAGIC','NERVE','OCEAN',
-  'PIANO','QUEST','RIVER','SOLAR','TIGER','VIVID','WHALE','YIELD','ZEBRA','AMBER',
-  'BLOOM','DAISY','EMBER','FROST','GLOBE','HONEY','JOINT','KARMA','LASER','MIMIC',
-  'NINJA','ORBIT','PIXEL','QUIRK','RADAR','STORM','TORCH','UNITY','VAPOR','WINDY',
-  'YACHT','ALIEN','BLACK','CLOUD','DEPTH','EARTH','FENCE','GLASS','HAVEN','JUDGE',
-  'KNEEL','LUNAR','MANOR','NIGHT','OLIVE','PLANT','QUEEN','RAVEN','SHINE','TREND',
-  'VISIT','EXTRA','AZURE','BERRY','CANDY','DELTA','EVENT','GAMER','HORSE','IRONY',
-  'JEWEL','LIGHT','MUSIC','NOVEL','OZONE','POWER','RAISE','SPEED','TRIBE','VENUE',
-  'WORLD','ANGEL','BEACH','CLICK','DREAM','EXACT','FANCY','GREET','IDEAL','JUICE',
-  'KNOWN','LUCKY','MARSH','NICHE','OFFER','PLAIN','RALLY','SCARF','TOWER','VIOLA',
-  'WRIST','AGILE','BLEND','CHARM','DINER','EQUAL','FAIRY','HOVER','JOKER','KNACK',
-  'LATCH','MANGO','NUDGE','OAKEN','PASTA','REIGN','SNACK','THORN','VENOM','WOVEN',
-  'SUGAR','PRISM','FLUTE','CROWN','PILOT','BREAD','GLOOM','PRIDE','BRISK','DWARF',
-  'FAULT','CRISP','BOXER','ACUTE','BLAZE','CABIN','CARGO','CEDAR','CHAOS','CIVIC',
-  'CLAMP','CLASH','CLIFF','CLIMB','CLOCK','CLOTH','COMET','CORAL','COURT','COVER',
-  'CRACK','CRAFT','CRASH','CRATE','CRAWL','CROSS','CROWD','CRUSH','CRUST','CURVE',
-  'CYCLE','DRAFT','DRAIN','DRAPE','DRINK','DRIVE','DRONE','DROWN','EAGER','EASEL',
-  'ELBOW','ELITE','EPOCH','EVOKE','EXIST','FABLE','FLAIR','FLANK','FLASH','FLESH',
-  'FLOCK','FLOOD','FLORA','FLUID','FLUSH','FOCUS','FORCE','FORGE','FRAME','FRANK',
-  'FREAK','FRESH','FRISK','DUSKY','DUSTY','DWELT','CAMEO','CHESS','EXPEL','YAWNS',
-];
-
-var VALID = (function(){
-  var extra = [
-    'HOUSE','THERE','THEIR','WHICH','COULD','WOULD','ABOUT','AFTER','THINK','THESE',
-    'WHERE','THOSE','NEVER','EVERY','STILL','WHILE','PLACE','GREAT','AGAIN','THREE',
-    'SMALL','LARGE','OFTEN','ALONG','AMONG','BRING','MIGHT','GIVEN','SINCE','BEING',
-    'UNTIL','GOING','DOING','COMES','WHOLE','OTHER','FIRST','FOUND','SHALL','WHOSE',
-    'TRULY','QUITE','TAKEN','USING','THANK','STAND','LEARN','REACH','TEACH','SPEAK',
-    'WRITE','START','SPEND','SOUND','ROUND','POINT','HANDS','TEARS','LAUGH','SMILE',
-    'PHONE','MONEY','SPORT','WATER','STONE','PARTY','TABLE','CHAIR','FLOOR','DRINK',
-    'SLEEP','DREAM','THING','LEAVE','SPACE','WATCH','CHECK','CLOSE','COUNT','BREAK',
-    'BUILD','CATCH','CLEAN','CARRY','AGREE','APPLY','ARGUE','AVOID','BASIC','CAUSE',
-    'CLAIM','SHARE','SOUTH','NORTH','THROW','TRUST','UNDER','UNION','UPPER','VALUE',
-    'VOICE','WASTE','WOMAN','WOMEN','WORDS','WORKS','WORTH','WRONG','YEARS','YOUTH',
-    'ABOVE','ADMIT','ADOPT','ADULT','AHEAD','ALARM','ALBUM','ALERT','ALIKE','ALIVE',
-    'HONOR','TOTAL','HUMAN','IMAGE','INNER','INPUT','ISSUE','KNIFE','LABEL','LATER',
-    'LAYER','LEAST','LEVEL','LIMIT','LIVES','LOCAL','LOWER','MAJOR','MARCH','MATCH',
-    'MAYBE','MEANS','MEDIA','MINDS','MINOR','MODEL','MORAL','MOUNT','MOUSE','MOUTH',
-    'NAMED','NEEDS','ORDER','OWNED','PAGES','PANEL','PAPER','PARTS','PATHS','PAUSE',
-    'PEAKS','PIECE','PITCH','PLANS','PLAYS','BLANK','BLAST','BLOCK','BLOOD','BLOWN',
-    'BLUES','BLUNT','BOARD','BOOST','BOOTS','BOUND','BRACE','BRAND','BRASH','BRAWL',
-    'BREED','BROAD','BROOD','BROOK','BROOM','BROWN','BRUSH','BUDDY','BULLS','BUNCH',
-    'BURST','BUYER','CACHE','CARDS','CHASE','CHEAP','CHEAT','CHEEK','CHEER','CHIEF',
-  ];
-  var all = WORDS.slice();
-  extra.forEach(function(w){ if(all.indexOf(w)<0) all.push(w); });
-  return all;
+(function(){
+  var tb = document.getElementById('tb');
+  function s(){ tb.textContent = CoinEngine.getTheme()==='dark' ? '☀️' : '🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); s(); }); s();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+  });
 })();
 
-/* ══ STATE ══ */
-var target = '';
-var guesses = [];    /* [{word:'APPLE', result:['correct','absent',...]}] */
-var currentWord = '';
-var currentRow = 0;
+/* ══ WORD LIST (200 common 5-letter words) ══ */
+var WORDS = [
+  'ABOUT','ABOVE','ABUSE','ACTOR','ACUTE','ADMIT','ADOPT','ADULT','AFTER','AGAIN',
+  'AGREE','AHEAD','ALARM','ALERT','ALIKE','ALIVE','ALONG','ALTER','ANGEL','ANGER',
+  'ANGLE','ANKLE','ANNEX','APART','APPLE','APPLY','ARENA','ARGUE','ARISE','ASIDE',
+  'ASKED','ATLAS','AUDIO','AUDIT','AVOID','AWAKE','AWARD','AWARE','BADLY','BAKER',
+  'BEACH','BEGAN','BEGIN','BEING','BELOW','BENCH','BIBLE','BLACK','BLADE','BLAME',
+  'BLAND','BLANK','BLAST','BLEND','BLESS','BLIND','BLOOD','BLOWN','BOARD','BOOST',
+  'BOUND','BRAIN','BRAVE','BREAD','BREAK','BREED','BRICK','BRIDE','BRIEF','BRING',
+  'BROKE','BROOK','BROWN','BUILD','BUILT','BURNS','BURST','CABIN','CANDY','CARRY',
+  'CATCH','CAUSE','CHAIN','CHAIR','CHAOS','CHARM','CHASE','CHEAP','CHEAT','CHECK',
+  'CHEEK','CHESS','CHEST','CHIEF','CHILD','CHINA','CIVIC','CIVIL','CLAIM','CLASS',
+  'CLEAN','CLEAR','CLERK','CLICK','CLIFF','CLIMB','CLOCK','CLOSE','CLOUD','COAST',
+  'COUNT','COURT','COVER','CRACK','CRAFT','CRASH','CRAZY','CREAM','CREEK','CRIME',
+  'CROSS','CROWD','CROWN','CRUSH','CURVE','CYCLE','DAILY','DANCE','DEALT','DEBUT',
+  'DELAY','DEPTH','DIRTY','DOUBT','DRAFT','DRAIN','DRAMA','DRANK','DRAWN','DREAM',
+  'DRIED','DRILL','DRINK','DRIVE','DROVE','DROWN','DWARF','DYING','EAGER','EAGLE',
+  'EARLY','EARTH','EIGHT','ELITE','EMAIL','EMPTY','ENEMY','ENJOY','ENTER','ENTRY',
+  'EQUAL','ESSAY','EVERY','EXACT','EXIST','EXTRA','FABLE','FACED','FAITH','FALSE',
+  'FANCY','FAULT','FEAST','FENCE','FEVER','FIELD','FIFTH','FIFTY','FIGHT','FINAL',
+  'FIRST','FIXED','FLAME','FLASH','FLESH','FLIES','FLOOD','FLOOR','FLOUR','FLUID',
+  'FOCUS','FORCE','FORGE','FORTH','FOUND','FRAME','FRANK','FRAUD','FRESH','FRONT',
+  'FULLY','FUNNY','GIANT','GIVEN','GLAND','GLASS','GLEAM','GLOBE','GLOOM','GLORY',
+  'GLOVE','GOING','GRACE','GRADE','GRAIN','GRAND','GRANT','GRASP','GRASS','GRAVE',
+  'GREAT','GREED','GREEN','GREET','GRIEF','GRILL','GRIND','GROAN','GROSS','GROUP',
+  'GROVE','GROWN','GUARD','GUESS','GUEST','GUIDE','GUILD','GUILE','GUILT','GUISE',
+  'GULCH','GULLY','GUMMY','GUSTS','GUSTY','HABIT','HAPPY','HARSH','HASTE','HAVEN',
+  'HEART','HEAVY','HENCE','HERBS','HERON','HILLY','HOBBY','HONOR','HORSE','HOTEL',
+  'HOUSE','HUMAN','HUMOR','HURRY','HYPER','IDEAL','IMAGE','IMPLY','INDEX','INPUT',
+  'INTER','INTRO','IRONY','ISSUE','ITEMS','IVORY','JAZZY','JEWEL','JOINT','JOKER',
+  'JOLLY','JUDGE','JUICE','JUICY','JUMPY','KARMA','KNIFE','KNOCK','KNOWN','LABEL',
+  'LANCE','LARGE','LASER','LATER','LAUGH','LAYER','LEARN','LEASE','LEASH','LEAST',
+  'LEAVE','LEGAL','LEVEL','LIGHT','LIMIT','LINEN','LINER','LOCAL','LODGE','LOGIC',
+  'LOOSE','LOVER','LOWER','LOYAL','LUCKY','LUNCH','LUSTY','MAGIC','MAJOR','MAKER',
+  'MANOR','MAPLE','MARCH','MARRY','MATCH','MAYOR','MEDIA','MERIT','METAL','MICRO',
+  'MIGHT','MINOR','MINUS','MODEL','MONEY','MONTH','MORAL','MOTIF','MOTOR','MOUNT',
+  'MOUSE','MOUTH','MOVIE','MUSIC','NAIVE','NERVE','NIGHT','NOBLE','NOISE','NORTH',
+  'NOTED','NOVEL','NURSE','NYMPH','OCEAN','OFFER','OFTEN','ORDER','OTHER','OUGHT',
+  'OUTDO','OWNER','OZONE','PAINT','PANEL','PANIC','PAPER','PARTY','PAUSE','PEACE',
+  'PEACH','PEARL','PENNY','PHONE','PHOTO','PIANO','PILOT','PITCH','PIXEL','PLACE',
+  'PLAIN','PLANE','PLANT','PLATE','PLAZA','PLEAD','PLUCK','PLUMB','PLUME','PLUMP',
+  'PLUNGE','PLUS','POINT','POLAR','POPPY','PORCH','POWER','PRESS','PRICE','PRIDE',
+  'PRIME','PRINT','PRIOR','PRIZE','PROBE','PROSE','PROUD','PROVE','PSALM','PULSE',
+  'PUPIL','PURSE','QUEEN','QUERY','QUEST','QUEUE','QUICK','QUIET','QUOTA','QUOTE',
+  'RADAR','RADIO','RAISE','RALLY','RANGE','RAPID','RATIO','REACH','READY','REALM',
+  'REBEL','REFER','REIGN','RELAX','REPAY','REPEL','REPOT','RERUN','RIDER','RIDGE',
+  'RIGHT','RISKY','RIVAL','RIVER','ROAST','ROBIN','ROCKY','ROUGE','ROUGH','ROUND',
+  'ROUTE','ROYAL','RULER','RURAL','RUSTY','SAINT','SALAD','SALES','SANDY','SAUCE',
+  'SCALE','SCARE','SCENE','SCORE','SCOUT','SEIZE','SENSE','SERVE','SEVEN','SHADE',
+  'SHAKE','SHALL','SHAME','SHAPE','SHARE','SHARK','SHARP','SHEER','SHELF','SHELL',
+  'SHIFT','SHIRT','SHOCK','SHORE','SHORT','SHOUT','SIGHT','SILLY','SINCE','SIXTH',
+  'SIZED','SKILL','SKULL','SLATE','SLAVE','SLEPT','SLIDE','SLOPE','SMART','SMASH',
+  'SMELL','SMILE','SMOKE','SNAKE','SOLID','SOLVE','SOUTH','SPACE','SPARE','SPARK',
+  'SPAWN','SPEAK','SPEND','SPICE','SPINE','SPITE','SPLIT','SPOKE','SPOON','SPORT',
+  'SPRAY','SPREE','SQUAD','STAFF','STAGE','STAIN','STALE','STAMP','STAND','STARK',
+  'STATE','STAVE','STEAM','STEEL','STEEP','STEER','STERN','STICK','STIFF','STILL',
+  'STOCK','STONE','STOOD','STORM','STORY','STOVE','STRAP','STRAW','STRIP','STUCK',
+  'STUDY','STYLE','SUGAR','SUPER','SURGE','SWAMP','SWEAR','SWEEP','SWEET','SWIFT',
+  'SWING','TABLE','TAKEN','TASTE','TEACH','TEETH','THANK','THEIR','THEME','THERE',
+  'THESE','THICK','THING','THINK','THORN','THOSE','THREE','THREW','THROW','THUMB',
+  'TIGER','TIGHT','TIMER','TIRED','TITLE','TODAY','TOKEN','TORCH','TOTAL','TOUCH',
+  'TOUGH','TOWER','TOXIC','TRACK','TRADE','TRAIL','TRAIN','TRASH','TREAT','TREND',
+  'TRIAL','TRIBE','TRICK','TRIED','TROOP','TRUCK','TRULY','TRUNK','TRUST','TRUTH',
+  'TULIP','TWEAK','TWICE','TWIST','TYING','ULCER','ULTRA','UNCLE','UNDER','UNITE',
+  'UNTIL','UPPER','UPSET','URBAN','USAGE','USUAL','UTTER','VALID','VALUE','VALVE',
+  'VAPOR','VAULT','VERGE','VIDEO','VIGOR','VIRAL','VISOR','VISTA','VIVID','VOCAL',
+  'VOGUE','VOTER','WASTE','WATCH','WATER','WEARY','WEAVE','WEDGE','WEIGH','WEIRD',
+  'WHALE','WHEAT','WHEEL','WHERE','WHICH','WHILE','WHITE','WHOLE','WHOSE','WIDER',
+  'WITCH','WOMAN','WOMEN','WORLD','WORRY','WORSE','WORST','WORTH','WOULD','WOUND',
+  'WRATH','WRITE','WRONG','YACHT','YIELD','YOUNG','YOUTH','ZESTY','ZONAL','ZONES',
+];
+
+/* Larger list for valid guesses (won't be targets but accepted as guesses) */
+var VALID_EXTRA = [
+  'BLAZE','BLEND','BLISS','BLOCK','BLOKE','BLUES','BLUNT','BLURB','BOXER','BRACE',
+  'BRAND','BRASH','BRAWL','BRAWN','BRISK','BROAD','BROOD','BROOM','BRUSH','BUDDY',
+  'BULGE','BUMPY','BUNCH','BUYER','CACHE','CAMEL','CAMEO','CARDS','CEDAR','CHALK',
+  'CLING','CLONE','CLOTH','CLOWN','COMET','COMIC','CORAL','CRACK','CRATE','CRAWL',
+  'CRIMP','CRISP','DRAFT','DRAPE','DRAWL','DROVE','DRYER','DUSKY','DUSTY','DWELT',
+  'EASEL','ELBOW','EPOCH','EVOKE','EXPEL','FLAIR','FLANK','FLASK','FLICK','FLOCK',
+  'FLORA','FLOSS','FLUSH','FORCE','FRAIL','FREAK','FREED','FRESH','FRILL','FRISK',
+  'FROST','GAMER','GLASS','GLOBE','GLOOM','GRACE','GREET','HAVEN','HORSE','HOVER',
+  'HYPER','IDEAL','INDEX','INPUT','IRONY','IVORY','JAZZY','JEWEL','JOKER','JOINT',
+  'JUICE','KARMA','KNIFE','KNEEL','KNACK','KINGS','LASER','LATCH','LIGHT','LUCKY',
+  'LUNAR','MAGIC','MANGO','MANOR','MARSH','MIMIC','MUSIC','NERVE','NICHE','NIGHT',
+  'NINJA','NOVEL','NUDGE','OCEAN','OZONE','PASTA','PILOT','PIXEL','PLACE','PLAIN',
+  'PLANT','POWER','PRIDE','PRISM','QUEST','RADAR','RAISE','RALLY','RAVEN','REIGN',
+  'RIVER','SCARF','SHINE','SNACK','SOLAR','SPEED','STAND','STORM','STORM','SUGAR',
+  'THANK','THORN','TIGER','TORCH','TOWER','TREND','TRIBE','ULTRA','UNDER','UNITY',
+  'USHER','VAPOR','VENUE','VIOLA','VIVID','WATCH','WHALE','WINDY','WOVEN','WRIST',
+  'XEROX','YACHT','YIELD','ZEBRA','AMBER','AZURE','BERRY','BLOOM','CEDAR','CHESS',
+  'DAISY','DELTA','EMBER','EPOCH','EXERT','FLUTE','GLOBE','HONEY','IVORY','LOGIC',
+  'LUNAR','MANOR','MORAL','MOUNT','MOUSE','NOVEL','OAKEN','PARSE','PIXEL','PLANE',
+  'PROUD','QUEEN','QUIET','REBEL','RIVAL','SCORE','SENSE','SHADE','SHAPE','SHARE',
+];
+
+var ALL_VALID = (function(){
+  var v = WORDS.slice();
+  VALID_EXTRA.forEach(function(w){ if(v.indexOf(w)<0) v.push(w); });
+  return v;
+})();
+
+/* ══ GAME STATE ══ */
+var NUM_ROWS = 6;
+var NUM_COLS = 5;
+var target   = '';
+var board    = []; /* board[r][c] = {letter, state} state: ''|'correct'|'present'|'absent' */
+var curRow   = 0;
+var curCol   = 0;
 var gameOver = false;
-var wins = 0, streak = 0, played = 0;
-var kbColors = {};   /* letter -> 'correct'|'present'|'absent' */
+var keyColors= {}; /* letter -> state */
 
-/* ══ MULTIPLAYER ══ */
-var _MP = AZMulti.parseParams();
-var _mpSeed  = _MP.seed   || null;
-var _mpRoom  = _MP.room   || null;
-var _mpPid   = _MP.pid    || 1;
-var _mpPname = _MP.pname  || 'You';
-var _mpCMode = _MP.cscore !== null;
-var _mpCScore= _MP.cscore || 0;
-var _mpCName = _MP.cname  || 'Challenger';
-var _mpCGen  = !!_MP.seed && (new URLSearchParams(location.search)).get('cmode');
-var _mpRng   = _mpSeed ? AZMulti.seededRng(_mpSeed) : null;
-var _stopPoll= null;
+/* Stats */
+var played = 0, wins = 0, streak = 0;
+(function(){
+  try {
+    var s = JSON.parse(localStorage.getItem('wg_stats')||'{}');
+    played = s.played||0; wins = s.wins||0; streak = s.streak||0;
+  } catch(_){}
+  document.getElementById('s-played').textContent = played;
+  document.getElementById('s-wins').textContent   = wins;
+  document.getElementById('s-streak').textContent = streak;
+})();
 
-/* ══ GAME FUNCTIONS ══ */
-
-function newGame() {
-  target = _mpRng
-    ? WORDS[Math.floor(_mpRng() * WORDS.length)]
-    : WORDS[Math.floor(Math.random() * WORDS.length)];
-  guesses = [];
-  currentWord = '';
-  currentRow = 0;
-  gameOver = false;
-  kbColors = {};
-  played++;
-  document.getElementById('wg-played').textContent = played;
-  document.getElementById('share-btn').style.display = 'none';
-  setMsg(_mpCMode ? ('Beat ' + _mpCName + ' (' + _mpCScore + ' tries)') : 'Guess the 5-letter word!', '');
-  buildBoard();
-  buildKeyboard();
-  SoundEngine.play('start');
-  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
-    _stopPoll = AZMulti.pollRoom(_mpRoom, function(room){ updateOppPanel(room); });
-  }
+function saveStats(){
+  try { localStorage.setItem('wg_stats', JSON.stringify({played:played,wins:wins,streak:streak})); } catch(_){}
+  document.getElementById('s-played').textContent = played;
+  document.getElementById('s-wins').textContent   = wins;
+  document.getElementById('s-streak').textContent = streak;
 }
 
-/* Build the 6x5 grid */
+/* ── Multiplayer ── */
+var _MP     = AZMulti.parseParams();
+var _mpSeed = _MP.seed || null;
+var _mpRoom = _MP.room || null;
+var _mpPid  = _MP.pid  || 1;
+var _mpRng  = _mpSeed ? AZMulti.seededRng(_mpSeed) : null;
+var _stopPoll = null;
+
+/* ══ BUILD UI ══ */
+
 function buildBoard() {
-  var board = document.getElementById('wg-board');
-  board.innerHTML = '';
-  for (var r = 0; r < 6; r++) {
-    var rowDiv = document.createElement('div');
-    rowDiv.className = 'wg-row';
-    rowDiv.id = 'wg-row-' + r;
-    for (var c = 0; c < 5; c++) {
+  var el = document.getElementById('wg-board');
+  el.innerHTML = '';
+  board = [];
+  for (var r = 0; r < NUM_ROWS; r++) {
+    board[r] = [];
+    var rowEl = document.createElement('div');
+    rowEl.className = 'wg-row';
+    rowEl.id = 'row-' + r;
+    for (var c = 0; c < NUM_COLS; c++) {
+      board[r][c] = { letter: '', state: '' };
       var cell = document.createElement('div');
       cell.className = 'wg-cell';
-      cell.id = 'wg-cell-' + r + '-' + c;
-      rowDiv.appendChild(cell);
+      cell.id = 'cell-' + r + '-' + c;
+      rowEl.appendChild(cell);
     }
-    board.appendChild(rowDiv);
+    el.appendChild(rowEl);
   }
 }
 
-/* Update the current typing row */
-function updateRow() {
-  for (var c = 0; c < 5; c++) {
-    var cell = document.getElementById('wg-cell-' + currentRow + '-' + c);
-    if (!cell) continue;
-    cell.textContent = currentWord[c] || '';
-    cell.className = 'wg-cell' + (currentWord[c] ? ' active' : '');
-  }
-}
-
-/* Colour a completed row — no animation, just directly set classes */
-function colorRow(rowIndex, wordStr, result) {
-  for (var c = 0; c < 5; c++) {
-    var cell = document.getElementById('wg-cell-' + rowIndex + '-' + c);
-    if (!cell) continue;
-    cell.textContent = wordStr[c];
-    cell.className = 'wg-cell ' + result[c];
-  }
-}
-
-/* Build on-screen keyboard */
 function buildKeyboard() {
-  var kbd = document.getElementById('wg-kbd');
-  kbd.innerHTML = '';
+  var el = document.getElementById('wg-kbd');
+  el.innerHTML = '';
   var rows = [
     ['Q','W','E','R','T','Y','U','I','O','P'],
     ['A','S','D','F','G','H','J','K','L'],
     ['ENTER','Z','X','C','V','B','N','M','⌫']
   ];
   rows.forEach(function(keyRow) {
-    var rowDiv = document.createElement('div');
-    rowDiv.className = 'kbd-row';
-    keyRow.forEach(function(k) {
+    var rowEl = document.createElement('div');
+    rowEl.className = 'wg-kb-row';
+    keyRow.forEach(function(key) {
       var btn = document.createElement('button');
-      btn.className = 'kbd-key' + (k.length > 1 ? ' wide' : '');
-      btn.textContent = k;
-      btn.id = 'kb-' + k;
-      var col = kbColors[k];
-      if (col) btn.classList.add(col);
-      btn.addEventListener('click', function() { onKey(k); });
-      rowDiv.appendChild(btn);
+      btn.className = 'wg-key' + (key.length > 1 ? ' wide' : '');
+      btn.textContent = key;
+      btn.id = 'key-' + key;
+      if (keyColors[key]) btn.classList.add(keyColors[key]);
+      btn.addEventListener('click', function(){ handleKey(key); });
+      rowEl.appendChild(btn);
     });
-    kbd.appendChild(rowDiv);
+    el.appendChild(rowEl);
   });
 }
 
-/* Update keyboard colors for a letter */
-function updateKeyColor(letter, result) {
-  var prev = kbColors[letter];
-  if (result === 'correct') {
-    kbColors[letter] = 'correct';
-  } else if (result === 'present' && prev !== 'correct') {
-    kbColors[letter] = 'present';
-  } else if (!prev) {
-    kbColors[letter] = 'absent';
-  }
-  var btn = document.getElementById('kb-' + letter);
-  if (btn) {
-    btn.className = 'kbd-key' + (letter.length > 1 ? ' wide' : '');
-    if (kbColors[letter]) btn.classList.add(kbColors[letter]);
+function getCell(r, c){ return document.getElementById('cell-'+r+'-'+c); }
+function getKey(k){ return document.getElementById('key-'+k); }
+
+/* Update a single cell's display */
+function renderCell(r, c){
+  var cell = getCell(r, c);
+  if (!cell) return;
+  var d = board[r][c];
+  cell.textContent = d.letter;
+  cell.className = 'wg-cell' + (d.state ? ' '+d.state : (d.letter ? ' has-letter' : ''));
+}
+
+/* ══ GAME LOGIC ══ */
+
+function newGame(){
+  target = _mpRng
+    ? WORDS[Math.floor(_mpRng() * WORDS.length)]
+    : WORDS[Math.floor(Math.random() * WORDS.length)];
+
+  curRow = 0; curCol = 0; gameOver = false; keyColors = {};
+  document.getElementById('wg-msg').textContent = '';
+  document.getElementById('share-btn').style.display = 'none';
+
+  buildBoard();
+  buildKeyboard();
+  SoundEngine.play('start');
+
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+    _stopPoll = AZMulti.pollRoom(_mpRoom, function(room){
+      /* show opponent progress */
+    });
   }
 }
 
-/* Evaluate guess against target */
-function evaluate(guess, tgt) {
-  var result = ['absent','absent','absent','absent','absent'];
-  var tArr = tgt.split('');
-  var used = [false,false,false,false,false];
-  /* Pass 1: correct */
-  for (var i = 0; i < 5; i++) {
-    if (guess[i] === tArr[i]) { result[i] = 'correct'; used[i] = true; }
+function handleKey(key){
+  if (gameOver) return;
+
+  if (key === '⌫' || key === 'Backspace'){
+    deleteLetter(); return;
   }
-  /* Pass 2: present */
-  for (var i = 0; i < 5; i++) {
+  if (key === 'ENTER' || key === 'Enter'){
+    submitRow(); return;
+  }
+  if (/^[A-Za-z]$/.test(key)){
+    typeLetter(key.toUpperCase());
+  }
+}
+
+function typeLetter(letter){
+  if (curCol >= NUM_COLS) return;
+  board[curRow][curCol].letter = letter;
+  board[curRow][curCol].state  = '';
+  renderCell(curRow, curCol);
+  /* pop animation */
+  var cell = getCell(curRow, curCol);
+  if (cell){ cell.classList.remove('pop'); void cell.offsetWidth; cell.classList.add('pop'); }
+  SoundEngine.play('key');
+  curCol++;
+}
+
+function deleteLetter(){
+  if (curCol <= 0) return;
+  curCol--;
+  board[curRow][curCol].letter = '';
+  board[curRow][curCol].state  = '';
+  renderCell(curRow, curCol);
+}
+
+function submitRow(){
+  if (curCol < NUM_COLS){
+    showMsg('Not enough letters', 'error');
+    shakeCurRow();
+    return;
+  }
+
+  var guess = '';
+  for (var c = 0; c < NUM_COLS; c++) guess += board[curRow][c].letter;
+
+  if (ALL_VALID.indexOf(guess) < 0){
+    showMsg('Not in word list', 'error');
+    shakeCurRow();
+    return;
+  }
+
+  /* Evaluate */
+  var result = evaluate(guess, target);
+
+  /* Store results in board data */
+  for (var c = 0; c < NUM_COLS; c++){
+    board[curRow][c].state = result[c];
+  }
+
+  /* Animate flip row then update colors */
+  var r = curRow;
+  flipRow(r, result, function(){
+    /* Update keyboard colors */
+    for (var c = 0; c < NUM_COLS; c++){
+      var letter = board[r][c].letter;
+      var res    = result[c];
+      var prev   = keyColors[letter];
+      if (res === 'correct')                             keyColors[letter] = 'correct';
+      else if (res === 'present' && prev !== 'correct') keyColors[letter] = 'present';
+      else if (!prev)                                    keyColors[letter] = 'absent';
+
+      var kEl = getKey(letter);
+      if (kEl){
+        kEl.className = 'wg-key';
+        if (keyColors[letter]) kEl.classList.add(keyColors[letter]);
+      }
+    }
+
+    var won = result.every(function(s){ return s === 'correct'; });
+    curRow++;
+
+    if (won){
+      gameOver = true;
+      var rowNum = curRow; /* number of guesses used */
+      bounceRow(rowNum - 1);
+      var msgs = ['Genius! 🧠','Magnificent! 🌟','Impressive! 🎯','Splendid! ✨','Great! 👍','Phew! 😅'];
+      setTimeout(function(){
+        showMsg(msgs[rowNum-1] || 'Nice! 🎉', 'win');
+      }, 400);
+      /* Stats & coins */
+      played++; wins++; streak++;
+      saveStats();
+      var reward = Math.max(5, (7 - rowNum) * 5);
+      CoinEngine.add(reward, 'Word Guess — solved in ' + rowNum, '📝');
+      CoinEngine.recordGame('wordguess', reward, true, { tries: rowNum });
+      setTimeout(function(){ CoinEngine.toast('+' + reward + ' 🪙  Solved in ' + rowNum + '!','coin'); }, 600);
+      SoundEngine.play('success');
+      document.getElementById('share-btn').style.display = 'inline-flex';
+      /* Multiplayer */
+      mpDone(rowNum, true);
+
+    } else if (curRow >= NUM_ROWS){
+      gameOver = true;
+      played++; streak = 0;
+      saveStats();
+      CoinEngine.recordGame('wordguess', 0, false, {});
+      setTimeout(function(){
+        showMsg('The word was ' + target, 'error');
+      }, 300);
+      SoundEngine.play('gameover');
+      document.getElementById('share-btn').style.display = 'inline-flex';
+      mpDone(7, false);
+
+    } else {
+      curCol = 0;
+    }
+  });
+}
+
+/* ── Evaluate guess ── */
+function evaluate(guess, tgt){
+  var result = ['absent','absent','absent','absent','absent'];
+  var tArr   = tgt.split('');
+  var used   = [false,false,false,false,false];
+  /* Pass 1: correct positions */
+  for (var i = 0; i < 5; i++){
+    if (guess[i] === tArr[i]){ result[i] = 'correct'; used[i] = true; }
+  }
+  /* Pass 2: present (right letter, wrong spot) */
+  for (var i = 0; i < 5; i++){
     if (result[i] === 'correct') continue;
-    for (var j = 0; j < 5; j++) {
-      if (!used[j] && guess[i] === tArr[j]) { result[i] = 'present'; used[j] = true; break; }
+    for (var j = 0; j < 5; j++){
+      if (!used[j] && guess[i] === tArr[j]){ result[i] = 'present'; used[j] = true; break; }
     }
   }
   return result;
 }
 
-/* Handle a key press */
-function onKey(k) {
-  if (gameOver) return;
-  if (k === '⌫') {
-    if (currentWord.length > 0) {
-      currentWord = currentWord.slice(0, -1);
-      updateRow();
-    }
-    return;
+/* ── Flip animation: cell flips down (face hidden), color applied, flips back up ── */
+function flipRow(r, result, callback){
+  var FLIP_DOWN = 250;   /* ms for face-down phase */
+  var FLIP_UP   = 250;   /* ms for face-up phase */
+  var DELAY     = 300;   /* ms stagger between cells */
+
+  for (var c = 0; c < NUM_COLS; c++){
+    (function(col){
+      var cell   = getCell(r, col);
+      var color  = result[col];
+      var startT = col * DELAY;
+
+      setTimeout(function(){
+        /* Phase 1: flip to face-down */
+        cell.classList.remove('pop','has-letter');
+        cell.classList.add('flip-down');
+
+        setTimeout(function(){
+          /* Midpoint: cell is hidden — apply color now */
+          cell.classList.remove('flip-down');
+          cell.classList.add(color);
+          cell.classList.add('flip-up');
+
+          setTimeout(function(){
+            /* Done flipping */
+            cell.classList.remove('flip-up');
+          }, FLIP_UP);
+
+        }, FLIP_DOWN);
+      }, startT);
+    })(c);
   }
-  if (k === 'ENTER') {
-    submitGuess();
-    return;
-  }
-  if (currentWord.length < 5 && /^[A-Z]$/.test(k)) {
-    currentWord += k;
-    updateRow();
-    /* pop animation on the new cell */
-    var cell = document.getElementById('wg-cell-' + currentRow + '-' + (currentWord.length-1));
-    if (cell) {
-      cell.classList.remove('pop');
+
+  /* Fire callback after last cell fully visible */
+  var totalTime = (NUM_COLS - 1) * DELAY + FLIP_DOWN + FLIP_UP + 50;
+  setTimeout(callback, totalTime);
+}
+
+/* ── Shake current row (invalid word) ── */
+function shakeCurRow(){
+  for (var c = 0; c < NUM_COLS; c++){
+    (function(col){
+      var cell = getCell(curRow, col);
+      if (!cell) return;
+      cell.classList.remove('shake');
       void cell.offsetWidth;
-      cell.classList.add('pop');
-    }
-    SoundEngine.play('key');
-  }
-}
-
-/* Submit a guess */
-function submitGuess() {
-  if (currentWord.length < 5) {
-    shakeCurrentRow();
-    setMsg('Not enough letters!', 'error');
-    setTimeout(function(){ setMsg('', ''); }, 1200);
-    return;
-  }
-  if (VALID.indexOf(currentWord) < 0) {
-    shakeCurrentRow();
-    setMsg('Not in word list!', 'error');
-    setTimeout(function(){ setMsg('', ''); }, 1200);
-    return;
-  }
-
-  var result = evaluate(currentWord, target);
-  var wordStr = currentWord;
-  guesses.push({ word: wordStr, result: result });
-
-  /* Color the row immediately */
-  colorRow(currentRow, wordStr, result);
-
-  /* Update keyboard colors */
-  for (var i = 0; i < 5; i++) {
-    updateKeyColor(wordStr[i], result[i]);
-  }
-
-  var won = result.every(function(r) { return r === 'correct'; });
-  currentRow++;
-  currentWord = '';
-
-  if (won) {
-    gameOver = true;
-    wins++; streak++;
-    document.getElementById('wg-wins').textContent = wins;
-    document.getElementById('wg-streak').textContent = streak;
-    var reward = Math.max(5, (8 - currentRow) * 5);
-    var msgs = ['Genius!','Magnificent!','Impressive!','Splendid!','Great!','Phew!'];
-    setMsg(msgs[currentRow-2] || 'Nice!', 'win');
-    CoinEngine.add(reward, 'Word Guess solved in ' + (currentRow-1), '📝');
-    CoinEngine.recordGame('wordguess', reward, true, { tries: currentRow-1 });
-    CoinEngine.toast('+' + reward + ' 🪙  Solved in ' + (currentRow-1) + '!', 'coin');
-    SoundEngine.play('success');
-    document.getElementById('share-btn').style.display = 'inline-flex';
-    mpDone(currentRow-1, true);
-  } else if (currentRow >= 6) {
-    gameOver = true;
-    streak = 0;
-    document.getElementById('wg-streak').textContent = 0;
-    setMsg('The word was: ' + target, 'error');
-    CoinEngine.recordGame('wordguess', 0, false, {});
-    SoundEngine.play('gameover');
-    document.getElementById('share-btn').style.display = 'inline-flex';
-    mpDone(7, false);
-  } else {
-    /* Continue — prepare next row */
-    setMsg('', '');
-    updateRow(); /* clear current row display */
-    SoundEngine.play('key');
-  }
-}
-
-function shakeCurrentRow() {
-  for (var c = 0; c < 5; c++) {
-    var cell = document.getElementById('wg-cell-' + currentRow + '-' + c);
-    if (cell) { cell.classList.remove('shake'); void cell.offsetWidth; cell.classList.add('shake'); }
+      cell.classList.add('shake');
+    })(c);
   }
   SoundEngine.play('error');
 }
 
-function setMsg(txt, type) {
+/* ── Bounce row on win ── */
+function bounceRow(r){
+  for (var c = 0; c < NUM_COLS; c++){
+    (function(col){
+      setTimeout(function(){
+        var cell = getCell(r, col);
+        if (!cell) return;
+        cell.classList.remove('bounce');
+        void cell.offsetWidth;
+        cell.classList.add('bounce');
+      }, col * 100);
+    })(c);
+  }
+}
+
+/* ── Message display ── */
+function showMsg(txt, type){
   var el = document.getElementById('wg-msg');
   el.textContent = txt;
-  el.className = 'wg-msg' + (type ? ' ' + type : '');
-}
-
-/* Share */
-function doShare() {
-  var emoji = guesses.map(function(g) {
-    return g.result.map(function(r){
-      return r==='correct'?'🟩':r==='present'?'🟨':'⬛';
-    }).join('');
-  }).join('\n');
-  var tries = gameOver && guesses[guesses.length-1] && guesses[guesses.length-1].result.every(function(r){return r==='correct';})
-    ? (currentRow-1) : 'X';
-  var txt = '📝 Word Guess ' + tries + '/6\n' + emoji + '\nPlay free: ' + window.location.origin;
-  if (_mpSeed || _mpCGen) {
-    var seed = _mpSeed || AZMulti.makeSeed();
-    var link = AZMulti.buildChallengeLink('wordguess', seed, tries, localStorage.getItem('az_mp_name')||'Friend');
-    txt = '📝 Word Guess ' + tries + '/6\n' + emoji + '\n⚔️ Beat me! ' + link;
+  el.style.color = type === 'error' ? 'var(--neon-b)' : type === 'win' ? 'var(--neon-d)' : 'var(--text)';
+  /* auto-clear errors */
+  if (type === 'error'){
+    clearTimeout(showMsg._t);
+    showMsg._t = setTimeout(function(){ if (!gameOver) el.textContent = ''; }, 1500);
   }
-  if (navigator.share) { navigator.share({title:'Word Guess',text:txt}).catch(function(){}); }
-  else if (navigator.clipboard) { navigator.clipboard.writeText(txt).then(function(){ CoinEngine.toast('Copied!','info'); }); }
+}
+showMsg._t = null;
+
+/* ── In-game toast (for quick messages) ── */
+function wgToast(txt){
+  var existing = document.querySelector('.wg-toast');
+  if (existing) existing.remove();
+  var el = document.createElement('div');
+  el.className = 'wg-toast';
+  el.textContent = txt;
+  document.body.appendChild(el);
+  setTimeout(function(){ if (el.parentNode) el.remove(); }, 1600);
 }
 
-/* Keyboard and physical keys */
-document.addEventListener('keydown', function(e) {
-  if (gameOver) return;
+/* ── Share ── */
+function doShare(){
+  var grid = '';
+  for (var r = 0; r < curRow; r++){
+    for (var c = 0; c < NUM_COLS; c++){
+      var s = board[r][c].state;
+      grid += s==='correct' ? '🟩' : s==='present' ? '🟨' : '⬛';
+    }
+    grid += '\n';
+  }
+  var tries = wins > 0 ? (curRow > 0 && board[curRow-1] && board[curRow-1][4].state==='correct' ? curRow : 'X') : 'X';
+  var txt = 'Word Guess ' + tries + '/6\n\n' + grid + '\nPlay: ' + location.origin + '/wordguess.html';
+  if (navigator.share) {
+    navigator.share({ title: 'Word Guess', text: txt }).catch(function(){});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(function(){ wgToast('Copied to clipboard!'); });
+  } else {
+    wgToast('Share not supported on this browser');
+  }
+}
+
+/* ── Physical keyboard ── */
+document.addEventListener('keydown', function(e){
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === 'Enter') { onKey('ENTER'); }
-  else if (e.key === 'Backspace') { onKey('⌫'); }
-  else if (/^[a-zA-Z]$/.test(e.key)) { onKey(e.key.toUpperCase()); }
+  handleKey(e.key);
 });
 
 /* ══ MULTIPLAYER ══ */
-function mpDone(score, won) {
-  if (_stopPoll) { _stopPoll(); _stopPoll = null; }
+function mpDone(score, won){
+  if (_stopPoll){ _stopPoll(); _stopPoll = null; }
   var name = localStorage.getItem('az_mp_name') || 'Player';
-  AZMulti.submitScore('wordguess', won ? (7-score) : 0, name, {tries:score, word:target});
-  if (_mpCMode && !_mpRoom) {
-    var beat = won && score < _mpCScore, tie = won && score === _mpCScore;
-    setTimeout(function(){
-      var msg = beat ? ('🏆 Beat ' + _mpCName + '! (' + score + ' vs ' + _mpCScore + ')')
-              : tie  ? '🤝 Tie!'
-              : won  ? ('✅ Solved, but ' + _mpCName + ' was faster')
-              :        ('❌ ' + _mpCName + ' wins');
-      CoinEngine.toast(msg, beat||tie?'coin':'info');
-    }, 500);
-    return;
-  }
-  if (_mpCGen) {
-    setTimeout(function(){
-      document.getElementById('share-btn').textContent='📤 Share Challenge';
-      CoinEngine.toast('Challenge ready!','info');
-    }, 400);
-    return;
-  }
-  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()) {
+  AZMulti.submitScore('wordguess', won ? (7-score) : 0, name, { tries: score, word: target });
+  if (_mpRoom && _mpRoom !== 'OFFLINE' && AZMulti.isConfigured()){
     AZMulti.markDoneAndCheck(_mpRoom, _mpPid, score, 'wordguess').then(function(result){
-      if (result) { window.location.href = AZMulti.resultUrl(result, _mpPid); }
-      else { window.location.href = 'result.html?room='+encodeURIComponent(_mpRoom)+'&game=wordguess&me='+_mpPid; }
+      if (result){ window.location.href = AZMulti.resultUrl(result, _mpPid); }
+      else { window.location.href = 'result.html?room=' + encodeURIComponent(_mpRoom) + '&game=wordguess&me=' + _mpPid; }
     }).catch(function(){});
   }
-}
-
-function updateOppPanel(room) {
-  var oppScore = _mpPid===1 ? room.p2_score : room.p1_score;
-  var oppDone  = _mpPid===1 ? room.p2_done  : room.p1_done;
-  var oppName  = _mpPid===1 ? room.p2_name  : room.p1_name;
-  var p = document.getElementById('opp-panel');
-  if (p) p.textContent = (oppName||'Opp') + ': ' + (oppDone ? '✓ '+oppScore+' tries' : 'playing…');
-  if (oppDone && !gameOver) CoinEngine.toast((oppName||'Opp')+' finished in '+oppScore+' tries!','info');
-}
-
-/* Battle HUD */
-(function(){
-  var room = (new URLSearchParams(location.search)).get('room');
-  if (!room || room==='OFFLINE') return;
-  var hud = document.getElementById('battle-hud');
-  if (hud) hud.classList.add('show');
-  var name = localStorage.getItem('az_mp_name')||'You';
-  var t0 = Date.now();
-  setInterval(function(){
-    var el = document.getElementById('bh-time');
-    if (el) el.textContent = '⏱ '+Math.floor((Date.now()-t0)/1000)+'s';
-  }, 1000);
-  var meEl = document.getElementById('bh-me');
-  if (meEl) meEl.textContent = '👤 '+name+': playing';
-})();
-
-/* Challenge mode toast */
-if (_mpCMode) {
-  setTimeout(function(){
-    CoinEngine.toast('Beat '+_mpCName+"'s score of "+_mpCScore+' tries!','info');
-  }, 600);
 }
 
 /* ══ START ══ */
