@@ -882,21 +882,7 @@ canvas { max-width: 100%; touch-action: none; }
 }
 
 /* ── Page stagger-in for cards ── */
-@keyframes cardSlideIn {
-  from { opacity:0; transform:translateY(20px) scale(.97); }
-  to   { opacity:1; transform:none; }
-}
-.game-card:nth-child(1)  { animation:cardSlideIn .35s .03s both; }
-.game-card:nth-child(2)  { animation:cardSlideIn .35s .06s both; }
-.game-card:nth-child(3)  { animation:cardSlideIn .35s .09s both; }
-.game-card:nth-child(4)  { animation:cardSlideIn .35s .12s both; }
-.game-card:nth-child(5)  { animation:cardSlideIn .35s .15s both; }
-.game-card:nth-child(6)  { animation:cardSlideIn .35s .18s both; }
-.game-card:nth-child(7)  { animation:cardSlideIn .35s .21s both; }
-.game-card:nth-child(8)  { animation:cardSlideIn .35s .24s both; }
-.game-card:nth-child(9)  { animation:cardSlideIn .35s .27s both; }
-.game-card:nth-child(10) { animation:cardSlideIn .35s .30s both; }
-.game-card:nth-child(n+11){ animation:cardSlideIn .35s .33s both; }
+/* game card slide-in removed — JS inserts cards after animation start */
 
 /* ── Achievement card pop-in ── */
 .ach-card {
