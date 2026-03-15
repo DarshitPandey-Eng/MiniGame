@@ -310,6 +310,30 @@ window.AZMulti = (function () {
     return rest('PATCH', BASE_ROOMS + '?code=eq.' + code, { status: status });
   }
 
+  /* ══ Turn-based game state ════════════════════════════════════
+     Store arbitrary JSON game state in the 'seed' column.
+     'difficulty' stores whose turn it is: 'p1_turn' | 'p2_turn'
+  ════════════════════════════════════════════════════════════ */
+  function updateGameState(code, stateObj, nextTurn) {
+    var patch = { seed: JSON.stringify(stateObj) };
+    if (nextTurn) patch.difficulty = nextTurn;
+    return rest('PATCH', BASE_ROOMS + '?code=eq.' + code, patch);
+  }
+
+  function getGameState(room) {
+    if (!room || !room.seed) return null;
+    try { return JSON.parse(room.seed); } catch(_) { return null; }
+  }
+
+  function getTurn(room) {
+    return room ? (room.difficulty || 'p1_turn') : 'p1_turn';
+  }
+
+  function isMyTurn(room, pid) {
+    var t = getTurn(room);
+    return (pid === 1 && t === 'p1_turn') || (pid === 2 && t === 'p2_turn');
+  }
+
   /* ══ Winner resolution ════════════════════════════════════════
      Call resolveWinner(room, gameId) to figure out who won.
      Returns { winner: 1|2|'tie'|null, p1: {...}, p2: {...} }
@@ -410,6 +434,10 @@ window.AZMulti = (function () {
     updateMyScore:  updateMyScore,
     testConnection: testConnection,
     setRoomStatus:  setRoomStatus,
+    updateGameState: updateGameState,
+    getGameState:   getGameState,
+    getTurn:        getTurn,
+    isMyTurn:       isMyTurn,
     resolveWinner:  resolveWinner,
     markDoneAndCheck: markDoneAndCheck,
     watchForResult: watchForResult,

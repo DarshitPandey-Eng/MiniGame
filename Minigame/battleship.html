@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Battleship — Arcade Zone</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
+<script src="supabase.js"></script>
+<script src="auth.js"></script>
+<script src="coins.js"></script>
+<script src="sound.js"></script>
+<script src="game-ui.js"></script>
+<script src="mp.js"></script>
+<style>
+:root { --accent: var(--neon-b); }
+
+.bs-wrap {
+  width: 100%; max-width: 560px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 14px; padding: 0 12px 40px;
+}
+
+/* ── Status bar ── */
+.bs-status {
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 700;
+  text-align: center; padding: 10px 16px; border-radius: 10px;
+  background: var(--card-bg); border: 1.5px solid var(--line2);
+  color: var(--text2); letter-spacing: .03em; min-height: 42px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bs-status.myturn  { border-color: var(--neon-d); color: var(--neon-d); background: color-mix(in srgb,var(--neon-d) 8%,var(--card-bg)); }
+.bs-status.oppturn { border-color: var(--neon-b); color: var(--neon-b); }
+.bs-status.won     { border-color: var(--neon-d); color: var(--neon-d); }
+.bs-status.lost    { border-color: var(--neon-b); color: var(--neon-b); }
+.bs-status.setup   { border-color: var(--neon-e); color: var(--neon-e); }
+
+/* ── Boards layout ── */
+.bs-boards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .bs-boards { grid-template-columns: 1fr; }
+}
+
+.bs-board-wrap { display: flex; flex-direction: column; gap: 6px; }
+.bs-board-label {
+  font-family: var(--font-mono); font-size: .56rem; font-weight: 700;
+  color: var(--muted); letter-spacing: .14em; text-align: center;
+}
+
+/* ── Grid ── */
+.bs-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  border: 1.5px solid var(--line2);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--bg2);
+}
+
+.bs-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--neon-a) 8%, var(--bg1));
+  border: 1px solid var(--line2);
+  cursor: default;
+  transition: background .12s, transform .08s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(.5rem, 2vw, .8rem);
+}
+.bs-cell.ship   { background: color-mix(in srgb, var(--text) 25%, var(--bg2)); border-color: var(--text2); }
+.bs-cell.hit    { background: #c0392b; border-color: #e74c3c; color: #fff; }
+.bs-cell.miss   { background: color-mix(in srgb, var(--neon-a) 15%, var(--bg1)); border-color: var(--neon-a); color: var(--neon-a); }
+.bs-cell.sunk   { background: #7f1d1d; border-color: #ef4444; color: #fff; }
+.bs-cell.target { cursor: crosshair; }
+.bs-cell.target:hover { background: color-mix(in srgb, var(--neon-b) 30%, var(--bg1)); border-color: var(--neon-b); transform: scale(1.1); }
+
+/* ── Ship placement sidebar ── */
+.bs-ships {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.bs-ship-btn {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: .6rem; font-weight: 700;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid var(--line2); background: var(--card-bg);
+  color: var(--text2); transition: all .14s; text-align: left;
+}
+.bs-ship-btn.selected { border-color: var(--neon-e); color: var(--neon-e); background: color-mix(in srgb,var(--neon-e) 10%,var(--card-bg)); }
+.bs-ship-btn.placed   { border-color: var(--neon-d); color: var(--neon-d); opacity: .7; }
+.bs-ship-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ship-preview { display: flex; gap: 2px; }
+.ship-sq { width: 10px; height: 10px; border-radius: 2px; background: var(--text2); }
+.bs-ship-btn.selected .ship-sq { background: var(--neon-e); }
+.bs-ship-btn.placed   .ship-sq { background: var(--neon-d); }
+
+/* ── Score strip ── */
+.bs-score {
+  display: flex; gap: 8px;
+}
+.bs-score-card {
+  flex: 1; background: var(--card-bg); border: 1px solid var(--line2);
+  border-radius: 10px; padding: 10px; text-align: center;
+}
+.bs-score-card .v { font-family: var(--font-display); font-size: 1.4rem; color: var(--neon-c); }
+.bs-score-card .l { font-family: var(--font-mono); font-size: .48rem; color: var(--muted); letter-spacing: .1em; }
+
+/* ── Action row ── */
+.bs-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bs-actions .btn { flex: 1; min-width: 100px; }
+
+/* ── Lobby ── */
+.bs-lobby { display: flex; flex-direction: column; gap: 12px; }
+.bs-room-code {
+  font-family: var(--font-display); font-size: 3rem; letter-spacing: .3em;
+  color: var(--neon-e); text-align: center;
+  background: var(--card-bg); border: 1.5px solid var(--line2);
+  border-radius: 12px; padding: 14px;
+}
+.bs-copy-hint {
+  font-family: var(--font-mono); font-size: .58rem; color: var(--muted);
+  text-align: center; margin-top: -6px;
+}
+
+/* phase sections */
+.phase { display: none; }
+.phase.active { display: block; }
+</style>
+</head>
+<body>
+
+<nav class="nav" id="main-nav">
+  <a class="nav-back" href="index.html">← Hub</a>
+  <div class="nav-sep"></div>
+  <div class="nav-title">
+    <span class="dot" style="background:var(--neon-b);box-shadow:0 0 8px var(--neon-b)"></span>BATTLESHIP
+  </div>
+  <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
+  <button class="theme-btn" id="tb">🌙</button>
+</nav>
+
+<div class="page" style="padding-top:14px; align-items:center;">
+<div class="bs-wrap">
+
+  <!-- STATUS BAR -->
+  <div class="bs-status" id="bs-status">Loading…</div>
+
+  <!-- PHASE: LOBBY -->
+  <div class="phase active" id="phase-lobby">
+    <div class="bs-lobby">
+      <div style="font-family:var(--font-mono);font-size:.68rem;color:var(--text2);text-align:center;">
+        Sink all your opponent's ships to win!
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="player-name" class="search-input" type="text" placeholder="Your name…"
+          maxlength="16" style="flex:1;font-size:.8rem;" autocomplete="off">
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn filled" style="--c:var(--neon-e);flex:1" onclick="createGame()">⚓ CREATE GAME</button>
+        <button class="btn" style="--c:var(--neon-b);flex:1" onclick="showJoin()">🚢 JOIN GAME</button>
+      </div>
+
+      <div id="join-panel" style="display:none;flex-direction:column;gap:8px;">
+        <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--muted);text-align:center;">
+          Enter the 4-letter room code from your opponent
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input id="join-code" class="search-input" type="text" maxlength="4"
+            placeholder="XXXX" style="flex:1;font-size:1.1rem;text-transform:uppercase;letter-spacing:.2em;text-align:center;">
+          <button class="btn filled" style="--c:var(--neon-b)" onclick="joinGame()">JOIN</button>
+        </div>
+      </div>
+
+      <div id="lobby-msg" style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);text-align:center;min-height:20px;"></div>
+    </div>
+  </div>
+
+  <!-- PHASE: WAITING FOR OPPONENT -->
+  <div class="phase" id="phase-waiting">
+    <div style="text-align:center;display:flex;flex-direction:column;gap:14px;">
+      <div class="bs-room-code" id="display-code">----</div>
+      <div class="bs-copy-hint">Share this code with your opponent · <a href="#" onclick="copyCode();return false;" style="color:var(--neon-e)">Copy</a></div>
+      <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--muted);">Waiting for someone to join…</div>
+      <div style="width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--neon-e);border-radius:50%;animation:bsspin .8s linear infinite;margin:0 auto;"></div>
+      <style>@keyframes bsspin{to{transform:rotate(360deg)}}</style>
+    </div>
+  </div>
+
+  <!-- PHASE: PLACE SHIPS -->
+  <div class="phase" id="phase-place">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="font-family:var(--font-mono);font-size:.62rem;color:var(--text2);text-align:center;">
+        Click a ship, then click the grid to place it. Right-click or tap Rotate to rotate.
+      </div>
+
+      <!-- My placement grid -->
+      <div class="bs-board-wrap">
+        <div class="bs-board-label">YOUR FLEET</div>
+        <div class="bs-grid" id="my-place-grid"></div>
+      </div>
+
+      <!-- Ship selector -->
+      <div class="bs-ships" id="ship-selector"></div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="--c:var(--neon-c);flex:1" onclick="rotateShip()">↻ ROTATE</button>
+        <button class="btn" style="--c:var(--muted);flex:1" onclick="clearPlacement()">✕ CLEAR</button>
+        <button class="btn filled" style="--c:var(--neon-d);flex:2" id="ready-btn" onclick="confirmPlacement()" disabled>✓ READY!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE: BATTLE -->
+  <div class="phase" id="phase-battle">
+    <div class="bs-score">
+      <div class="bs-score-card">
+        <div class="v" id="my-hits">0</div>
+        <div class="l">YOUR HITS</div>
+      </div>
+      <div class="bs-score-card" style="border-color:var(--neon-b)">
+        <div class="v" id="opp-hits" style="color:var(--neon-b)">0</div>
+        <div class="l">THEIR HITS</div>
+      </div>
+    </div>
+
+    <div class="bs-boards">
+      <!-- Enemy grid (attack here) -->
+      <div class="bs-board-wrap">
+        <div class="bs-board-label" style="color:var(--neon-b)">ENEMY WATERS 🎯</div>
+        <div class="bs-grid" id="enemy-grid"></div>
+      </div>
+      <!-- My grid (defend) -->
+      <div class="bs-board-wrap">
+        <div class="bs-board-label">YOUR FLEET 🛡</div>
+        <div class="bs-grid" id="my-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE: GAME OVER -->
+  <div class="phase" id="phase-over">
+    <div style="text-align:center;display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:4rem" id="over-emoji">🏆</div>
+      <div style="font-family:var(--font-display);font-size:2.5rem;letter-spacing:.1em;" id="over-title">YOU WIN!</div>
+      <div style="font-family:var(--font-mono);font-size:.68rem;color:var(--text2);" id="over-sub"></div>
+      <div class="bs-actions">
+        <button class="btn filled" style="--c:var(--neon-e)" onclick="resetGame()">⚓ PLAY AGAIN</button>
+        <a class="btn" style="--c:var(--muted)" href="index.html">← HUB</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* ── Theme ── */
+(function(){
+  var tb = document.getElementById('tb');
+  function s(){ tb.textContent = CoinEngine.getTheme()==='dark'?'☀️':'🌙'; }
+  tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); s(); }); s();
+  document.addEventListener('az:balance', function(e){
+    document.querySelectorAll('.az-bal').forEach(function(el){ el.textContent = e.detail; });
+  });
+})();
+
+/* ════════════════════════════════════════════════════════
+   BATTLESHIP — Full multiplayer via Supabase rooms
+   
+   Architecture:
+   - Room 'seed' column stores JSON game state
+   - Room 'difficulty' stores current turn: 'p1_turn'|'p2_turn'|'placing'|'done'
+   - p1_score = P1 hits on P2's ships
+   - p2_score = P2 hits on P1's ships
+   
+   Game state JSON:
+   {
+     p1ships: [[r,c,r2,c2], ...],   // ship positions (hidden from P2)
+     p2ships: [...],
+     p1shots: [[r,c,'hit'|'miss'], ...],  // P1's shots on P2
+     p2shots: [...],
+     p1ready: bool,
+     p2ready: bool
+   }
+════════════════════════════════════════════════════════ */
+
+var GRID  = 10;
+var SHIPS = [
+  { name: 'Carrier',    size: 5 },
+  { name: 'Battleship', size: 4 },
+  { name: 'Cruiser',    size: 3 },
+  { name: 'Submarine',  size: 3 },
+  { name: 'Destroyer',  size: 2 },
+];
+var TOTAL_SHIP_CELLS = SHIPS.reduce(function(a,s){ return a+s.size; }, 0); // 17
+
+/* ── Game state ── */
+var myPid       = 1;
+var myName      = '';
+var roomCode    = null;
+var pollStop    = null;
+var phase       = 'lobby';  /* lobby | waiting | placing | battle | over */
+
+/* Placement state */
+var myShips     = [];        /* [{r,c,dir,size,name}] placed ships */
+var selectedShip= null;      /* index into SHIPS or null */
+var shipDir     = 'h';       /* 'h' | 'v' */
+var myPlaceGrid = [];        /* 10×10 bools */
+
+/* Battle state */
+var myShots     = [];        /* [{r,c,result}] my shots on enemy */
+var enemyShots  = [];        /* [{r,c,result}] enemy shots on me */
+var gameState   = null;      /* full state from server */
+
+/* ── Helpers ── */
+function $(id){ return document.getElementById(id); }
+function setStatus(txt, cls){
+  var el = $('bs-status');
+  el.textContent = txt;
+  el.className = 'bs-status' + (cls?' '+cls:'');
+}
+function setPhase(p){
+  phase = p;
+  ['lobby','waiting','place','battle','over'].forEach(function(ph){
+    var el = $('phase-'+ph);
+    if (el) el.className = 'phase' + (ph===p?' active':'');
+  });
+}
+function lobbyMsg(txt, col){
+  var el = $('lobby-msg');
+  el.textContent = txt;
+  el.style.color = col || 'var(--muted)';
+}
+
+/* ── Grid builders ── */
+function makeGrid(containerId, clickable, clickFn){
+  var el = $(containerId);
+  el.innerHTML = '';
+  for (var r = 0; r < GRID; r++){
+    for (var c = 0; c < GRID; c++){
+      var cell = document.createElement('div');
+      cell.className = 'bs-cell' + (clickable?' target':'');
+      cell.id = containerId + '-' + r + '-' + c;
+      if (clickable && clickFn){
+        (function(row,col){ cell.addEventListener('click', function(){ clickFn(row,col); }); })(r,c);
+      }
+      el.appendChild(cell);
+    }
+  }
+}
+
+function getCell(gridId, r, c){
+  return $(gridId + '-' + r + '-' + c);
+}
+
+/* ── Placement logic ── */
+function buildPlaceGrid(){
+  myPlaceGrid = [];
+  for (var r=0;r<GRID;r++){ myPlaceGrid[r]=[]; for(var c=0;c<GRID;c++) myPlaceGrid[r][c]=false; }
+  makeGrid('my-place-grid', true, placeShip);
+  buildShipSelector();
+  renderPlacement();
+}
+
+function buildShipSelector(){
+  var sel = $('ship-selector');
+  sel.innerHTML = '';
+  SHIPS.forEach(function(s, idx){
+    var placed = myShips.some(function(ms){ return ms.name===s.name; });
+    var btn = document.createElement('button');
+    btn.className = 'bs-ship-btn' + (placed?' placed':'') + (selectedShip===idx&&!placed?' selected':'');
+    btn.disabled = placed;
+    var preview = '';
+    for(var i=0;i<s.size;i++) preview += '<div class="ship-sq"></div>';
+    btn.innerHTML = '<div class="ship-preview">'+preview+'</div><span>'+s.name+' ('+s.size+')</span>';
+    btn.addEventListener('click', function(){
+      if (placed) return;
+      selectedShip = idx;
+      buildShipSelector();
+    });
+    sel.appendChild(btn);
+  });
+}
+
+function canPlace(r, c, size, dir){
+  for(var i=0;i<size;i++){
+    var rr = r + (dir==='v'?i:0);
+    var cc = c + (dir==='h'?i:0);
+    if (rr>=GRID||cc>=GRID) return false;
+    if (myPlaceGrid[rr][cc]) return false;
+  }
+  return true;
+}
+
+function placeShip(r, c){
+  if (selectedShip === null) return;
+  var s = SHIPS[selectedShip];
+  if (!canPlace(r, c, s.size, shipDir)){
+    CoinEngine.toast('Cannot place here!', 'warn');
+    return;
+  }
+  /* Mark grid */
+  for(var i=0;i<s.size;i++){
+    var rr = r+(shipDir==='v'?i:0);
+    var cc = c+(shipDir==='h'?i:0);
+    myPlaceGrid[rr][cc] = true;
+  }
+  myShips.push({ name: s.name, r: r, c: c, dir: shipDir, size: s.size });
+  selectedShip = null;
+  /* Auto-select next unplaced */
+  for(var idx=0;idx<SHIPS.length;idx++){
+    if (!myShips.some(function(ms){ return ms.name===SHIPS[idx].name; })){
+      selectedShip = idx; break;
+    }
+  }
+  renderPlacement();
+  buildShipSelector();
+  if (myShips.length === SHIPS.length){
+    $('ready-btn').disabled = false;
+    setStatus('All ships placed! Press READY when you\'re set.', 'setup');
+  }
+}
+
+function renderPlacement(){
+  /* Clear grid */
+  for(var r=0;r<GRID;r++) for(var c=0;c<GRID;c++){
+    var cell = getCell('my-place-grid',r,c);
+    if (cell) cell.className = 'bs-cell target' + (myPlaceGrid[r][c]?' ship':'');
+  }
+}
+
+function rotateShip(){ shipDir = shipDir==='h'?'v':'h'; CoinEngine.toast('Direction: '+(shipDir==='h'?'Horizontal →':'Vertical ↓'),'info'); }
+
+function clearPlacement(){
+  myShips = [];
+  myPlaceGrid = [];
+  for(var r=0;r<GRID;r++){ myPlaceGrid[r]=[]; for(var c=0;c<GRID;c++) myPlaceGrid[r][c]=false; }
+  selectedShip = 0;
+  $('ready-btn').disabled = true;
+  renderPlacement();
+  buildShipSelector();
+  setStatus('Place your ships on the grid', 'setup');
+}
+
+/* ── Confirm placement & update server ── */
+function confirmPlacement(){
+  setStatus('Sending fleet positions…', 'setup');
+  $('ready-btn').disabled = true;
+
+  AZMulti.getRoom(roomCode).then(function(room){
+    var state = AZMulti.getGameState(room) || { p1ships:[], p2ships:[], p1shots:[], p2shots:[], p1ready:false, p2ready:false };
+    if (myPid===1){ state.p1ships = myShips; state.p1ready = true; }
+    else           { state.p2ships = myShips; state.p2ready = true; }
+
+    var bothReady = state.p1ready && state.p2ready;
+    var nextStatus = bothReady ? 'playing' : 'placing';
+    var nextTurn   = bothReady ? 'p1_turn' : 'placing';
+
+    return AZMulti.updateGameState(roomCode, state, nextTurn)
+      .then(function(){ return AZMulti.setRoomStatus(roomCode, nextStatus); });
+  }).then(function(){
+    if (myPid===1) setStatus('Waiting for opponent to place ships…');
+    else           setStatus('Waiting for game to start…');
+  }).catch(function(e){
+    setStatus('Error: '+e.message);
+    $('ready-btn').disabled = false;
+  });
+}
+
+/* ── Attack ── */
+function attack(r, c){
+  if (phase !== 'battle') return;
+  /* Check it's my turn */
+  if (!AZMulti.isMyTurn(gameState ? {difficulty: currentTurn} : {difficulty:'p1_turn'}, myPid)) return;
+  /* Check not already shot */
+  if (myShots.some(function(s){ return s.r===r&&s.c===c; })){
+    CoinEngine.toast('Already fired here!','warn'); return;
+  }
+
+  /* Determine hit or miss */
+  var oppShips = myPid===1 ? gameState.p2ships : gameState.p1ships;
+  var result = 'miss';
+  var hitShip = null;
+  oppShips.forEach(function(ship){
+    for(var i=0;i<ship.size;i++){
+      var sr = ship.r+(ship.dir==='v'?i:0);
+      var sc = ship.c+(ship.dir==='h'?i:0);
+      if (sr===r&&sc===c){ result='hit'; hitShip=ship; }
+    }
+  });
+
+  /* Check if sunk */
+  var newShots = (myPid===1?gameState.p1shots:gameState.p2shots).concat([{r:r,c:c,result:result}]);
+  if (hitShip){
+    var sunk = true;
+    for(var i=0;i<hitShip.size;i++){
+      var sr=hitShip.r+(hitShip.dir==='v'?i:0), sc=hitShip.c+(hitShip.dir==='h'?i:0);
+      if (!newShots.some(function(s){ return s.r===sr&&s.c===sc&&s.result==='hit'; })){ sunk=false; break; }
+    }
+    if (sunk) result = 'sunk';
+  }
+
+  /* Update last shot to sunk if needed */
+  newShots[newShots.length-1].result = result;
+
+  /* Count hits */
+  var hits = newShots.filter(function(s){ return s.result==='hit'||s.result==='sunk'; }).length;
+
+  /* Update state */
+  var newState = JSON.parse(JSON.stringify(gameState));
+  if (myPid===1){ newState.p1shots = newShots; }
+  else           { newState.p2shots = newShots; }
+
+  var nextTurn = myPid===1 ? 'p2_turn' : 'p1_turn';
+  var myScore = hits;
+
+  /* Check win */
+  var won = hits >= TOTAL_SHIP_CELLS;
+
+  var updateScore = {};
+  if (myPid===1) updateScore.p1_score = myScore;
+  else           updateScore.p2_score = myScore;
+
+  AZMulti.updateGameState(roomCode, newState, won ? 'done' : nextTurn)
+    .then(function(){
+      if (won){
+        AZMulti.setRoomStatus(roomCode, 'finished');
+        AZMulti.markDoneAndCheck(roomCode, myPid, myScore, 'battleship');
+      } else {
+        rest_updateScore(updateScore);
+      }
+    });
+
+  /* Local feedback immediately */
+  SoundEngine.play(result==='miss'?'key':'success');
+  CoinEngine.toast(result==='sunk'?'💥 SUNK!':result==='hit'?'🔥 HIT!':'💧 Miss','info');
+}
+
+function rest_updateScore(patch){
+  /* Use mp.js updateMyScore */
+  var hits = (myPid===1?gameState.p1shots:gameState.p2shots)
+    .filter(function(s){ return s.result==='hit'||s.result==='sunk'; }).length;
+  AZMulti.updateMyScore(roomCode, myPid, hits, false);
+}
+
+/* ── Render battle boards ── */
+var currentTurn = 'p1_turn';
+
+function renderBattle(room){
+  if (!room) return;
+  var state = AZMulti.getGameState(room);
+  if (!state) return;
+  gameState = state;
+  currentTurn = room.difficulty || 'p1_turn';
+
+  var myShots_arr    = myPid===1 ? state.p1shots : state.p2shots;
+  var enemyShots_arr = myPid===1 ? state.p2shots : state.p1shots;
+  var myShips_arr    = myPid===1 ? state.p1ships : state.p2ships;
+  var oppShips_arr   = myPid===1 ? state.p2ships : state.p1ships;
+
+  myShots    = myShots_arr    || [];
+  enemyShots = enemyShots_arr || [];
+
+  var myHits  = myShots.filter(function(s){ return s.result==='hit'||s.result==='sunk'; }).length;
+  var oppHits = enemyShots.filter(function(s){ return s.result==='hit'||s.result==='sunk'; }).length;
+  $('my-hits').textContent  = myHits;
+  $('opp-hits').textContent = oppHits;
+
+  /* Enemy grid */
+  for(var r=0;r<GRID;r++) for(var c=0;c<GRID;c++){
+    var cell = getCell('enemy-grid',r,c);
+    if (!cell) continue;
+    var shot = myShots.find(function(s){ return s.r===r&&s.c===c; });
+    var isMyT = AZMulti.isMyTurn({difficulty:currentTurn}, myPid);
+    cell.className = 'bs-cell';
+    if (shot){ cell.className += ' '+shot.result; cell.textContent = shot.result==='miss'?'○':'✕'; }
+    else if (isMyT && !gameOver_flag){ cell.className += ' target'; cell.textContent=''; }
+    else { cell.textContent=''; }
+  }
+
+  /* My grid — show my ships + enemy shots */
+  for(var r=0;r<GRID;r++) for(var c=0;c<GRID;c++){
+    var cell = getCell('my-grid',r,c);
+    if (!cell) continue;
+    var hasShip = (myShips_arr||[]).some(function(ship){
+      for(var i=0;i<ship.size;i++){
+        var sr=ship.r+(ship.dir==='v'?i:0), sc=ship.c+(ship.dir==='h'?i:0);
+        if (sr===r&&sc===c) return true;
+      }
+      return false;
+    });
+    var shot = enemyShots.find(function(s){ return s.r===r&&s.c===c; });
+    cell.className = 'bs-cell';
+    cell.textContent = '';
+    if (shot){
+      cell.className += ' ' + (shot.result==='miss'?'miss':(hasShip?'hit':'miss'));
+      cell.textContent = shot.result==='miss'?'○':'✕';
+    } else if (hasShip){
+      cell.className += ' ship';
+    }
+  }
+
+  /* Status */
+  var isMyT = AZMulti.isMyTurn({difficulty:currentTurn}, myPid);
+  if (isMyT) setStatus('🎯 YOUR TURN — Fire on the enemy grid!', 'myturn');
+  else        setStatus('⏳ Opponent\'s turn — watch your fleet…', 'oppturn');
+
+  /* Check game over */
+  if (myHits >= TOTAL_SHIP_CELLS || oppHits >= TOTAL_SHIP_CELLS || currentTurn==='done'){
+    endGame(myHits >= TOTAL_SHIP_CELLS);
+  }
+}
+
+var gameOver_flag = false;
+function endGame(iWon){
+  gameOver_flag = true;
+  if (pollStop){ pollStop(); pollStop=null; }
+  setPhase('over');
+  $('over-emoji').textContent  = iWon ? '🏆' : '💀';
+  $('over-title').textContent  = iWon ? 'YOU WIN!' : 'YOU LOSE';
+  var oppName = myPid===1 ? (gameState&&gameState.p2name||'Opponent') : (gameState&&gameState.p1name||'Opponent');
+  $('over-sub').textContent = iWon ? 'All enemy ships sunk! +50 🪙' : 'Your fleet was destroyed.';
+  if (iWon){
+    CoinEngine.add(50, 'Battleship WIN', '⚓');
+    SoundEngine.play('success');
+  } else {
+    SoundEngine.play('gameover');
+  }
+}
+
+/* ── Room polling ── */
+function startPolling(){
+  if (pollStop){ pollStop(); }
+  pollStop = AZMulti.pollRoom(roomCode, function(room){
+    if (!room) return;
+    var status = room.status;
+    var turn   = room.difficulty;
+
+    if (phase==='waiting' && status==='playing'){
+      /* Opponent joined! Go to ship placement */
+      setPhase('place');
+      setStatus('Place your 5 ships on the grid', 'setup');
+      buildPlaceGrid();
+    }
+
+    if ((phase==='placing'||phase==='waiting') && status==='playing' && turn!=='placing'){
+      /* Both ready — start battle */
+      startBattle(room);
+    }
+
+    if (phase==='battle'){
+      renderBattle(room);
+    }
+  });
+}
+
+function startBattle(room){
+  gameOver_flag = false;
+  setPhase('battle');
+  makeGrid('enemy-grid', true, attack);
+  makeGrid('my-grid', false, null);
+  renderBattle(room);
+}
+
+/* ── Lobby actions ── */
+function createGame(){
+  var name = $('player-name').value.trim() || 'Admiral';
+  myName = name;
+  myPid  = 1;
+  if (!AZMulti.isConfigured()){
+    lobbyMsg('Supabase not connected. Check battle.html for setup.', 'var(--neon-b)');
+    return;
+  }
+  lobbyMsg('Creating game…', 'var(--neon-e)');
+  AZMulti.createRoom('battleship', '{}', 'placing', name).then(function(code){
+    roomCode = code;
+    localStorage.setItem('az_mp_name', name);
+    setPhase('waiting');
+    $('display-code').textContent = code;
+    setStatus('Room created! Share the code.', 'setup');
+    startPolling();
+  }).catch(function(e){
+    lobbyMsg('Error: ' + e.message, 'var(--neon-b)');
+  });
+}
+
+function showJoin(){
+  $('join-panel').style.display = 'flex';
+}
+
+function joinGame(){
+  var name = $('player-name').value.trim() || 'Admiral';
+  var code = $('join-code').value.trim().toUpperCase();
+  myName = name;
+  myPid  = 2;
+  if (!code || code.length !== 4){ lobbyMsg('Enter a 4-letter code', 'var(--neon-b)'); return; }
+  if (!AZMulti.isConfigured()){ lobbyMsg('Supabase not connected.', 'var(--neon-b)'); return; }
+  lobbyMsg('Joining room ' + code + '…', 'var(--neon-e)');
+  AZMulti.joinRoom(code, name).then(function(){
+    roomCode = code;
+    localStorage.setItem('az_mp_name', name);
+    /* Go straight to placement */
+    setPhase('place');
+    setStatus('Place your 5 ships on the grid', 'setup');
+    buildPlaceGrid();
+    startPolling();
+    /* Update room to 'playing' so P1 sees someone joined */
+    AZMulti.setRoomStatus(code, 'playing');
+  }).catch(function(e){
+    var msg = e.message==='room_not_found'?'Room not found — check the code':
+              e.message==='room_full'?'Room is already full':
+              'Error: '+e.message;
+    lobbyMsg(msg, 'var(--neon-b)');
+  });
+}
+
+function copyCode(){
+  if (navigator.clipboard && roomCode){
+    navigator.clipboard.writeText(roomCode).then(function(){ CoinEngine.toast('Code copied!','info'); });
+  }
+}
+
+function resetGame(){
+  roomCode = null; myPid = 1; myName = '';
+  myShips = []; myShots = []; enemyShots = [];
+  gameState = null; gameOver_flag = false; currentTurn = 'p1_turn';
+  selectedShip = null; shipDir = 'h';
+  if (pollStop){ pollStop(); pollStop = null; }
+  setPhase('lobby');
+  setStatus('Ready to play!');
+  $('lobby-msg').textContent = '';
+}
+
+/* ── Init ── */
+(function(){
+  var saved = localStorage.getItem('az_mp_name');
+  if (saved) $('player-name').value = saved;
+  if (!AZMulti.isConfigured()){
+    setStatus('⚠ Supabase not configured — multiplayer unavailable');
+  } else {
+    AZMulti.testConnection().then(function(r){
+      if (r.ok) setStatus('⚓ Welcome to Battleship! Create or join a game.');
+      else setStatus('⚠ Database issue: ' + r.error);
+    });
+  }
+})();
+</script>
+</body>
+</html>

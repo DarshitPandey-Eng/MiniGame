@@ -1365,10 +1365,6 @@ main, .hub-inner {
 }
 
 /* ── Overlay / modal improvements ── */
-.overlay {
-  border-radius: 14px !important;
-  padding: 20px 16px !important;
-}
 @media (max-width: 520px) {
   .overlay { margin: 0 !important; }
 }
@@ -1401,12 +1397,6 @@ html { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 ══════════════════════════════════════════════════════════════ */
 
 /* ── Greeting line ── */
-.hub-greeting {
-  font-family: var(--font-mono); font-size: .68rem;
-  color: var(--text2); letter-spacing: .06em;
-  margin-bottom: 10px; opacity: .8;
-  animation: fadeSlideIn .6s ease both;
-}
 @keyframes fadeSlideIn {
   from { opacity:0; transform:translateY(-8px); }
   to   { opacity:.8; transform:none; }
@@ -1652,9 +1642,7 @@ html { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
   display: inline-block;
   transition: transform .15s ease;
 }
-.game-card:hover .card-play::after {
-  transform: translateX(4px);
-}
+
 
 /* Card glow border pulse on GOTD */
 .game-card[style*="outline"] {

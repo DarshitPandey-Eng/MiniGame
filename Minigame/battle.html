@@ -286,6 +286,9 @@
         <button class="bt-game-btn" data-game="sudoku">
           <span class="gicon">🔷</span><div><div>Sudoku</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Same grid, fastest time</div></div>
         </button>
+        <button class="bt-game-btn" data-game="battleship">
+          <span class="gicon">⚓</span><div><div>Battleship</div><div style="color:var(--muted);font-size:.5rem;margin-top:2px">Sink all enemy ships</div></div>
+        </button>
       </div>
 
       <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);letter-spacing:.08em;margin-bottom:8px;">DIFFICULTY</div>
@@ -606,6 +609,11 @@ function startBattle() {
 
 function launchGame(game, seed, code, pid, diff) {
   if (stopPoll) { stopPoll(); stopPoll = null; }
+  /* Battleship has its own room/lobby system — redirect directly */
+  if (game === 'battleship') {
+    window.location.href = 'battleship.html';
+    return;
+  }
   var url = game + '.html?seed=' + seed
     + '&room=' + code
     + '&pid=' + pid

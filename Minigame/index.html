@@ -221,6 +221,7 @@
     <button class="cat-btn" onclick="setCat('puzzle',this)">🧩 Puzzle</button>
     <button class="cat-btn" onclick="setCat('board',this)">🎲 Board</button>
     <button class="cat-btn" onclick="setCat('skill',this)">⚡ Skill</button>
+    <button class="cat-btn" onclick="setCat('multi',this)">⚔ Multi</button>
     <button class="device-filter-btn" id="dev-filter-btn" onclick="toggleDeviceFilter()">
       <span id="dev-filter-icon">📱</span><span id="dev-filter-label">My Device</span>
     </button>
@@ -271,7 +272,9 @@ var GAMES = [
   {id:'speedmath',  icon:'🧮', name:'Speed Math',     desc:'60s rapid-fire arithmetic.',           tag:'BRAIN',  cat:'skill',  diff:2, ca:'var(--neon-c)', cost:0,  device:'both'},
   {id:'mole',       icon:'🦔', name:'Whack-a-Mole',  desc:'30 seconds of mole-smashing.',         tag:'REFLEX', cat:'skill',  diff:1, ca:'var(--neon-c)', cost:5,  device:'mobile'},
   {id:'reaction',   icon:'⚡', name:'Reaction Test',  desc:'Click the instant it turns green.',    tag:'SPEED',  cat:'skill',  diff:1, ca:'var(--neon-b)', cost:0,  device:'both'},
-  {id:'simon',      icon:'🔴', name:'Simon Says',     desc:'Watch and copy the colour pattern.',   tag:'MEMORY', cat:'skill',  diff:2, ca:'var(--neon-b)', cost:5,  device:'both'}
+  {id:'simon',      icon:'🔴', name:'Simon Says',     desc:'Watch and copy the colour pattern.',   tag:'MEMORY', cat:'skill',  diff:2, ca:'var(--neon-b)', cost:5,  device:'both'},
+  /* MULTIPLAYER */
+  {id:'battleship', icon:'⚓', name:'Battleship',     desc:'Sink all enemy ships. Turn-based PvP.',tag:'PvP',    cat:'multi',  diff:2, ca:'var(--neon-b)', cost:0,  device:'both'},
 ];
 
 var IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
