@@ -5,47 +5,228 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Tower of Hanoi — Arcade Zone</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
-:root{--accent:var(--neon-e);}
-.hn-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:980px;}
-#hncv{display:block;border-radius:12px;border:2px solid var(--line2);cursor:pointer;touch-action:none;}
+:root { --accent: var(--neon-e); }
 
-.hn-hud{display:flex;gap:8px;width:100%;}
-.hn-stat{flex:1;background:var(--card-bg);border:1px solid var(--line2);border-radius:10px;padding:10px 8px;text-align:center;}
-.hn-stat .sv{font-family:var(--font-display);font-size:1.5rem;line-height:1;}
-.hn-stat .sl{font-family:var(--font-mono);font-size:.46rem;color:var(--muted);letter-spacing:.08em;margin-top:3px;}
+/* ── Layout ── */
+.hn-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; max-width:900px; }
 
-.hn-disc-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;}
-.hn-disc-btn{font-family:var(--font-mono);font-size:.62rem;font-weight:700;padding:7px 13px;
-  border-radius:7px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);
-  cursor:pointer;transition:all .12s;}
-.hn-disc-btn.on{border-color:var(--neon-e);color:var(--neon-e);background:color-mix(in srgb,var(--neon-e) 12%,transparent);}
+/* ── HUD ── */
+.hn-hud { display:flex; gap:8px; width:100%; max-width:700px; }
+.hn-stat { flex:1; background:var(--card-bg); border:1px solid var(--line2); border-radius:10px; padding:10px 6px; text-align:center; }
+.hn-stat .sv { font-family:var(--font-display); font-size:1.5rem; line-height:1; transition:transform .2s; }
+.hn-stat .sv.bump { animation:statBump .3s ease; }
+@keyframes statBump { 0%{transform:scale(1)} 40%{transform:scale(1.3)} 100%{transform:scale(1)} }
+.hn-stat .sl { font-family:var(--font-mono); font-size:.44rem; color:var(--muted); letter-spacing:.08em; margin-top:3px; }
 
-.hn-action-row{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;}
-.hn-btn{font-family:var(--font-mono);font-size:.7rem;font-weight:700;padding:10px 18px;
-  border-radius:9px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--text2);
-  cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;}
-.hn-btn:hover{border-color:var(--neon-e);color:var(--neon-e);}
-.hn-btn.primary{background:var(--neon-e);color:#000;border-color:var(--neon-e);}
-.hn-btn:disabled{opacity:.35;cursor:default;}
+/* ── Disc selector ── */
+.hn-disc-row { display:flex; gap:5px; flex-wrap:wrap; justify-content:center; }
+.hn-disc-btn { font-family:var(--font-mono); font-size:.62rem; font-weight:700; padding:7px 14px;
+  border-radius:7px; border:1.5px solid var(--line2); background:var(--bg2); color:var(--muted);
+  cursor:pointer; transition:all .12s; }
+.hn-disc-btn.on { border-color:var(--neon-e); color:var(--neon-e); background:color-mix(in srgb,var(--neon-e) 12%,transparent); }
 
-.hn-msg{font-family:var(--font-mono);font-size:.76rem;color:var(--text2);text-align:center;min-height:1.4rem;font-weight:600;}
+/* ── Arena ── */
+.hn-arena {
+  display:flex; position:relative; width:100%; max-width:700px;
+  height:clamp(220px, 40vw, 320px);
+  background:var(--card-bg); border:1.5px solid var(--line2);
+  border-radius:16px; overflow:hidden; user-select:none;
+  transition:border-color .2s;
+}
+.hn-arena.drag-active { border-color:var(--neon-e); }
 
-/* Desktop side panel */
-.hn-panel{display:flex;flex-direction:column;gap:10px;}
-.hn-best-list{display:flex;flex-direction:column;gap:4px;}
-.hn-best-row{display:flex;justify-content:space-between;align-items:center;
-  font-family:var(--font-mono);font-size:.62rem;background:var(--card-bg);
-  border:1px solid var(--line2);border-radius:7px;padding:6px 10px;}
-.hn-best-row .lbl{color:var(--muted);}
-.hn-best-row .val{color:var(--neon-e);font-weight:700;}
+/* ── Peg column ── */
+.peg-col {
+  flex:1; display:flex; flex-direction:column-reverse;
+  align-items:center; justify-content:flex-start;
+  position:relative; padding-bottom:38px; gap:3px;
+  cursor:pointer; transition:background .15s;
+}
+.peg-col::before {
+  content:''; position:absolute; bottom:38px; left:50%; transform:translateX(-50%);
+  width:clamp(8px,1.6vw,14px); height:calc(100% - 60px);
+  background:linear-gradient(90deg,
+    color-mix(in srgb,var(--neon-e) 10%,var(--bg2)),
+    color-mix(in srgb,var(--neon-e) 35%,var(--bg2)),
+    color-mix(in srgb,var(--neon-e) 10%,var(--bg2)));
+  border-radius:6px; z-index:1;
+  box-shadow:0 0 10px color-mix(in srgb,var(--neon-e) 20%,transparent);
+  transition:box-shadow .2s;
+}
+.peg-col.drop-valid::before {
+  box-shadow:0 0 22px var(--neon-d), 0 0 6px var(--neon-d);
+  background:linear-gradient(90deg,
+    color-mix(in srgb,var(--neon-d) 14%,var(--bg2)),
+    color-mix(in srgb,var(--neon-d) 50%,var(--bg2)),
+    color-mix(in srgb,var(--neon-d) 14%,var(--bg2)));
+}
+.peg-col.drop-invalid::before {
+  box-shadow:0 0 22px var(--neon-b), 0 0 6px var(--neon-b);
+}
+.peg-col::after {
+  content:attr(data-label); position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  font-family:var(--font-mono); font-size:.5rem; color:var(--muted);
+  letter-spacing:.12em; white-space:nowrap; z-index:3;
+}
+
+/* ── Peg base ── */
+.peg-base {
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:80%; height:36px; border-radius:8px 8px 0 0; z-index:2;
+  background:linear-gradient(180deg,
+    color-mix(in srgb,var(--neon-e) 12%,var(--bg2)),
+    var(--bg2));
+  border-top:2px solid var(--line2);
+  transition:background .2s, border-color .2s;
+}
+.peg-col.drop-valid .peg-base   { border-color:var(--neon-d); background:linear-gradient(180deg,color-mix(in srgb,var(--neon-d) 18%,var(--bg2)),var(--bg2)); }
+.peg-col.drop-invalid .peg-base { border-color:var(--neon-b); background:linear-gradient(180deg,color-mix(in srgb,var(--neon-b) 18%,var(--bg2)),var(--bg2)); }
+
+/* ── Discs ── */
+.disc {
+  position:relative; z-index:2;
+  height:clamp(18px,3.5vw,28px);
+  border-radius:100px;
+  cursor:grab; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:.58rem; font-weight:700;
+  color:rgba(255,255,255,.85);
+  box-shadow:0 3px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.3);
+  transition:transform .12s, box-shadow .12s, opacity .12s;
+  touch-action:none;
+}
+.disc::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:55%;
+  border-radius:100px 100px 0 0;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),transparent);
+  pointer-events:none;
+}
+.disc:active { cursor:grabbing; }
+.disc.top-disc { cursor:grab; }
+.disc.top-disc:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.5), 0 0 16px var(--dc,#fff3), inset 0 1px 0 rgba(255,255,255,.3); }
+.disc.dragging { opacity:0; pointer-events:none; }
+.disc.hint-glow {
+  animation:hintPulse 1s ease-in-out infinite;
+  box-shadow:0 0 0 3px var(--neon-c), 0 0 20px var(--neon-c) !important;
+}
+@keyframes hintPulse { 0%,100%{box-shadow:0 0 0 2px var(--neon-c),0 0 12px var(--neon-c)} 50%{box-shadow:0 0 0 5px var(--neon-c),0 0 28px var(--neon-c)} }
+
+/* ── Drop animation ── */
+.disc.disc-drop {
+  animation:discDrop .28s cubic-bezier(.17,.67,.35,1.4);
+}
+@keyframes discDrop { 0%{transform:scaleY(.6) translateY(-8px)} 60%{transform:scaleY(1.08)} 100%{transform:none} }
+
+.disc.disc-snap-back {
+  animation:snapBack .35s cubic-bezier(.36,.07,.19,.97);
+}
+@keyframes snapBack { 0%,100%{transform:none} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(3px)} }
+
+/* ── Ghost disc (follows cursor) ── */
+#ghost-disc {
+  position:fixed; pointer-events:none; z-index:9999;
+  border-radius:100px; display:none;
+  box-shadow:0 12px 32px rgba(0,0,0,.6), 0 0 20px var(--dc,#fff2), inset 0 1px 0 rgba(255,255,255,.3);
+  font-family:var(--font-mono); font-size:.58rem; font-weight:700;
+  color:rgba(255,255,255,.85); display:none; align-items:center; justify-content:center;
+  transition:none; will-change:transform;
+}
+#ghost-disc::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:55%;
+  border-radius:100px 100px 0 0;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),transparent);
+  pointer-events:none;
+}
+
+/* ── Particles ── */
+.particle {
+  position:fixed; border-radius:50%; pointer-events:none; z-index:9998;
+  animation:particleFly ease-out forwards;
+}
+@keyframes particleFly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)} }
+
+/* ── Action row ── */
+.hn-action-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.hn-btn { font-family:var(--font-mono); font-size:.68rem; font-weight:700; padding:10px 16px;
+  border-radius:9px; border:1.5px solid var(--line2); background:var(--bg2); color:var(--text2);
+  cursor:pointer; transition:all .12s; -webkit-tap-highlight-color:transparent; }
+.hn-btn:hover { border-color:var(--neon-e); color:var(--neon-e); }
+.hn-btn.primary { background:var(--neon-e); color:#000; border-color:var(--neon-e); font-weight:900; }
+.hn-btn.primary:hover { filter:brightness(1.12); }
+.hn-btn:disabled { opacity:.3; cursor:not-allowed; }
+.hn-btn:active:not(:disabled) { transform:scale(.93); }
+
+/* ── Speed control ── */
+.speed-wrap { display:flex; align-items:center; gap:8px; }
+.speed-wrap label { font-family:var(--font-mono); font-size:.55rem; color:var(--muted); }
+.speed-slider { width:80px; accent-color:var(--neon-e); cursor:pointer; }
+
+/* ── Msg ── */
+.hn-msg { font-family:var(--font-mono); font-size:.72rem; color:var(--text2); text-align:center;
+  min-height:1.4rem; font-weight:600; padding:4px 12px; border-radius:8px;
+  transition:color .2s; }
+.hn-msg.error  { color:var(--neon-b); }
+.hn-msg.success{ color:var(--neon-d); }
+
+/* ── Side panel ── */
+.hn-panel { display:flex; flex-direction:column; gap:10px; }
+.hn-best-list { display:flex; flex-direction:column; gap:4px; }
+.hn-best-row { display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--font-mono); font-size:.6rem; background:var(--card-bg);
+  border:1px solid var(--line2); border-radius:7px; padding:6px 10px; transition:background .15s; }
+.hn-best-row .lbl { color:var(--muted); }
+.hn-best-row .val { color:var(--neon-e); font-weight:700; }
+.hn-best-row.personal-best { border-color:var(--neon-c); background:color-mix(in srgb,var(--neon-c) 6%,transparent); }
+
+/* ── Arena background pattern ── */
+.hn-arena::before {
+  content:''; position:absolute; inset:0; z-index:0;
+  background-image:radial-gradient(circle at 50% 120%, color-mix(in srgb,var(--neon-e) 6%,transparent), transparent 60%);
+  pointer-events:none;
+}
+
+/* ── Win screen overlay ── */
+.hn-win-overlay {
+  position:absolute; inset:0; z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  background:rgba(7,7,15,.82); backdrop-filter:blur(12px);
+  border-radius:14px;
+  animation:winOverlayIn .4s ease both;
+}
+@keyframes winOverlayIn { from{opacity:0;backdrop-filter:blur(0)} to{opacity:1} }
+.hn-win-title { font-family:var(--font-display); font-size:clamp(2rem,6vw,3.5rem);
+  color:var(--neon-c); text-shadow:0 0 30px var(--neon-c); letter-spacing:.08em;
+  animation:winTitlePop .5s .1s cubic-bezier(.17,.67,.35,1.4) both; }
+@keyframes winTitlePop { from{transform:scale(.4) rotate(-6deg);opacity:0} to{transform:none;opacity:1} }
+.hn-win-sub { font-family:var(--font-mono); font-size:.7rem; color:var(--text2); }
+.hn-win-perfect { font-family:var(--font-mono); font-size:.8rem; font-weight:700;
+  color:var(--neon-c); animation:perfectFlash 1s ease-in-out infinite; }
+@keyframes perfectFlash { 0%,100%{opacity:1} 50%{opacity:.5;text-shadow:0 0 16px var(--neon-c)} }
+
+/* ── Hint peg label ── */
+.peg-col.hint-from::after { color:var(--neon-c) !important; }
+.peg-col.hint-to::after   { color:var(--neon-d) !important; font-weight:700; }
+
+/* ── Streak badge ── */
+.hn-streak { font-family:var(--font-mono); font-size:.62rem; font-weight:700;
+  padding:4px 12px; border-radius:20px;
+  background:color-mix(in srgb,var(--neon-f) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--neon-f) 30%,transparent);
+  color:var(--neon-f); display:none; }
+.hn-streak.visible { display:inline-block; }
 </style>
 </head>
 <body>
+
 <nav class="nav" id="main-nav">
   <a class="nav-back" href="index.html">← Hub</a>
   <div class="nav-sep"></div>
@@ -54,535 +235,716 @@
   <button class="theme-btn" id="tb">🌙</button>
 </nav>
 
-<div class="page" style="padding-top:10px;align-items:center;">
-<div class="hn-wrap game-scale-root">
+<!-- Ghost disc (follows cursor/finger during drag) -->
+<div id="ghost-disc"></div>
 
-  <div class="hn-hud" id="hn-hud">
+<div class="page" style="padding-top:10px;align-items:center;">
+<div class="hn-wrap">
+
+  <!-- HUD -->
+  <div class="hn-hud" id="hn-hud" style="max-width:700px;">
     <div class="hn-stat"><div class="sv" id="hn-moves" style="color:var(--neon-a)">0</div><div class="sl">MOVES</div></div>
-    <div class="hn-stat"><div class="sv" id="hn-opt"   style="color:var(--neon-c)">–</div><div class="sl">OPTIMAL</div></div>
+    <div class="hn-stat"><div class="sv" id="hn-opt"   style="color:var(--neon-c)">7</div><div class="sl">OPTIMAL</div></div>
     <div class="hn-stat"><div class="sv" id="hn-time"  style="color:var(--neon-e)">0:00</div><div class="sl">TIME</div></div>
     <div class="hn-stat"><div class="sv" id="hn-eff"   style="color:var(--neon-f)">–</div><div class="sl">EFFICIENCY</div></div>
   </div>
 
-  <div class="game-desktop-layout" style="align-items:flex-start;">
-    <div class="game-canvas-col">
+  <div class="game-desktop-layout" style="align-items:flex-start;width:100%;">
+  <div class="game-canvas-col" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;">
 
-      <div class="hn-disc-row">
-        <button class="hn-disc-btn on" id="hd3" onclick="setDiscs(3)">3</button>
-        <button class="hn-disc-btn"    id="hd4" onclick="setDiscs(4)">4</button>
-        <button class="hn-disc-btn"    id="hd5" onclick="setDiscs(5)">5</button>
-        <button class="hn-disc-btn"    id="hd6" onclick="setDiscs(6)">6</button>
-        <button class="hn-disc-btn"    id="hd7" onclick="setDiscs(7)">7</button>
-        <button class="hn-disc-btn"    id="hd8" onclick="setDiscs(8)">8</button>
-      </div>
-
-      <canvas id="hncv"></canvas>
-
-      <div class="hn-msg" id="hn-msg">Tap a peg to pick up, tap destination to place</div>
-
-      <div class="hn-action-row">
-        <button class="hn-btn primary" onclick="newGame()">▶ NEW</button>
-        <button class="hn-btn" id="undo-btn" onclick="undoMove()" disabled>↩ UNDO</button>
-        <button class="hn-btn" id="auto-btn" onclick="autoSolve()">🤖 AUTO</button>
-        <button class="hn-btn" id="pause-btn" onclick="togglePause()" disabled>⏸ PAUSE</button>
-        <button class="hn-btn" onclick="doShare()">📤</button>
-      </div>
-
-      <!-- Zoom -->
-      <div class="zoom-controls">
-        <button class="zoom-btn" onclick="changeZoom(-1)">−</button>
-        <span class="zoom-label" id="zoom-lbl">100%</span>
-        <button class="zoom-btn" onclick="changeZoom(1)">+</button>
-      </div>
-
+    <!-- Disc count selector -->
+    <div class="hn-disc-row">
+      <button class="hn-disc-btn on" id="hd3" onclick="setDiscs(3)">3 discs</button>
+      <button class="hn-disc-btn"    id="hd4" onclick="setDiscs(4)">4 discs</button>
+      <button class="hn-disc-btn"    id="hd5" onclick="setDiscs(5)">5 discs</button>
+      <button class="hn-disc-btn"    id="hd6" onclick="setDiscs(6)">6 discs</button>
+      <button class="hn-disc-btn"    id="hd7" onclick="setDiscs(7)">7 discs</button>
+      <button class="hn-disc-btn"    id="hd8" onclick="setDiscs(8)">8 discs</button>
     </div>
 
-    <div class="hn-panel game-side-panel">
-      <div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;">BEST SCORES</div>
-      <div class="hn-best-list" id="best-list"></div>
-
-      <div class="hn-stat" style="max-width:999px;">
-        <div class="sv" id="hn-coins" style="color:var(--neon-d)">+0 🪙</div>
-        <div class="sl">COINS EARNED</div>
-      </div>
-
-      <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--muted);line-height:1.9;margin-top:4px;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;">
-        <b style="color:var(--text)">HOW TO PLAY</b><br>
-        • Tap a peg to select it<br>
-        • Tap destination to move top disc<br>
-        • Never place larger on smaller<br>
-        • Move all discs to peg 3 to win!<br><br>
-        <b style="color:var(--neon-e)">REWARDS</b><br>
-        Perfect = N×12 🪙<br>
-        Solved  = N×4 🪙<br>
-        Undo or Auto = no reward
-      </div>
+    <!-- Arena -->
+    <div class="hn-arena" id="hn-arena">
+      <div class="peg-col" id="peg0" data-label="PEG 1"><div class="peg-base"></div></div>
+      <div class="peg-col" id="peg1" data-label="PEG 2"><div class="peg-base"></div></div>
+      <div class="peg-col" id="peg2" data-label="PEG 3"><div class="peg-base"></div></div>
     </div>
+
+    <!-- Streak -->
+    <div class="hn-streak" id="hn-streak">🔥 Perfect streak: 1</div>
+
+    <!-- Message -->
+    <div class="hn-msg" id="hn-msg">Drag the top disc to another peg to start!</div>
+
+    <!-- Actions -->
+    <div class="hn-action-row">
+      <button class="hn-btn primary" onclick="newGame()">▶ NEW</button>
+      <button class="hn-btn" id="undo-btn" onclick="undoMove()" disabled>↩ UNDO</button>
+      <button class="hn-btn" id="hint-btn" onclick="showHint()">💡 HINT</button>
+      <button class="hn-btn" id="auto-btn" onclick="autoSolve()">🤖 AUTO</button>
+      <button class="hn-btn" id="pause-btn" onclick="togglePause()" disabled>⏸ PAUSE</button>
+      <button class="hn-btn" onclick="doShare()">📤</button>
+    </div>
+
+    <!-- Speed control -->
+    <div class="speed-wrap">
+      <label>AUTO SPEED</label>
+      <input class="speed-slider" type="range" min="1" max="3" value="2" id="speed-slider">
+      <label id="speed-label">Normal</label>
+    </div>
+
+  </div>
+
+  <!-- Side panel -->
+  <div class="hn-panel game-side-panel">
+    <div style="font-family:var(--font-mono);font-size:.52rem;color:var(--muted);letter-spacing:.1em;">BEST SCORES</div>
+    <div class="hn-best-list" id="best-list"></div>
+
+    <div class="hn-stat" style="max-width:999px;">
+      <div class="sv" id="hn-coins" style="color:var(--neon-d)">+0 🪙</div>
+      <div class="sl">COINS EARNED</div>
+    </div>
+
+    <div style="font-family:var(--font-mono);font-size:.56rem;color:var(--muted);line-height:1.95;background:var(--card-bg);border:1px solid var(--line2);border-radius:8px;padding:12px 14px;">
+      <b style="color:var(--text)">HOW TO PLAY</b><br>
+      • <b style="color:var(--neon-a)">Drag</b> the top disc to move it<br>
+      • Drop on any valid peg<br>
+      • Larger disc on smaller = ❌<br>
+      • Move ALL discs to Peg 3!<br><br>
+      <b style="color:var(--neon-e)">REWARDS</b><br>
+      Perfect (min moves) = N×12 🪙<br>
+      Solved = N×4 🪙<br>
+      Undo or Auto = no reward<br><br>
+      <b style="color:var(--neon-c)">HINT</b><br>
+      First hint free each game<br>
+      Extra hints = 3🪙 each
+    </div>
+  </div>
   </div>
 
 </div>
 </div>
 
 <script>
-/* Theme */
-var _tb=document.getElementById('tb');
-function _sT(){_tb.textContent=CoinEngine.getTheme()==='dark'?'☀️':'🌙';}
-_tb.addEventListener('click',function(){CoinEngine.toggleTheme();_sT();draw();}); _sT();
+/* ── Theme ── */
+var _tb = document.getElementById('tb');
+function _sT(){ _tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙'; }
+_tb.addEventListener('click', function(){ CoinEngine.toggleTheme(); _sT(); }); _sT();
 
-/* ── Canvas ── */
-var cv=document.getElementById('hncv');
-var ctx=cv.getContext('2d');
-var DPR=Math.min(window.devicePixelRatio||1,2);
-var zoomIdx=2, zoomSteps=[0.6,0.8,1,1.2,1.5,1.8];
+/* ── Speed slider ── */
+var speedLabels = ['Slow','Normal','Fast'];
+var speedDelays = [600, 280, 80];
+var speedSlider = document.getElementById('speed-slider');
+var speedLabel  = document.getElementById('speed-label');
+speedSlider.addEventListener('input', function(){
+  speedLabel.textContent = speedLabels[this.value - 1];
+});
 
-function changeZoom(dir){
-  zoomIdx=Math.max(0,Math.min(zoomSteps.length-1,zoomIdx+dir));
-  document.getElementById('zoom-lbl').textContent=Math.round(zoomSteps[zoomIdx]*100)+'%';
-  initCanvas(); draw();
-}
-
-var W,H,PEG_X,PEG_W,BASE_Y,PEG_H,MAX_DISC_W,MIN_DISC_W,DISC_H;
-
-function initCanvas(){
-  var avW=Math.min(window.innerWidth-40, window.innerWidth>820?620:window.innerWidth-20);
-  var avH=Math.max(220, Math.min(window.innerHeight-380,440));
-  var raw=Math.min(avW, avH*1.6, 640);
-  W=Math.floor(raw*zoomSteps[zoomIdx]);
-  H=Math.floor(W*0.52);
-  cv.style.width=W+'px'; cv.style.height=H+'px';
-  cv.width=W*DPR; cv.height=H*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  /* Geometry */
-  PEG_W=Math.max(5,Math.floor(W*0.018));
-  BASE_Y=H*0.86;
-  PEG_H=H*0.65;
-  MAX_DISC_W=W*0.27;
-  MIN_DISC_W=W*0.055;
-  DISC_H=Math.max(10,Math.min(28,H*0.1));
-  PEG_X=[W*0.18, W*0.5, W*0.82];
-}
-initCanvas();
-window.addEventListener('resize',function(){initCanvas();draw();});
+/* ── Disc colours ── */
+var DISC_COLORS = [
+  { bg:'linear-gradient(135deg,#ff2d78,#ff6090)', dc:'#ff2d78' },
+  { bg:'linear-gradient(135deg,#ff6600,#ff9040)', dc:'#ff6600' },
+  { bg:'linear-gradient(135deg,#ffe135,#ffee80)', dc:'#ffe135' },
+  { bg:'linear-gradient(135deg,#00e676,#60ffb0)', dc:'#00e676' },
+  { bg:'linear-gradient(135deg,#00b0ff,#60d8ff)', dc:'#00b0ff' },
+  { bg:'linear-gradient(135deg,#c060ff,#d890ff)', dc:'#c060ff' },
+  { bg:'linear-gradient(135deg,#ff4060,#ff8090)', dc:'#ff4060' },
+  { bg:'linear-gradient(135deg,#40ffee,#80fff8)', dc:'#40ffee' },
+];
 
 /* ── Game state ── */
-var numDiscs=3, pegs=[[],[],[]], selected=-1;
-var moves=0, gameOver=false, usedUndo=false, usedAuto=false;
-var history=[]; /* stack of move objects {from,to,disc} */
-var timerInt=null, seconds=0, running=false, paused=false;
+var numDiscs = 3;
+var pegs = [[], [], []]; /* pegs[i] = array, [0]=bottom/largest, [last]=top/smallest */
+var moves = 0, gameOver = false, usedUndo = false, usedAuto = false;
+var history = [];
+var timerInt = null, seconds = 0, running = false, paused = false;
+var perfectStreak = parseInt(localStorage.getItem('hanoi_streak') || '0');
+var hintUsed = false, hintCount = 0;
+var autoSeq = [], autoIdx = 0, autoTimer = null;
 
-/* Auto-solve */
-var autoSeq=[], autoIdx=0, autoTimer=null;
+/* ── DOM refs ── */
+var arena = document.getElementById('hn-arena');
+var pegCols = [
+  document.getElementById('peg0'),
+  document.getElementById('peg1'),
+  document.getElementById('peg2'),
+];
+var ghost = document.getElementById('ghost-disc');
 
-/* Best scores */
-function getBest(n){ var v=localStorage.getItem('hanoi_best_'+n); return v?parseInt(v):null; }
-function setBest(n,m){ var b=getBest(n); if(b===null||m<b) localStorage.setItem('hanoi_best_'+n,m); }
+/* ── Geometry helpers ── */
+function getDiscWidth(size) {
+  /* Returns % of peg column width */
+  var min = 28, max = 88;
+  return min + (max - min) * ((size - 1) / (numDiscs - 1 || 1));
+}
 
-function renderBestList(){
-  var list=document.getElementById('best-list');
-  list.innerHTML='';
-  [3,4,5,6,7,8].forEach(function(n){
-    var b=getBest(n), opt=(1<<n)-1;
-    var row=document.createElement('div'); row.className='hn-best-row';
-    row.innerHTML='<span class="lbl">'+n+' discs (opt: '+opt+')</span>'
-      +'<span class="val">'+(b?b+' moves':'—')+'</span>';
+/* ── Build DOM discs ── */
+function buildDiscs() {
+  /* Clear all discs */
+  pegCols.forEach(function(col) {
+    Array.from(col.querySelectorAll('.disc')).forEach(function(d){ col.removeChild(d); });
+  });
+
+  /* Build initial stack on peg 0.
+     With column-reverse: first DOM child = visual BOTTOM, last = visual TOP.
+     So insert LARGEST first (→ visual bottom) down to SMALLEST last (→ visual top). */
+  for (var i = numDiscs; i >= 1; i--) { /* numDiscs(largest) down to 1(smallest/top ring) */
+    var col = DISC_COLORS[(i - 1) % DISC_COLORS.length];
+    var disc = document.createElement('div');
+    disc.className = 'disc';
+    disc.dataset.size = i;
+    disc.style.cssText =
+      'width:' + getDiscWidth(i) + '%;' +
+      'background:' + col.bg + ';' +
+      '--dc:' + col.dc + ';' +
+      'height:clamp(18px,3.5vw,28px);';
+    disc.textContent = i;
+    pegCols[0].insertBefore(disc, pegCols[0].querySelector('.peg-base'));
+  }
+  updateTopDiscs();
+}
+
+function updateTopDiscs() {
+  /* Mark only the topmost (visually highest = smallest size = last in peg array) disc as draggable */
+  pegCols.forEach(function(col) {
+    var discs = col.querySelectorAll('.disc');
+    discs.forEach(function(d){ d.classList.remove('top-disc'); d.style.cursor = 'default'; });
+    if (discs.length) {
+      /* column-reverse: first DOM child = visual BOTTOM (largest), last = visual TOP (smallest/draggable) */
+      var gameTop = discs[discs.length - 1]; /* last child = visual top = the ring you can drag */
+      gameTop.classList.add('top-disc');
+      gameTop.style.cursor = 'grab';
+    }
+  });
+}
+
+/* Sync DOM from pegs[] array after state change */
+function syncDOM() {
+  pegCols.forEach(function(col, pi) {
+    /* Remove all discs */
+    Array.from(col.querySelectorAll('.disc')).forEach(function(d){ col.removeChild(d); });
+    /* Re-add from pegs[pi] — pegs[pi][0]=bottom/largest, pegs[pi][last]=top/smallest */
+    /* column-reverse means first DOM child = visual top */
+    /* So we insert in REVERSE order: largest first (goes to visual bottom) */
+    for (var i = 0; i < pegs[pi].length; i++) {
+      var size = pegs[pi][i]; /* 0=bottom/largest */
+      var col2 = DISC_COLORS[(size - 1) % DISC_COLORS.length];
+      var disc = document.createElement('div');
+      disc.className = 'disc';
+      disc.dataset.size = size;
+      disc.style.cssText =
+        'width:' + getDiscWidth(size) + '%;' +
+        'background:' + col2.bg + ';' +
+        '--dc:' + col2.dc + ';' +
+        'height:clamp(18px,3.5vw,28px);';
+      disc.textContent = size;
+      col.insertBefore(disc, col.querySelector('.peg-base'));
+    }
+  });
+  updateTopDiscs();
+}
+
+/* ── Best scores ── */
+function getBest(n){ var v = localStorage.getItem('hanoi_best_' + n); return v ? parseInt(v) : null; }
+function setBest(n, m){
+  var b = getBest(n);
+  var isNew = (b === null || m < b);
+  if (isNew) localStorage.setItem('hanoi_best_' + n, m);
+  return isNew;
+}
+
+function renderBestList() {
+  var list = document.getElementById('best-list');
+  list.innerHTML = '';
+  [3,4,5,6,7,8].forEach(function(n) {
+    var b = getBest(n), opt = (1 << n) - 1;
+    var isPB = b !== null && b === opt;
+    var row = document.createElement('div');
+    row.className = 'hn-best-row' + (isPB ? ' personal-best' : '');
+    row.innerHTML = '<span class="lbl">' + n + ' discs <span style="opacity:.5">(opt:' + opt + ')</span></span>' +
+      '<span class="val">' + (b !== null ? b + (isPB ? ' 🌟' : '') : '—') + '</span>';
     list.appendChild(row);
   });
 }
 
-function setDiscs(n){
-  numDiscs=n;
-  [3,4,5,6,7,8].forEach(function(x){document.getElementById('hd'+x).className='hn-disc-btn'+(n===x?' on':'');});
+/* ── Disc count selector ── */
+function setDiscs(n) {
+  numDiscs = n;
+  [3,4,5,6,7,8].forEach(function(x){
+    document.getElementById('hd' + x).className = 'hn-disc-btn' + (n === x ? ' on' : '');
+  });
   newGame();
 }
 
-function newGame(){
+/* ── New game ── */
+function newGame() {
   stopAutoSolve(); stopTimer();
-  pegs=[[],[],[]];
-  for(var i=numDiscs;i>=1;i--) pegs[0].push(i);
-  selected=-1; moves=0; gameOver=false; usedUndo=false; usedAuto=false;
-  history=[]; seconds=0;
-  updateUI(); renderBestList();
-  document.getElementById('hn-coins').textContent='+0 🪙';
-  document.getElementById('undo-btn').disabled=true;
-  document.getElementById('pause-btn').disabled=true;
-  document.getElementById('auto-btn').disabled=false;
-  setMsg('Tap peg 1 to start — move all discs to peg 3!');
-  running=false; paused=false;
-  draw();
+  pegs = [[], [], []];
+  for (var i = numDiscs; i >= 1; i--) pegs[0].push(i); /* stack: [numDiscs,...,1] */
+  moves = 0; gameOver = false; usedUndo = false; usedAuto = false;
+  history = []; seconds = 0; hintUsed = false; hintCount = 0;
+  running = false; paused = false;
+
+  /* Remove any win overlay */
+  var ov = arena.querySelector('.hn-win-overlay');
+  if (ov) arena.removeChild(ov);
+  arena.classList.remove('drag-active');
+  clearDropHighlights();
+  clearHints();
+
+  buildDiscs();
+  updateUI();
+  renderBestList();
+  document.getElementById('hn-coins').textContent = '+0 🪙';
+  document.getElementById('undo-btn').disabled = true;
+  document.getElementById('pause-btn').disabled = true;
+  document.getElementById('auto-btn').disabled = false;
+  document.getElementById('hint-btn').disabled = false;
+  setMsg('Drag the top ring to another peg!', '');
 }
 
-function updateUI(){
-  var opt=(1<<numDiscs)-1;
-  var eff=moves>0?Math.round((opt/moves)*100)+'%':'–';
-  document.getElementById('hn-moves').textContent=moves;
-  document.getElementById('hn-opt').textContent=opt;
-  document.getElementById('hn-eff').textContent=eff;
-  var m=Math.floor(seconds/60),s=seconds%60;
-  document.getElementById('hn-time').textContent=m+':'+(s<10?'0':'')+s;
+/* ── UI update ── */
+function updateUI() {
+  var opt = (1 << numDiscs) - 1;
+  var eff = moves > 0 ? Math.round(opt / moves * 100) + '%' : '–';
+  var movEl = document.getElementById('hn-moves');
+  movEl.textContent = moves;
+  if (moves > 0) { movEl.classList.add('bump'); setTimeout(function(){ movEl.classList.remove('bump'); }, 300); }
+  document.getElementById('hn-opt').textContent = opt;
+  document.getElementById('hn-eff').textContent = eff;
+  var m = Math.floor(seconds / 60), s = seconds % 60;
+  document.getElementById('hn-time').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+
+  /* Streak */
+  var sk = document.getElementById('hn-streak');
+  if (perfectStreak > 0) {
+    sk.textContent = '🔥 Perfect streak: ' + perfectStreak;
+    sk.classList.add('visible');
+  } else {
+    sk.classList.remove('visible');
+  }
 }
 
-function setMsg(msg){document.getElementById('hn-msg').textContent=msg;}
+function setMsg(msg, type) {
+  var el = document.getElementById('hn-msg');
+  el.textContent = msg;
+  el.className = 'hn-msg' + (type ? ' ' + type : '');
+}
 
 /* ── Timer ── */
-function startTimer(){
-  if(running||paused)return;
-  running=true;
-  timerInt=setInterval(function(){if(!paused){seconds++;updateUI();}},1000);
-  document.getElementById('pause-btn').disabled=false;
+function startTimer() {
+  if (running || paused) return;
+  running = true;
+  timerInt = setInterval(function(){ if (!paused){ seconds++; updateUI(); } }, 1000);
+  document.getElementById('pause-btn').disabled = false;
 }
-function stopTimer(){clearInterval(timerInt);running=false;}
-
-function togglePause(){
-  paused=!paused;
-  document.getElementById('pause-btn').textContent=paused?'▶ PLAY':'⏸ PAUSE';
-  if(paused) setMsg('⏸ Paused');
-  else setMsg('Tap a peg to continue…');
-  draw();
+function stopTimer(){ clearInterval(timerInt); running = false; }
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-btn').textContent = paused ? '▶ PLAY' : '⏸ PAUSE';
+  setMsg(paused ? '⏸ Paused — press PLAY to continue' : 'Drag the top ring to move it!', paused ? 'error' : '');
 }
 
-/* ── Move logic ── */
-function selectPeg(pegIdx){
-  if(gameOver||paused) return;
-  if(!running&&moves===0) startTimer();
+/* ── Move execution ── */
+function executeMove(fromPeg, toPeg, animate) {
+  var srcArr = pegs[fromPeg], dstArr = pegs[toPeg];
+  var disc = srcArr[srcArr.length - 1]; /* top = last in array */
 
-  if(selected===-1){
-    /* Pick up: must have a disc */
-    if(pegs[pegIdx].length===0){setMsg('⚠ That peg is empty!');SoundEngine.play('error');return;}
-    selected=pegIdx;
-    setMsg('Peg '+(pegIdx+1)+' selected — tap destination peg');
-    SoundEngine.play('click');
-  } else if(selected===pegIdx){
-    /* Deselect */
-    selected=-1;
-    setMsg('Tap a peg to pick up its top disc');
-    SoundEngine.play('toggle');
+  /* Validation */
+  if (dstArr.length > 0 && dstArr[dstArr.length - 1] < disc) return false;
+
+  history.push({ from: fromPeg, to: toPeg, disc: disc });
+  srcArr.pop();
+  dstArr.push(disc);
+  moves++;
+  document.getElementById('undo-btn').disabled = false;
+
+  /* Sync DOM */
+  syncDOM();
+
+  /* Animate the dropped disc */
+  if (animate !== false) {
+    var allDiscs = pegCols[toPeg].querySelectorAll('.disc');
+    var topDisc = allDiscs[allDiscs.length - 1]; /* last = visual top = the just-dropped ring */
+    if (topDisc) {
+      topDisc.classList.add('disc-drop');
+      setTimeout(function(){ topDisc.classList.remove('disc-drop'); }, 300);
+    }
+    /* Particle burst */
+    var rect = pegCols[toPeg].getBoundingClientRect();
+    spawnParticles(rect.left + rect.width / 2, rect.top + rect.height * 0.4, DISC_COLORS[(disc-1)%DISC_COLORS.length].dc);
+  }
+
+  clearHints();
+  updateUI();
+  if (window.SoundEngine) SoundEngine.play('pop');
+
+  /* Win check */
+  if (pegs[2].length === numDiscs) {
+    setTimeout(checkWin, 180);
   } else {
-    /* Move: validate */
-    var srcPeg=pegs[selected], dstPeg=pegs[pegIdx];
-    var disc=srcPeg[srcPeg.length-1];
-    if(dstPeg.length>0&&dstPeg[dstPeg.length-1]<disc){
-      setMsg('❌ Cannot place larger disc on smaller!');
-      SoundEngine.play('error');
-      /* Shake animation */
-      shakeTarget=pegIdx; setTimeout(function(){shakeTarget=-1;draw();},400);
+    setMsg('Nice! Keep going…', '');
+  }
+  return true;
+}
+
+/* ── Undo ── */
+function undoMove() {
+  if (!history.length || gameOver) return;
+  usedUndo = true;
+  var m = history.pop();
+  var disc = pegs[m.to].pop();
+  pegs[m.from].push(disc);
+  moves = Math.max(0, moves - 1);
+  syncDOM();
+  clearHints();
+  updateUI();
+  setMsg('↩ Undone — perfect bonus removed', '');
+  if (window.SoundEngine) SoundEngine.play('toggle');
+  if (!history.length) document.getElementById('undo-btn').disabled = true;
+}
+
+/* ── Hint system ── */
+var hintMove = null;
+function showHint() {
+  if (gameOver || paused) return;
+
+  /* Cost after first free hint */
+  if (hintCount > 0) {
+    if (CoinEngine.getBalance() < 3) {
+      CoinEngine.toast('Not enough coins for a hint! (3🪙)', 'warn');
       return;
     }
-    /* Execute move */
-    history.push({from:selected,to:pegIdx,disc:disc});
-    srcPeg.pop();
-    dstPeg.push(disc);
-    moves++;
-    selected=-1;
-    SoundEngine.play('drop')||SoundEngine.play('pop');
-    document.getElementById('undo-btn').disabled=false;
-    updateUI();
-    draw();
-    /* Check win */
-    if(pegs[2].length===numDiscs) setTimeout(checkWin,200);
-    else setMsg('Tap a peg to continue…');
-  }
-  draw();
-}
-
-var shakeTarget=-1;
-
-function undoMove(){
-  if(!history.length||gameOver)return;
-  usedUndo=true;
-  var m=history.pop();
-  /* Move stored {from, to, disc}: undo by popping from m.to and pushing back to m.from */
-  var disc=pegs[m.to].pop();
-  pegs[m.from].push(disc);
-  moves=Math.max(0,moves-1);
-  updateUI();
-  setMsg('↩ Move undone (undo used — no perfect reward)');
-  SoundEngine.play('toggle');
-  if(!history.length) document.getElementById('undo-btn').disabled=true;
-  draw();
-}
-
-/* ── Auto solve ── */
-function autoSolve(){
-  if(gameOver) return;
-  usedAuto=true;
-  stopAutoSolve();
-  /* Generate optimal solution */
-  pegs=[[],[],[]];
-  for(var i=numDiscs;i>=1;i--) pegs[0].push(i);
-  selected=-1; moves=0; history=[]; seconds=0;
-  document.getElementById('undo-btn').disabled=true;
-  document.getElementById('auto-btn').disabled=true;
-  setMsg('🤖 Auto-solving…');
-  autoSeq=[];
-  hanoiSolve(numDiscs,0,2,1,autoSeq);
-  autoIdx=0;
-  startTimer();
-  running=true; gameOver=false;
-  updateUI(); draw();
-  autoTimer=setInterval(function(){
-    if(paused||autoIdx>=autoSeq.length){if(autoIdx>=autoSeq.length)finishAuto();return;}
-    var m=autoSeq[autoIdx++];
-    var disc=pegs[m.from][pegs[m.from].length-1];
-    pegs[m.to].push(pegs[m.from].pop());
-    moves++; history.push({from:m.from,to:m.to,disc:disc});
-    updateUI(); draw();
-    SoundEngine.play('pop');
-    if(autoIdx>=autoSeq.length) setTimeout(finishAuto,300);
-  },Math.max(60,500/numDiscs));
-}
-
-function hanoiSolve(n,from,to,aux,seq){
-  if(n===0)return;
-  hanoiSolve(n-1,from,aux,to,seq);
-  seq.push({from:from,to:to});
-  hanoiSolve(n-1,aux,to,from,seq);
-}
-
-function stopAutoSolve(){clearInterval(autoTimer);autoSeq=[];autoIdx=0;}
-
-function finishAuto(){
-  stopAutoSolve(); stopTimer();
-  document.getElementById('pause-btn').disabled=true;
-  gameOver=true;
-  setMsg('🤖 Auto-solve complete! No coins for auto-solve.');
-  SoundEngine.play('success');
-  draw();
-}
-
-/* ── Win check ── */
-function checkWin(){
-  if(pegs[2].length!==numDiscs)return;
-  stopTimer(); stopAutoSolve(); gameOver=true;
-  document.getElementById('pause-btn').disabled=true;
-  var opt=(1<<numDiscs)-1;
-  var isPerfect=moves===opt;
-  var reward=usedAuto||usedUndo?0:(isPerfect?numDiscs*12:numDiscs*4);
-  setBest(numDiscs,moves);
-  renderBestList();
-  SoundEngine.play('success');
-  var msg='🎉 Solved in '+moves+' moves'+(isPerfect?' (PERFECT! 🌟)':'')
-    +' · Time: '+formatTime(seconds);
-  if(reward>0){
-    CoinEngine.add(reward,'Tower of Hanoi '+(isPerfect?'perfect ':'')+'solve','🗼');
-    CoinEngine.recordGame('hanoi',reward,true,{discs:numDiscs,moves:moves,perfect:isPerfect});
-    CoinEngine.toast('+'+reward+' 🪙'+(isPerfect?' Perfect solve! 🌟':''),'success');
-    document.getElementById('hn-coins').textContent='+'+reward+' 🪙';
+    if (!confirm('Use 3🪙 for a hint?')) return;
+    CoinEngine.add(-3, 'Hanoi hint', '💡');
+    usedUndo = true; /* hint also removes perfect bonus */
   } else {
-    CoinEngine.recordGame('hanoi',0,true,{discs:numDiscs,moves:moves});
-    CoinEngine.toast('Solved! (no reward — undo/auto used)','info');
+    usedUndo = true;
   }
-  setMsg(msg);
-  draw();
-}
+  hintCount++;
 
-function formatTime(s){var m=Math.floor(s/60);return m+':'+(s%60<10?'0':'')+s%60;}
+  /* Generate next move from current state */
+  var tempPegs = pegs.map(function(p){ return p.slice(); });
+  var seq = [];
+  hanoiSolve(numDiscs, 0, 2, 1, seq, tempPegs);
+  if (!seq.length) return;
 
-/* ── Drawing ── */
-/* Disc colour palette — vivid gradient per disc */
-var DISC_PALETTE=[
-  ['#ff2d78','#ff6090','#cc0050'], /* 1 - hot pink */
-  ['#ff6600','#ff9040','#cc4400'], /* 2 - orange */
-  ['#ffe135','#ffee80','#cc9900'], /* 3 - gold */
-  ['#00e676','#60ffb0','#009944'], /* 4 - green */
-  ['#00b0ff','#60d8ff','#0070cc'], /* 5 - cyan */
-  ['#c060ff','#d890ff','#7700cc'], /* 6 - purple */
-  ['#ff4060','#ff8090','#cc0020'], /* 7 - red */
-  ['#40ffee','#80fff8','#00aaaa'], /* 8 - teal */
-];
-
-function discGradient(discSize,x,y,w,h){
-  var pal=DISC_PALETTE[(discSize-1)%DISC_PALETTE.length];
-  var gr=ctx.createLinearGradient(x,y,x,y+h);
-  gr.addColorStop(0,pal[1]);
-  gr.addColorStop(0.45,pal[0]);
-  gr.addColorStop(1,pal[2]);
-  return gr;
-}
-
-function discW(size){ return MIN_DISC_W+(MAX_DISC_W-MIN_DISC_W)*((size-1)/(numDiscs-1||1)); }
-
-var winFlash=0;
-function draw(){
-  var isDark=CoinEngine.getTheme()==='dark';
-  ctx.clearRect(0,0,W,H);
-
-  /* Background */
-  ctx.fillStyle=isDark?'#07070f':'#f0f0f8';
-  ctx.fillRect(0,0,W,H);
-
-  /* Subtle grid */
-  ctx.strokeStyle=isDark?'rgba(255,255,255,.03)':'rgba(0,0,0,.04)';
-  ctx.lineWidth=.5;
-  for(var gx=0;gx<W;gx+=32){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
-  for(var gy=0;gy<H;gy+=32){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
-
-  /* Base platform */
-  var baseGrad=ctx.createLinearGradient(0,BASE_Y,0,BASE_Y+14);
-  baseGrad.addColorStop(0,isDark?'#3a3a5a':'#c0c0e0');
-  baseGrad.addColorStop(1,isDark?'#1a1a2e':'#9090c0');
-  ctx.fillStyle=baseGrad;
-  ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=10;
-  roundRect(ctx, W*0.05, BASE_Y, W*0.9, 14, 6);
-  ctx.fill(); ctx.shadowBlur=0;
-
-  /* Pegs */
-  PEG_X.forEach(function(px,pi){
-    var pegGrad=ctx.createLinearGradient(px-PEG_W,0,px+PEG_W,0);
-    pegGrad.addColorStop(0,isDark?'#2a2a48':'#b0b0d8');
-    pegGrad.addColorStop(0.4,isDark?'#6060aa':'#e0e0ff');
-    pegGrad.addColorStop(1,isDark?'#2a2a48':'#b0b0d8');
-    ctx.fillStyle=pi===selected?(isDark?'#ffe135':'#cc8800'):pegGrad;
-    if(pi===selected){ctx.shadowColor='#ffe135';ctx.shadowBlur=16;}
-    else{ctx.shadowColor='rgba(0,0,0,.2)';ctx.shadowBlur=4;}
-    ctx.beginPath();
-    ctx.roundRect(px-PEG_W/2, BASE_Y-PEG_H, PEG_W, PEG_H, PEG_W/2);
-    ctx.fill();
-    ctx.shadowBlur=0;
-
-    /* Peg label */
-    ctx.fillStyle=isDark?'rgba(255,255,255,.3)':'rgba(0,0,70,.35)';
-    ctx.font='bold '+(W*0.022)+'px monospace';
-    ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillText('PEG '+(pi+1), px, BASE_Y+16);
-
-    /* Shake animation */
-    if(pi===shakeTarget){
-      ctx.strokeStyle='#ff2d78';ctx.lineWidth=2;
-      ctx.strokeRect(px-MAX_DISC_W/2-4,BASE_Y-PEG_H-4,MAX_DISC_W+8,PEG_H+8);
+  /* Find next valid move from current state */
+  hintMove = null;
+  for (var i = 0; i < seq.length; i++) {
+    var m = seq[i];
+    var src = pegs[m.from], dst = pegs[m.to];
+    if (!src.length) continue;
+    var topSrc = src[src.length - 1];
+    if (dst.length === 0 || dst[dst.length - 1] > topSrc) {
+      hintMove = m;
+      break;
     }
-  });
-
-  /* Discs — draw each peg's stack from bottom up */
-  var isWon=gameOver&&pegs[2].length===numDiscs;
-  pegs.forEach(function(peg,pi){
-    var px=PEG_X[pi];
-    peg.forEach(function(size,stackIdx){
-      var dw=discW(size), dh=DISC_H;
-      var dx=px-dw/2;
-      var dy=BASE_Y - (stackIdx+1)*dh - stackIdx*2;
-      var isTop=stackIdx===peg.length-1;
-      var isSelected=pi===selected&&isTop;
-
-      /* Lift selected disc */
-      if(isSelected) dy-=DISC_H*0.7;
-
-      /* Win flash */
-      if(isWon){
-        var flash=0.5+0.5*Math.sin(Date.now()/120+size);
-        ctx.globalAlpha=0.7+flash*0.3;
-      }
-
-      /* Shadow */
-      ctx.shadowColor='rgba(0,0,0,.45)';
-      ctx.shadowBlur=isSelected?16:6;
-      ctx.shadowOffsetY=isSelected?8:2;
-
-      /* Main disc body */
-      var grad=discGradient(size,dx,dy,dw,dh);
-      ctx.fillStyle=grad;
-      ctx.beginPath();
-      ctx.roundRect(dx,dy,dw,dh,Math.min(dh/2,10));
-      ctx.fill();
-      ctx.shadowBlur=0; ctx.shadowOffsetY=0;
-
-      /* Highlight shine stripe */
-      var shineGrad=ctx.createLinearGradient(dx,dy,dx,dy+dh*0.45);
-      shineGrad.addColorStop(0,'rgba(255,255,255,0.38)');
-      shineGrad.addColorStop(1,'rgba(255,255,255,0.0)');
-      ctx.fillStyle=shineGrad;
-      ctx.beginPath();
-      ctx.roundRect(dx+2,dy+2,dw-4,dh*0.45,Math.min(dh/2,10));
-      ctx.fill();
-
-      /* Disc number */
-      ctx.globalAlpha=1;
-      ctx.fillStyle='rgba(255,255,255,0.85)';
-      ctx.font='bold '+(dh*0.55)+'px monospace';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(size, px, dy+dh/2);
-
-      /* Selected glow ring */
-      if(isSelected){
-        ctx.strokeStyle='rgba(255,225,53,0.9)';
-        ctx.lineWidth=2.5;
-        ctx.shadowColor='#ffe135'; ctx.shadowBlur=12;
-        ctx.beginPath();ctx.roundRect(dx-2,dy-2,dw+4,dh+4,Math.min(dh/2+2,12));ctx.stroke();
-        ctx.shadowBlur=0;
-      }
-      ctx.globalAlpha=1;
-    });
-  });
-
-  /* Win overlay */
-  if(isWon){
-    winFlash=(winFlash+1)%60;
-    ctx.fillStyle='rgba(0,0,0,0.45)';
-    ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='rgba(255,225,53,'+( 0.7+0.3*Math.sin(winFlash/5))+')';
-    ctx.font='bold '+(W*0.065)+'px monospace';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.shadowColor='#ffe135'; ctx.shadowBlur=30;
-    ctx.fillText('SOLVED! 🎉',W/2,H/2-W*0.025);
-    ctx.shadowBlur=0;
-    ctx.fillStyle='rgba(255,255,255,0.8)';
-    ctx.font='bold '+(W*0.032)+'px monospace';
-    ctx.fillText(moves+' moves · '+formatTime(seconds),W/2,H/2+W*0.048);
-    requestAnimationFrame(draw);
   }
 
-  /* Pause overlay */
-  if(paused){
-    ctx.fillStyle='rgba(0,0,0,0.55)';
-    ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='rgba(255,255,255,0.85)';
-    ctx.font='bold '+(W*0.07)+'px monospace';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('⏸ PAUSED',W/2,H/2);
+  if (!hintMove) return;
+
+  /* Highlight */
+  clearHints();
+  var fromDiscs = pegCols[hintMove.from].querySelectorAll('.disc');
+  if (fromDiscs[0]) fromDiscs[0].classList.add('hint-glow');
+  pegCols[hintMove.from].classList.add('hint-from');
+  pegCols[hintMove.to].classList.add('hint-to');
+  setMsg('💡 Hint: move from Peg ' + (hintMove.from + 1) + ' → Peg ' + (hintMove.to + 1), '');
+
+  /* Auto-clear after 2.5s */
+  setTimeout(clearHints, 2500);
+}
+
+function clearHints() {
+  document.querySelectorAll('.hint-glow').forEach(function(el){ el.classList.remove('hint-glow'); });
+  pegCols.forEach(function(col){ col.classList.remove('hint-from', 'hint-to'); });
+}
+
+/* ── Auto-solve ── */
+function autoSolve() {
+  if (gameOver) return;
+  usedAuto = true;
+  stopAutoSolve();
+  /* Reset to initial state */
+  pegs = [[], [], []];
+  for (var i = numDiscs; i >= 1; i--) pegs[0].push(i);
+  moves = 0; history = []; seconds = 0;
+  syncDOM();
+  document.getElementById('undo-btn').disabled = true;
+  document.getElementById('auto-btn').disabled = true;
+  document.getElementById('hint-btn').disabled = true;
+  setMsg('🤖 Auto-solving…', '');
+  autoSeq = [];
+  var tmp = [pegs[0].slice(), [], []];
+  hanoiSolve(numDiscs, 0, 2, 1, autoSeq, tmp);
+  autoIdx = 0;
+  startTimer(); running = true; gameOver = false;
+  updateUI();
+
+  var delay = speedDelays[parseInt(speedSlider.value) - 1];
+  autoTimer = setInterval(function() {
+    if (paused || autoIdx >= autoSeq.length) {
+      if (autoIdx >= autoSeq.length) finishAuto();
+      return;
+    }
+    var m = autoSeq[autoIdx++];
+    executeMove(m.from, m.to, true);
+    if (autoIdx >= autoSeq.length) setTimeout(finishAuto, 400);
+  }, delay);
+}
+
+function hanoiSolve(n, from, to, aux, seq, state) {
+  if (n === 0) return;
+  hanoiSolve(n - 1, from, aux, to, seq, state);
+  seq.push({ from: from, to: to });
+  hanoiSolve(n - 1, aux, to, from, seq, state);
+}
+
+function stopAutoSolve(){ clearInterval(autoTimer); autoSeq = []; autoIdx = 0; }
+
+function finishAuto() {
+  stopAutoSolve(); stopTimer();
+  document.getElementById('pause-btn').disabled = true;
+  gameOver = true;
+  setMsg('🤖 Auto-solve complete — no coins awarded', '');
+  if (window.SoundEngine) SoundEngine.play('success');
+  showWinOverlay(false, true);
+}
+
+/* ── Win ── */
+function checkWin() {
+  if (pegs[2].length !== numDiscs) return;
+  stopTimer(); stopAutoSolve(); gameOver = true;
+  document.getElementById('pause-btn').disabled = true;
+
+  var opt = (1 << numDiscs) - 1;
+  var isPerfect = (moves === opt) && !usedUndo && !usedAuto;
+  var reward = usedAuto || usedUndo ? 0 : (isPerfect ? numDiscs * 12 : numDiscs * 4);
+
+  /* Perfect streak */
+  if (isPerfect) {
+    perfectStreak++;
+    localStorage.setItem('hanoi_streak', perfectStreak);
+    if (perfectStreak > 1) reward = Math.round(reward * (1 + perfectStreak * 0.2));
+  } else {
+    perfectStreak = 0;
+    localStorage.setItem('hanoi_streak', 0);
+  }
+
+  var isNewBest = setBest(numDiscs, moves);
+  renderBestList();
+  if (window.SoundEngine) SoundEngine.play('success');
+
+  if (reward > 0) {
+    CoinEngine.add(reward, 'Tower of Hanoi' + (isPerfect ? ' perfect' : ''), '🗼');
+    CoinEngine.recordGame('hanoi', reward, true, { discs: numDiscs, moves: moves, perfect: isPerfect });
+    CoinEngine.toast('+' + reward + ' 🪙' + (isPerfect ? ' Perfect! 🌟' : ''), 'success');
+    document.getElementById('hn-coins').textContent = '+' + reward + ' 🪙';
+  } else {
+    CoinEngine.recordGame('hanoi', 0, true, { discs: numDiscs, moves: moves });
+  }
+
+  updateUI();
+  showWinOverlay(isPerfect, false, moves, reward, isNewBest);
+
+  /* Confetti on win */
+  if (window.GameUI && GameUI.launchConfetti) GameUI.launchConfetti(isPerfect ? 140 : 80);
+}
+
+function showWinOverlay(isPerfect, isAuto, movesCount, reward, isNewBest) {
+  var ov = document.createElement('div');
+  ov.className = 'hn-win-overlay';
+  var title = isAuto ? '🤖 AUTO SOLVED' : (isPerfect ? '🌟 PERFECT!' : '🎉 SOLVED!');
+  var sub = isAuto ? 'No coins — solve it yourself!' :
+    (movesCount + ' moves · ' + formatTime(seconds) + (isNewBest ? ' · 🏆 New Best!' : ''));
+  var rewardLine = reward > 0 ? '<div style="font-family:var(--font-mono);font-size:.85rem;color:var(--neon-c);font-weight:700">+' + reward + ' 🪙' + (isPerfect && perfectStreak > 1 ? ' (×' + perfectStreak + ' streak!)' : '') + '</div>' : '';
+  var perfLine = isPerfect ? '<div class="hn-win-perfect">⭐ PERFECT SOLVE — OPTIMAL MOVES!</div>' : '';
+  ov.innerHTML =
+    '<div class="hn-win-title">' + title + '</div>' +
+    '<div class="hn-win-sub">' + sub + '</div>' +
+    rewardLine + perfLine +
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">' +
+    '<button class="hn-btn primary" style="font-size:.72rem" onclick="newGame()">▶ PLAY AGAIN</button>' +
+    '<a class="hn-btn" href="index.html" style="font-size:.72rem">🏠 Hub</a>' +
+    '</div>';
+  arena.appendChild(ov);
+}
+
+function formatTime(s){ var m = Math.floor(s / 60); return m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); }
+
+/* ── Particles ── */
+function spawnParticles(x, y, color) {
+  for (var i = 0; i < 10; i++) {
+    var p = document.createElement('div');
+    p.className = 'particle';
+    var size = 3 + Math.random() * 5;
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 30 + Math.random() * 50;
+    p.style.cssText =
+      'left:' + (x - size/2) + 'px;top:' + (y - size/2) + 'px;' +
+      'width:' + size + 'px;height:' + size + 'px;' +
+      'background:' + color + ';' +
+      '--px:' + Math.cos(angle) * dist + 'px;' +
+      '--py:' + (Math.sin(angle) * dist - 20) + 'px;' +
+      'animation-duration:' + (0.4 + Math.random() * 0.4) + 's;';
+    document.body.appendChild(p);
+    setTimeout(function(el){ if(el.parentNode) el.parentNode.removeChild(el); }, 900, p);
   }
 }
 
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();
-  if(ctx.roundRect) ctx.roundRect(x,y,w,h,r);
-  else{
-    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-    ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-    ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-    ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
-  }
+/* ── Drop zone highlighting ── */
+function clearDropHighlights() {
+  pegCols.forEach(function(col){ col.classList.remove('drop-valid','drop-invalid'); });
+  arena.classList.remove('drag-active');
 }
 
-/* ── Input: tap peg ── */
-cv.addEventListener('click',function(e){
-  if(gameOver&&pegs[2].length!==numDiscs)return;
-  if(gameOver&&pegs[2].length===numDiscs)return; /* won, do nothing */
-  var rect=cv.getBoundingClientRect();
-  var x=(e.clientX-rect.left)/cv.offsetWidth*W;
-  /* Find closest peg */
-  var closest=-1, minD=W*0.2;
-  PEG_X.forEach(function(px,pi){
-    var d=Math.abs(x-px);
-    if(d<minD){minD=d;closest=pi;}
+function highlightDropZones(draggedSize) {
+  arena.classList.add('drag-active');
+  pegCols.forEach(function(col, pi) {
+    var topArr = pegs[pi];
+    var topSize = topArr.length > 0 ? topArr[topArr.length - 1] : Infinity;
+    if (topSize > draggedSize) col.classList.add('drop-valid');
+    else if (topArr.length > 0) col.classList.add('drop-invalid');
+    else col.classList.add('drop-valid');
   });
-  if(closest>=0) selectPeg(closest);
-});
-cv.addEventListener('touchend',function(e){
+}
+
+/* ── Drag & drop system ── */
+var dragState = null;
+
+/* Find which peg index corresponds to a screen X coordinate.
+   Always uses closest-center math — no rejection logic that can misfire. */
+function pegFromClientX(clientX) {
+  var best = -1, bestDist = Infinity;
+  pegCols.forEach(function(col, pi) {
+    var rect = col.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var dist = Math.abs(clientX - cx);
+    if (dist < bestDist) { bestDist = dist; best = pi; }
+  });
+  /* Only reject if released well outside the arena */
+  var ar = arena.getBoundingClientRect();
+  if (clientX < ar.left - 60 || clientX > ar.right + 60) return -1;
+  return best;
+}
+
+function startDrag(e, fromPegIdx, discEl) {
+  if (gameOver || paused) return;
+  if (!discEl.classList.contains('top-disc')) return;
+  if (!pegs[fromPegIdx].length) return;
+
+  var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  var discSize = parseInt(discEl.dataset.size);
+  var colr = DISC_COLORS[(discSize - 1) % DISC_COLORS.length];
+  var dr = discEl.getBoundingClientRect();
+
+  ghost.style.display = 'flex';
+  ghost.style.position = 'fixed';
+  ghost.style.pointerEvents = 'none';
+  ghost.style.zIndex = '9999';
+  ghost.style.borderRadius = '100px';
+  ghost.style.alignItems = 'center';
+  ghost.style.justifyContent = 'center';
+  ghost.style.width  = dr.width  + 'px';
+  ghost.style.height = dr.height + 'px';
+  ghost.style.left   = (clientX - dr.width  / 2) + 'px';
+  ghost.style.top    = (clientY - dr.height / 2) + 'px';
+  ghost.style.background = colr.bg;
+  ghost.style.setProperty('--dc', colr.dc);
+  ghost.style.opacity = '0.9';
+  ghost.style.transform = 'scale(1.12) rotate(-2deg)';
+  ghost.style.boxShadow = '0 16px 40px rgba(0,0,0,.65),0 0 28px ' + colr.dc + '88,inset 0 1px 0 rgba(255,255,255,.35)';
+  ghost.style.fontFamily = 'monospace';
+  ghost.style.fontSize = '.65rem';
+  ghost.style.fontWeight = '700';
+  ghost.style.color = 'rgba(255,255,255,.9)';
+  ghost.textContent = discSize;
+
+  discEl.classList.add('dragging');
+  if (!running) startTimer();
+
+  dragState = { fromPeg: fromPegIdx, discSize: discSize, discEl: discEl,
+                ghostW: dr.width, ghostH: dr.height };
+  highlightDropZones(discSize);
   e.preventDefault();
-  if(gameOver)return;
-  var rect=cv.getBoundingClientRect();
-  var x=(e.changedTouches[0].clientX-rect.left)/cv.offsetWidth*W;
-  var closest=-1, minD=W*0.25;
-  PEG_X.forEach(function(px,pi){var d=Math.abs(x-px);if(d<minD){minD=d;closest=pi;}});
-  if(closest>=0) selectPeg(closest);
-},{passive:false});
-
-function doShare(){
-  var opt=(1<<numDiscs)-1;
-  var txt='🗼 Tower of Hanoi: solved '+numDiscs+' discs in '+moves+' moves (optimal: '+opt+') on Arcade Zone!\nPlay free: '+window.location.origin;
-  if(navigator.share){navigator.share({title:'Arcade Zone',text:txt}).catch(function(){});}
-  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CoinEngine.toast('Copied!','info');});}
 }
 
+function moveDrag(e) {
+  if (!dragState) return;
+  var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  ghost.style.left = (clientX - dragState.ghostW / 2) + 'px';
+  ghost.style.top  = (clientY - dragState.ghostH / 2) + 'px';
+  e.preventDefault();
+}
+
+function endDrag(e) {
+  if (!dragState) return;
+  var clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+
+  /* Always derive toPeg from the release X coordinate — most reliable method */
+  var toPeg = pegFromClientX(clientX);
+
+  ghost.style.display = 'none';
+  clearDropHighlights();
+
+  var ds = dragState;
+  dragState = null;
+
+  if (ds.discEl.parentNode) ds.discEl.classList.remove('dragging');
+
+  if (toPeg < 0 || toPeg === ds.fromPeg) {
+    /* Dropped outside or on same peg — snap back */
+    if (ds.discEl.parentNode) {
+      ds.discEl.classList.add('disc-snap-back');
+      setTimeout(function(){ if (ds.discEl.parentNode) ds.discEl.classList.remove('disc-snap-back'); }, 380);
+    }
+    return;
+  }
+
+  var ok = executeMove(ds.fromPeg, toPeg, true);
+  if (!ok) {
+    setMsg('❌ Can\'t place a larger ring on a smaller one!', 'error');
+    if (window.SoundEngine) SoundEngine.play('error');
+    pegCols[toPeg].style.animation = 'none';
+    pegCols[toPeg].offsetWidth; /* force reflow */
+    pegCols[toPeg].style.animation = 'snapBack .35s ease';
+    setTimeout(function(){ pegCols[toPeg].style.animation = ''; }, 380);
+  }
+}
+
+/* Mouse events */
+arena.addEventListener('mousedown', function(e) {
+  var discEl = e.target.closest('.disc');
+  var colEl  = e.target.closest('.peg-col');
+  if (!discEl || !colEl) return;
+  var pi = pegCols.indexOf(colEl);
+  if (pi >= 0) startDrag(e, pi, discEl);
+});
+document.addEventListener('mousemove', moveDrag);
+document.addEventListener('mouseup',   endDrag);
+
+/* Touch events */
+arena.addEventListener('touchstart', function(e) {
+  var discEl = e.target.closest('.disc');
+  var colEl  = e.target.closest('.peg-col');
+  if (!discEl || !colEl) return;
+  var pi = pegCols.indexOf(colEl);
+  if (pi >= 0) startDrag(e, pi, discEl);
+}, { passive: false });
+document.addEventListener('touchmove', moveDrag, { passive: false });
+document.addEventListener('touchend',  endDrag);
+
+/* ── Share ── */
+function doShare() {
+  var opt = (1 << numDiscs) - 1;
+  var txt = '🗼 Tower of Hanoi: solved ' + numDiscs + ' discs in ' + moves + ' moves (optimal: ' + opt + ') on Arcade Zone!\nPlay free: ' + window.location.origin;
+  if (navigator.share) navigator.share({ title: 'Arcade Zone', text: txt }).catch(function(){});
+  else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function(){ CoinEngine.toast('Copied!', 'info'); });
+}
+
+/* ── Init ── */
 renderBestList();
 newGame();
 </script>
