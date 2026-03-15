@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07070f">
 <script src="supabase.js"></script>
+<script src="auth.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
@@ -188,6 +189,23 @@
       </div>
       <div class="earn-act">
         <a class="btn" style="--c:var(--neon-f)" href="profile.html">PROFILE</a>
+      </div>
+    </div>
+
+    <!-- Daily Login Bonus -->
+    <div class="earn-card">
+      <div class="earn-row">
+        <div class="earn-icon">🎁</div>
+        <div class="earn-info">
+          <div class="et">Daily Login Bonus</div>
+          <div class="es">
+            Claim <strong style="color:var(--neon-d)">🪙 20 coins</strong> every 24 hours just for showing up.<br>
+            <span id="daily-sub" style="color:var(--neon-d)">Available now!</span>
+          </div>
+        </div>
+      </div>
+      <div class="earn-act">
+        <button class="btn filled" style="--c:var(--neon-d)" id="daily-btn" onclick="claimDaily()">CLAIM</button>
       </div>
     </div>
 

@@ -284,10 +284,19 @@ renderPage();
   if (user) {
     /* Pre-fill name from auth */
     var name = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
-    var nameEl = document.getElementById('prof-name-display');
-    if (nameEl) nameEl.textContent = name;
+    /* Use correct element ID - prof-name not prof-name-display */
+    var nameEl = document.getElementById('prof-name');
+    if (nameEl) nameEl.textContent = name.toUpperCase();
     var nameInput = document.getElementById('prof-name-input');
     if (nameInput) nameInput.value = name;
+    /* Also sync to localStorage so multiplayer shows real name */
+    var prof = {};
+    try { prof = JSON.parse(localStorage.getItem('az_profile')||'{}'); } catch(_) {}
+    if (!prof.name || prof.name === 'PLAYER ONE') {
+      prof.name = name.toUpperCase();
+      localStorage.setItem('az_profile', JSON.stringify(prof));
+      localStorage.setItem('az_mp_name', name);
+    }
 
     /* Show email + sign out in hero */
     var hero = document.querySelector('.prof-hero');
