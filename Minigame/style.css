@@ -304,7 +304,7 @@ canvas { display:block; }
   margin-bottom:16px; display:flex; align-items:center; gap:12px;
 }
 .hub-section-title::after { content:''; flex:1; height:1px; background:var(--line2); }
-.games-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+/* games-grid - see inline CSS in index.html */
 
 /* Game card */
 .game-card {
@@ -722,8 +722,7 @@ canvas { max-width: 100%; touch-action: none; }
 /* ══ GLOBAL HUB IMPROVEMENTS ═══════════════════════════════════════════════ */
 
 /* Hub hero headline fix */
-.hub-headline{font-family:var(--font-display);font-size:clamp(3.2rem,12vw,8rem);
-  letter-spacing:.06em;line-height:.92;text-align:center;}
+/* duplicate hub-headline removed */
 .hub-headline .a,.hub-headline span.a{color:var(--neon-a);
   text-shadow:0 0 32px color-mix(in srgb,var(--neon-a) 45%,transparent);}
 .hub-headline .b,.hub-headline span.b{color:var(--neon-b);
@@ -770,9 +769,9 @@ canvas { max-width: 100%; touch-action: none; }
 .streak-badge:hover{border-color:var(--neon-f);}
 
 /* ══ HUB STATS ROW ══════════════════════════════════════════════════════════ */
-.hub-stats{display:flex;gap:32px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
-.hub-stat .n{font-family:var(--font-display);font-size:2.4rem;color:var(--neon-c);line-height:1;}
-.hub-stat .t{font-size:.58rem;color:var(--muted);letter-spacing:.15em;font-family:var(--font-mono);margin-top:2px;}
+/* hub-stats consolidated into main rule above */
+
+
 
 /* ══ ACTIVITY FEED ══════════════════════════════════════════════════════════ */
 #activity-feed{max-height:320px;overflow-y:auto;}
@@ -1143,7 +1142,7 @@ input:focus, textarea:focus {
 /* Hub inner wider on large screens */
 @media(min-width:1280px){
   .hub-section{max-width:1200px;}
-  .games-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  /* games-grid - see inline CSS in index.html */
 }
 
 /* Canvas games: ensure crisp scaling on high-DPI */
@@ -1421,9 +1420,9 @@ html { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 
 /* ── Hero stats: tighter on mobile ── */
 @media (max-width: 420px) {
-  .hub-stats { gap: 16px !important; }
+  /* hub-stats gap override removed */
   .hs-val { font-size: 1.3rem !important; }
-  .hs-lbl { font-size: .44rem !important; }
+  .hs-lbl { font-size: .44rem; }
 }
 
 /* ── Streak tracker ── */
@@ -1631,4 +1630,53 @@ html { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
 @media (hover: hover) {
   .qa-label { opacity: .7; transition: opacity .15s; }
   .qa-item:hover .qa-label { opacity: 1; }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   GAME CARD POLISH — smooth hover, icon pop, glow
+══════════════════════════════════════════════════════ */
+
+/* Smooth icon scale on hover */
+.game-card .card-icon {
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1),
+              filter .2s ease;
+}
+.game-card:hover .card-icon {
+  transform: scale(1.18) translateY(-2px);
+  filter: drop-shadow(0 4px 10px color-mix(in srgb,var(--ca,var(--neon-a)) 50%,transparent));
+}
+
+/* Play arrow slides on hover */
+.game-card .card-play::after {
+  display: inline-block;
+  transition: transform .15s ease;
+}
+.game-card:hover .card-play::after {
+  transform: translateX(4px);
+}
+
+/* Card glow border pulse on GOTD */
+.game-card[style*="outline"] {
+  animation: gotdPulse 2s ease infinite alternate;
+}
+@keyframes gotdPulse {
+  from { box-shadow: 0 0 0 2px var(--neon-c), 0 4px 20px color-mix(in srgb,var(--neon-c) 15%,transparent); }
+  to   { box-shadow: 0 0 0 2px var(--neon-c), 0 8px 32px color-mix(in srgb,var(--neon-c) 35%,transparent); }
+}
+
+/* Card entrance — simple fade, no opacity:0 lock */
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+/* Apply only when grid first renders */
+.games-grid.animate-in .game-card {
+  animation: cardFadeIn .25s ease both;
+}
+
+/* Active tap feedback on mobile */
+.game-card:active {
+  transform: scale(.97);
+  transition: transform .08s ease;
 }

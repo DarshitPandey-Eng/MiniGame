@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#07070f">
 <meta name="description" content="14 free browser minigames. No ads, no downloads.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase.js"></script>
 <script src="auth.js"></script>
 <script src="coins.js"></script>
@@ -231,6 +233,12 @@
     </div>
   </div>
 
+  <!-- Recently Played -->
+  <div id="recent-played-section" style="display:none;">
+    <div class="hub-stitle">🕹 RECENTLY PLAYED</div>
+    <div class="games-grid" id="recent-grid"></div>
+  </div>
+
   <div id="activity-section" style="display:none;">
     <div class="hub-stitle">📜 RECENT ACTIVITY</div>
     <div id="activity-feed"></div>
@@ -338,6 +346,10 @@ function renderAll() {
   }
   if (nr) nr.style.display = 'none';
   grid.innerHTML = list.map(function(g) { return buildCard(g, g.id === GOTD && !searchVal); }).join('');
+  /* Trigger entrance animation */
+  grid.classList.remove('animate-in');
+  void grid.offsetWidth; /* reflow */
+  grid.classList.add('animate-in');
 }
 
 /* ── Filters ── */
@@ -395,23 +407,28 @@ function renderStreak() {
   if (bestEl) bestEl.textContent = best > 1 ? 'Best: ' + best : '';
 
   var tipEl = document.getElementById('streak-tip');
-  if (tipEl) tipEl.textContent = cur >= 7 ? '🌟 Amazing! 7+ day streak!'
-    : cur >= 3 ? "You're on a roll! Don't break it."
-    : cur === 1 ? 'Play again tomorrow to keep it going.'
-    : 'Play any game today to start your streak!';
+  if (tipEl) {
+    if (cur >= 7)      tipEl.textContent = '🌟 Amazing! 7+ day streak!';
+    else if (cur >= 3) tipEl.textContent = 'On a roll! Keep it going.';
+    else if (cur === 1) tipEl.textContent = 'Play again tomorrow to keep it going.';
+    else               tipEl.textContent = 'Play any game today to start your streak!';
+  }
 
   var dotsEl = document.getElementById('streak-dots');
   if (!dotsEl) return;
   var today  = new Date().getDay();
   var labels = ['S','M','T','W','T','F','S'];
   var html = '';
-  for (var i = 0; i < 7; i++) {
-    var daysAgo = (today - i + 7) % 7;
-    var active  = daysAgo < cur;
-    var isToday = i === today;
+  /* Show last 7 days with today on the RIGHT (index 6) */
+  for (var i = 6; i >= 0; i--) {
+    /* i=6 = today, i=5 = yesterday, i=0 = 6 days ago */
+    var daysAgo  = 6 - i;
+    var active   = daysAgo < cur;
+    var isToday  = daysAgo === 0;
+    var dayIndex = (today - daysAgo + 7) % 7;
     html += '<div class="sd' + (active ? ' sd-on' : '') + (isToday ? ' sd-today' : '') + '">'
       + '<div class="sd-icon">' + (active ? (isToday ? '🔥' : '✓') : (isToday ? '○' : '·')) + '</div>'
-      + '<div class="sd-label">' + labels[i] + '</div>'
+      + '<div class="sd-label">' + labels[dayIndex] + '</div>'
       + '</div>';
   }
   dotsEl.innerHTML = html;
@@ -561,9 +578,27 @@ tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
   el.appendChild(badge);
 })();
 
+/* ── Recently Played ── */
+function renderRecentlyPlayed() {
+  var stats = CoinEngine.getStats ? CoinEngine.getStats() : {};
+  /* Get games that have been played, sorted by plays desc, top 3 */
+  var played = GAMES.filter(function(g) { return stats[g.id] && stats[g.id].plays > 0; })
+    .sort(function(a,b) { return (stats[b.id].plays||0) - (stats[a.id].plays||0); })
+    .slice(0, 3);
+
+  var sec  = document.getElementById('recent-played-section');
+  var grid = document.getElementById('recent-grid');
+  if (!sec || !grid) return;
+
+  if (!played.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  grid.innerHTML = played.map(function(g) { return buildCard(g, false); }).join('');
+}
+
 /* ══ INIT ══ */
 try { if (CoinEngine.checkStreak) CoinEngine.checkStreak(); } catch(e) {}
 try { refreshStats(); }         catch(e) { console.warn('refreshStats:', e); }
+try { renderRecentlyPlayed(); }  catch(e) { console.warn('recentlyPlayed:', e); }
 try { renderActivity(); }       catch(e) { console.warn('renderActivity:', e); }
 try { renderDailyChallenge(); } catch(e) { console.warn('renderDailyChallenge:', e); }
 renderAll();

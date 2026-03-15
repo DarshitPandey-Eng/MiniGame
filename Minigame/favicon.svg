@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#07070f"/>
+  <text x="16" y="22" font-family="monospace" font-weight="900" font-size="14" text-anchor="middle" fill="#00e5ff">AZ</text>
+  <rect x="3" y="26" width="26" height="2" rx="1" fill="#ff2d78"/>
+</svg>

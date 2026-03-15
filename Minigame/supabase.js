@@ -71,6 +71,8 @@ window.ArcadeDB = (function () {
       headers: HEADERS,
       body: body ? JSON.stringify(body) : undefined
     }).then(function (r) {
+      /* Silently ignore 404/400 — table may not exist yet */
+      if (r.status === 404 || r.status === 400) return null;
       if (!r.ok) return null;
       return r.text().then(function (t) {
         try { return t ? JSON.parse(t) : null; } catch (e) { return null; }
@@ -84,7 +86,7 @@ window.ArcadeDB = (function () {
       method: 'POST',
       headers: HEADERS,
       body: JSON.stringify({ user_id: getUserId(), data: data, updated_at: new Date().toISOString() })
-    }).catch(function () { return null; });
+    }).then(function(r) { return null; }).catch(function () { return null; });
   }
 
   /* ── Sync debounce — batch rapid saves into one network call ── */
