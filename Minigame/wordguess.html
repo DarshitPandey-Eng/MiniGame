@@ -162,11 +162,42 @@ var WORDS = [
   'ANGEL','BEACH','CLICK','DREAM','EXACT','FANCY','GREET','HYPER','IDEAL','JUICE',
   'KNOWN','LUCKY','MARSH','NICHE','OFFER','PLAIN','RALLY','SCARF','TOWER','URGED',
   'VIOLA','WRIST','EXPEL','YIKES','ZONAL','AGILE','BLEND','CHARM','DINER','EQUAL',
-  'FAIRY','GNOME','HOVER','IMPLY','JOKER','KNACK','LAVA','MANGO','NUDGE','OAKEN',
+  'FAIRY','GNOME','HOVER','IMPLY','JOKER','KNACK','LATCH','MANGO','NUDGE','OAKEN',
   'PASTA','REIGN','SNACK','THORN','UNWED','VENOM','WOVEN','EXERT','YAWNS','ZINCS',
+  'SUGAR','PRISM','FLUTE','CROWN','PILOT','BREAD','GLOOM','PRIDE','CHESS','BRISK',
+  'DWARF','FAULT','CRISP','BOXER','ACUTE','BLAZE','CABIN','CARGO','CEDAR','CHAOS',
+  'CIVIC','CIVIL','CLAMP','CLASH','CLEAR','CLIFF','CLIMB','CLING','CLOCK','CLONE',
+  'CLOTH','CLOWN','COMET','COMIC','CORAL','COURT','COVER','CRACK','CRAFT','CRANE',
+  'CRASH','CRATE','CRAWL','CRIMP','CROSS','CROWD','CRUSH','CRUST','CURVE','CYCLE',
+  'DRAFT','DRAIN','DRAKE','DRAPE','DRAWL','DRINK','DRIVE','DRONE','DROVE','DROWN',
+  'DRYER','DUSKY','DUSTY','DWELT','EAGER','EASEL','ELBOW','ELITE','EPOCH','EVOKE',
+  'EXIST','EXPEL','FABLE','FAINT','FLAIR','FLANK','FLASH','FLASK','FLESH','FLICK',
+  'FLOCK','FLOOD','FLOOR','FLORA','FLOSS','FLOUR','FLUID','FLUSH','FOCUS','FORCE',
+  'FORGE','FRAIL','FRAME','FRANK','FRAUD','FREAK','FREED','FRESH','FRILL','FRISK',
 ];
 /* Valid guesses also includes words */
-var VALID = WORDS.slice();
+var VALID = WORDS.concat([
+  'HOUSE','THERE','THEIR','WHICH','COULD','WOULD','ABOUT','AFTER','THINK','THESE',
+  'WHERE','THOSE','NEVER','EVERY','STILL','WHILE','PLACE','GREAT','AGAIN','THREE',
+  'SMALL','LARGE','OFTEN','ALONG','AMONG','BRING','MIGHT','GIVEN','SINCE','BEING',
+  'UNTIL','GOING','DOING','COMES','WHOLE','OTHER','FIRST','FOUND','SHALL','WHOSE',
+  'TRULY','QUITE','TAKEN','USING','TAKEN','THANK','STAND','LEARN','REACH','TEACH',
+  'SPEAK','WRITE','START','SPEND','SOUND','ROUND','POINT','HEART','HANDS','TEARS',
+  'LAUGH','SMILE','PHONE','MONEY','MUSIC','SPORT','WATER','STONE','PARTY','TABLE',
+  'CHAIR','FLOOR','BREAD','DRINK','SLEEP','DREAM','LIGHT','NIGHT','THING','LEAVE',
+  'SPACE','WATCH','CHECK','CLIMB','CLOSE','COUNT','BREAK','BRING','BUILD','CATCH',
+  'CLEAN','CLEAR','CARRY','AGREE','APPLY','ARGUE','AVOID','BASIC','CAUSE','CLAIM',
+  'SHARE','SOUTH','NORTH','THEIR','THROW','TRUST','TURNS','UNDER','UNION','UPPER',
+  'VALUE','VISIT','VOICE','VOTED','WASTE','WEEKS','WINDS','WOMAN','WOMEN','WORDS',
+  'WORKS','WORTH','WRITE','WRONG','YEARS','YOURS','YOUTH','ABOVE','ADDED','ADMIT',
+  'ADOPT','ADULT','AHEAD','ALARM','ALBUM','ALERT','ALIKE','ALIVE','HONOR','TOTAL',
+  'HUMAN','IDEAL','IMAGE','IMPLY','INNER','INPUT','ISSUE','ITEMS','KNIFE','LABEL',
+  'LATER','LAUGH','LAYER','LEADS','LEAST','LEVEL','LIMIT','LIVES','LOCAL','LOGIN',
+  'LOWER','MAJOR','MARCH','MATCH','MAYBE','MEANS','MEDIA','MINDS','MINOR','MINUS',
+  'MODEL','MORAL','MOUNT','MOUSE','MOUTH','MOVED','NAMED','NEEDS','NOTED','OATHS',
+  'OCCUR','OFTEN','OPENS','ORDER','OTHER','OWNED','PAGES','PANEL','PAPER','PARSE',
+  'PARTS','PATHS','PAUSE','PEAKS','PEERS','PICKS','PIECE','PITCH','PLANS','PLAYS',
+]);
 /* Add more valid 5-letter words */
 ['ABOUT','ABOVE','ABUSE','ACTOR','ACUTE','ADMIT','ADOPT','ADULT','AFTER','AGAIN',
  'AGENT','AGREE','AHEAD','ALARM','ALBUM','ALERT','ALIKE','ALIVE','ALLEY','ALLOW',
@@ -180,7 +211,7 @@ var VALID = WORDS.slice();
  'BRAWL','BRAWN','BREAD','BREAK','BREED','BRIBE','BRIEF','BRISK','BROAD','BROOD',
  'BROOK','BROOM','BROWN','BRUSH','BUCKS','BUDDY','BUDGE','BUGGY','BUILT','BULGE',
  'BULLS','BUMPY','BUNCH','BURNS','BURST','BUYER','CABIN','CACHE','CADET','CAMEL',
- 'CAMP','CARDS','CARGO','CARRY','CATCH','CAUSE','CEASE','CHAIN','CHAIR','CHALK',
+ 'CAMEO','CARDS','CARGO','CARRY','CATCH','CAUSE','CEASE','CHAIN','CHAIR','CHALK',
  'CHAOS','CHASE','CHEAP','CHEAT','CHECK','CHEEK','CHEER','CHICK','CHIEF','CHILD',
 ].forEach(function(w){if(VALID.indexOf(w)<0)VALID.push(w);});
 
@@ -390,14 +421,20 @@ function flipRow(r,result,callback){
   for(var c=0;c<5;c++) cells.push(document.getElementById('cell-'+r+'-'+c));
   cells.forEach(function(cell,i){
     setTimeout(function(){
-      cell.style.transition='none';
+      /* Start flip animation */
       cell.classList.add('flip');
+      /* At halfway point (cell is face-down/invisible), swap the color */
       setTimeout(function(){
-        cell.className='wg-cell '+result[i];
+        cell.classList.remove('filled');
+        cell.classList.add(result[i]);
       },250);
+      /* After full animation completes, clean up flip class */
+      setTimeout(function(){
+        cell.classList.remove('flip');
+      },500);
     },i*120);
   });
-  setTimeout(callback,(4*120)+400);
+  setTimeout(callback,(4*120)+550);
 }
 
 function shakeRow(r){
