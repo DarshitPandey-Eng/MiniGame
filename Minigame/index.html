@@ -8,242 +8,209 @@
 <link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ArcadeZone">
 <meta name="theme-color" content="#07070f">
-<meta name="description" content="15 free browser minigames. No ads, no downloads.">
+<meta name="description" content="14 free browser minigames. No ads, no downloads.">
 <script src="supabase.js"></script>
 <script src="auth.js"></script>
 <script src="coins.js"></script>
 <script src="sound.js"></script>
 <script src="game-ui.js"></script>
 <style>
-/* ── Hub Layout ── */
-.hub-inner{max-width:1200px;width:100%;margin:0 auto;padding:0 20px;}
+.hub-inner{max-width:1100px;width:100%;margin:0 auto;padding:0 18px;}
 @media(max-width:600px){.hub-inner{padding:0 12px;}}
-.hub-footer{text-align:center;padding:20px 16px 36px;font-family:var(--font-mono);font-size:.54rem;color:var(--muted);letter-spacing:.07em;}
-
-/* ── Grid background ── */
+.hub-footer{text-align:center;padding:24px 16px 40px;font-family:var(--font-mono);font-size:.54rem;color:var(--muted);letter-spacing:.06em;}
 .grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
   background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
   background-size:60px 60px;
-  mask-image:radial-gradient(ellipse 80% 70% at 50% 0%,black 0%,transparent 70%);}
-
-/* ── XP bar in hero ── */
-.xp-hero-bar{width:min(340px,88vw);background:var(--bg2);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--line2);margin:8px auto 0;}
-.xp-hero-fill{height:100%;background:linear-gradient(90deg,var(--neon-a),var(--neon-e));box-shadow:0 0 8px var(--neon-a);transition:width .6s ease;}
-
-/* ── Quick buttons ── */
-.quick-btn{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:.62rem;font-weight:700;
-  padding:9px 16px;border-radius:10px;border:1.5px solid var(--line2);background:var(--card-bg);
-  color:var(--text2);cursor:pointer;text-decoration:none;transition:all .14s;white-space:nowrap;position:relative;}
-.quick-btn:hover{border-color:var(--lc,var(--neon-a));color:var(--lc,var(--neon-a));
-  background:color-mix(in srgb,var(--lc,var(--neon-a)) 6%,var(--card-bg));}
-.qb-badge{position:absolute;top:-5px;right:-5px;background:var(--neon-b);color:#000;font-size:.42rem;font-weight:900;padding:2px 5px;border-radius:4px;}
-
-/* ── Section titles ── */
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black 0%,transparent 65%);}
+.xp-hero-bar{width:min(320px,88vw);background:var(--bg2);border-radius:4px;height:5px;overflow:hidden;border:1px solid var(--line2);margin:10px auto 0;}
+.xp-hero-fill{height:100%;background:linear-gradient(90deg,var(--neon-a),var(--neon-e));transition:width .6s ease;width:0%;}
 .hub-stitle{font-family:var(--font-mono);font-size:.6rem;font-weight:800;letter-spacing:.18em;color:var(--muted);
-  margin:26px 0 10px;padding-left:2px;display:flex;align-items:center;gap:12px;}
+  margin:22px 0 10px;display:flex;align-items:center;gap:10px;}
 .hub-stitle::after{content:'';flex:1;height:1px;background:var(--line2);}
-
-/* ── Search ── */
-.search-wrap{width:min(520px,92vw);position:relative;margin:0 auto;}
-.search-input{width:100%;box-sizing:border-box;padding:12px 36px 12px 42px;
-  background:var(--card-bg);border:1.5px solid var(--line2);border-radius:12px;
+.search-wrap{position:relative;width:100%;max-width:520px;margin:0 auto;}
+.search-input{width:100%;box-sizing:border-box;padding:11px 14px 11px 40px;
+  background:var(--card-bg);border:1.5px solid var(--line2);border-radius:10px;
   color:var(--text);font-family:var(--font-mono);font-size:.8rem;outline:none;transition:border-color .15s;}
-.search-input:focus{border-color:var(--neon-a);box-shadow:0 0 0 3px color-mix(in srgb,var(--neon-a) 12%,transparent);}
-.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none;}
+.search-input:focus{border-color:var(--neon-a);}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none;}
 .search-input::placeholder{color:var(--muted);}
-
-/* ── Filter buttons ── */
-.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-.cat-btn{font-family:var(--font-mono);font-size:.6rem;font-weight:700;padding:7px 14px;
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+@media(max-width:600px){.filter-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;scrollbar-width:none;}
+.filter-row::-webkit-scrollbar{display:none;}}
+.cat-btn{font-family:var(--font-mono);font-size:.6rem;font-weight:700;padding:7px 14px;flex-shrink:0;
   border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);color:var(--muted);cursor:pointer;transition:all .12s;}
-.cat-btn.active{border-color:var(--neon-a);color:var(--neon-a);background:color-mix(in srgb,var(--neon-a) 10%,transparent);}
-.device-filter-btn{font-family:var(--font-mono);font-size:.6rem;font-weight:700;padding:7px 14px;
+.cat-btn.active,.cat-btn:focus{border-color:var(--neon-a);color:var(--neon-a);background:color-mix(in srgb,var(--neon-a) 10%,transparent);outline:none;}
+.device-filter-btn{font-family:var(--font-mono);font-size:.6rem;font-weight:700;padding:7px 14px;flex-shrink:0;
   border-radius:8px;border:1.5px solid var(--line2);background:var(--bg2);cursor:pointer;transition:all .12s;
-  display:flex;align-items:center;gap:5px;}
-.device-filter-btn.mobile-on{border-color:var(--neon-d);color:var(--neon-d);background:color-mix(in srgb,var(--neon-d) 10%,transparent);}
-.device-filter-btn.desktop-on{border-color:var(--neon-c);color:var(--neon-c);background:color-mix(in srgb,var(--neon-c) 10%,transparent);}
-.device-filter-btn:not(.mobile-on):not(.desktop-on){color:var(--muted);}
-
-/* ── Device badge on cards ── */
-.dev-badge{font-family:var(--font-mono);font-size:.42rem;font-weight:700;padding:2px 6px;border-radius:4px;
-  margin-left:3px;display:inline-block;vertical-align:middle;}
-.dev-badge.mob{background:color-mix(in srgb,var(--neon-d) 14%,transparent);border:1px solid color-mix(in srgb,var(--neon-d) 25%,transparent);color:var(--neon-d);}
-.dev-badge.pc{background:color-mix(in srgb,var(--neon-c) 14%,transparent);border:1px solid color-mix(in srgb,var(--neon-c) 25%,transparent);color:var(--neon-c);}
-
-/* ── Games grid ── */
-.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:11px;}
-@media(min-width:900px){.games-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}}
-@media(min-width:1200px){.games-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}}
-@media(min-width:1400px){.games-grid{grid-template-columns:repeat(5,1fr);gap:14px;}}
-
-/* ── Game card ── */
+  display:flex;align-items:center;gap:5px;color:var(--muted);}
+.device-filter-btn.mobile-on{border-color:var(--neon-d);color:var(--neon-d);}
+.device-filter-btn.desktop-on{border-color:var(--neon-c);color:var(--neon-c);}
+.dev-badge{font-family:var(--font-mono);font-size:.42rem;font-weight:700;padding:2px 5px;border-radius:4px;margin-left:3px;}
+.dev-badge.mob{color:var(--neon-d);border:1px solid color-mix(in srgb,var(--neon-d) 25%,transparent);}
+.dev-badge.pc{color:var(--neon-c);border:1px solid color-mix(in srgb,var(--neon-c) 25%,transparent);}
+/* GAMES GRID */
+.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;width:100%;}
+@media(min-width:768px){.games-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}}
+@media(min-width:1100px){.games-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}}
+@media(max-width:480px){.games-grid{grid-template-columns:repeat(2,1fr);gap:8px;}}
+/* GAME CARD */
 .game-card{display:flex;flex-direction:column;background:var(--card-bg);border:1.5px solid var(--line);
-  border-radius:14px;padding:18px 16px 14px;text-decoration:none;color:var(--text);
-  transition:border-color .15s,transform .14s,box-shadow .15s;position:relative;overflow:hidden;cursor:pointer;}
-.game-card::before{content:'';position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(ellipse 80% 60% at 50% 0%,color-mix(in srgb,var(--ca,var(--neon-a)) 12%,transparent),transparent 70%);
-  opacity:0;transition:opacity .2s;}
+  border-radius:13px;padding:16px 14px 13px;text-decoration:none;color:var(--text);
+  transition:border-color .15s,transform .14s,box-shadow .15s;position:relative;overflow:hidden;}
 .game-card:hover{border-color:var(--ca,var(--neon-a));transform:translateY(-3px);
-  box-shadow:0 8px 30px color-mix(in srgb,var(--ca,var(--neon-a)) 15%,transparent);}
-.game-card:hover::before{opacity:1;}
-.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
-.card-icon{font-size:2.4rem;line-height:1;transition:transform .2s;
-  filter:drop-shadow(0 2px 8px color-mix(in srgb,var(--ca,var(--neon-a)) 40%,transparent));}
-.game-card:hover .card-icon{transform:scale(1.15) translateY(-2px);}
-.card-tag{font-family:var(--font-mono);font-size:.44rem;font-weight:700;color:var(--ca,var(--neon-a));
-  letter-spacing:.14em;background:color-mix(in srgb,var(--ca,var(--neon-a)) 13%,transparent);
-  border:1px solid color-mix(in srgb,var(--ca,var(--neon-a)) 25%,transparent);padding:3px 7px;border-radius:5px;}
-.card-name{font-family:var(--font-ui);font-size:1rem;font-weight:700;margin-bottom:4px;line-height:1.2;}
-.card-desc{font-family:var(--font-mono);font-size:.56rem;color:var(--muted);line-height:1.55;flex:1;margin-bottom:10px;}
+  box-shadow:0 8px 28px color-mix(in srgb,var(--ca,var(--neon-a)) 14%,transparent);}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px;}
+.card-icon{font-size:2.2rem;line-height:1;}
+.card-tag{font-family:var(--font-mono);font-size:.42rem;font-weight:700;color:var(--ca,var(--neon-a));
+  letter-spacing:.12em;background:color-mix(in srgb,var(--ca,var(--neon-a)) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--ca,var(--neon-a)) 22%,transparent);padding:3px 7px;border-radius:5px;}
+.card-name{font-family:var(--font-ui);font-size:.95rem;font-weight:700;margin-bottom:4px;line-height:1.2;}
+.card-desc{font-family:var(--font-mono);font-size:.54rem;color:var(--muted);line-height:1.5;flex:1;margin-bottom:10px;}
 .card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
-.card-play{font-family:var(--font-mono);font-size:.58rem;font-weight:700;color:var(--ca,var(--neon-a));letter-spacing:.1em;}
-.card-play::after{content:'→';margin-left:4px;transition:transform .12s;display:inline-block;}
-.game-card:hover .card-play::after{transform:translateX(4px);}
+.card-play{font-family:var(--font-mono);font-size:.56rem;font-weight:700;color:var(--ca,var(--neon-a));}
+.card-play::after{content:' →';}
 .card-diff{display:flex;gap:3px;}
-.card-diff span{width:6px;height:6px;border-radius:50%;background:var(--ca,var(--neon-a));opacity:.22;}
+.card-diff span{width:6px;height:6px;border-radius:50%;background:var(--ca,var(--neon-a));opacity:.2;}
 .card-diff span.on{opacity:1;}
-.cost-badge{font-family:var(--font-mono);font-size:.5rem;font-weight:700;padding:3px 7px;border-radius:5px;
-  background:color-mix(in srgb,var(--neon-c) 12%,transparent);border:1px solid color-mix(in srgb,var(--neon-c) 22%,transparent);color:var(--neon-c);}
-.cost-badge.free{background:color-mix(in srgb,var(--neon-d) 12%,transparent);border-color:color-mix(in srgb,var(--neon-d) 22%,transparent);color:var(--neon-d);}
-.gotd-badge{position:absolute;top:7px;left:7px;z-index:3;background:var(--neon-c);color:#000;
-  font-family:var(--font-mono);font-size:.42rem;font-weight:900;padding:3px 8px;border-radius:4px;}
-.play-count{position:absolute;bottom:7px;right:8px;font-family:var(--font-mono);font-size:.44rem;color:var(--muted);opacity:.65;pointer-events:none;}
-
-/* ── Streak days ── */
-.streak-day{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--line2);
-  background:var(--card-bg);display:flex;align-items:center;justify-content:center;font-size:1rem;}
-.streak-day.done{background:color-mix(in srgb,var(--neon-f) 18%,transparent);border-color:var(--neon-f);}
-
-/* ── Activity ── */
+.cost-badge{font-family:var(--font-mono);font-size:.48rem;font-weight:700;padding:3px 7px;border-radius:5px;
+  background:color-mix(in srgb,var(--neon-c) 12%,transparent);border:1px solid color-mix(in srgb,var(--neon-c) 20%,transparent);color:var(--neon-c);}
+.cost-badge.free{background:color-mix(in srgb,var(--neon-d) 12%,transparent);border-color:color-mix(in srgb,var(--neon-d) 20%,transparent);color:var(--neon-d);}
+.gotd-badge{position:absolute;top:8px;left:8px;z-index:2;background:var(--neon-c);color:#000;
+  font-family:var(--font-mono);font-size:.42rem;font-weight:900;padding:3px 7px;border-radius:4px;}
+.play-count{font-family:var(--font-mono);font-size:.44rem;color:var(--muted);margin-top:4px;opacity:.7;}
+.no-results{text-align:center;padding:48px 20px;font-family:var(--font-mono);font-size:.78rem;color:var(--muted);line-height:2.2;}
+.device-banner{font-family:var(--font-mono);font-size:.58rem;padding:8px 14px;border-radius:8px;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;background:var(--card-bg);border:1px solid var(--line2);color:var(--muted);}
+.device-banner b{color:var(--text);}
 .activity-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;
   background:var(--card-bg);border:1px solid var(--line);margin-bottom:5px;
   font-family:var(--font-mono);font-size:.62rem;color:var(--text2);}
 .activity-row .act-time{color:var(--muted);font-size:.52rem;margin-left:auto;white-space:nowrap;}
-
-/* ── No results ── */
-.no-results{text-align:center;padding:44px 20px;font-family:var(--font-mono);font-size:.78rem;color:var(--muted);line-height:2.2;}
-
-/* ── Device banner ── */
-.device-banner{font-family:var(--font-mono);font-size:.6rem;padding:8px 14px;border-radius:8px;
-  margin-bottom:8px;display:flex;align-items:center;gap:8px;
-  background:var(--card-bg);border:1px solid var(--line2);color:var(--muted);}
-.device-banner b{color:var(--text);}
+/* Streak */
+.streak-card{background:var(--card-bg);border:1.5px solid color-mix(in srgb,var(--neon-f) 30%,var(--line2));
+  border-radius:14px;padding:14px 16px;margin-bottom:4px;}
+.streak-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.streak-card-title{font-family:var(--font-mono);font-size:.65rem;font-weight:800;color:var(--neon-f);display:flex;align-items:center;gap:6px;}
+.streak-card-best{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);}
+.streak-dots{display:flex;gap:5px;}
+.sd{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:7px 2px;background:var(--bg2);border:1.5px solid var(--line2);border-radius:9px;transition:all .2s;}
+.sd.sd-on{background:color-mix(in srgb,var(--neon-f) 15%,transparent);border-color:var(--neon-f);}
+.sd.sd-today{border-color:var(--neon-c) !important;}
+.sd-icon{font-size:.85rem;line-height:1;}
+.sd-label{font-family:var(--font-mono);font-size:.44rem;color:var(--muted);font-weight:700;}
+.sd.sd-on .sd-label{color:var(--neon-f);}
+.sd.sd-today .sd-label{color:var(--neon-c);}
+.streak-tip{font-family:var(--font-mono);font-size:.54rem;color:var(--muted);margin-top:8px;}
+/* Daily challenge */
+.dc-card{background:linear-gradient(135deg,color-mix(in srgb,var(--neon-e) 8%,var(--card-bg)),color-mix(in srgb,var(--neon-c) 5%,var(--card-bg)));
+  border:1.5px solid color-mix(in srgb,var(--neon-e) 30%,var(--line2));border-radius:14px;padding:16px;margin-bottom:4px;
+  position:relative;overflow:hidden;box-shadow:0 4px 20px color-mix(in srgb,var(--neon-e) 8%,transparent);}
+.dc-badge{font-family:var(--font-mono);font-size:.52rem;font-weight:800;color:var(--neon-e);letter-spacing:.14em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.dc-content{display:flex;align-items:center;gap:14px;}
+.dc-game-icon{font-size:2.6rem;line-height:1;flex-shrink:0;}
+.dc-info{flex:1;min-width:0;}
+.dc-game-name{font-family:var(--font-display);font-size:1.15rem;color:var(--text);letter-spacing:.04em;}
+.dc-desc{font-family:var(--font-mono);font-size:.54rem;color:var(--text2);margin-top:2px;}
+.dc-reward{font-family:var(--font-mono);font-size:.54rem;color:var(--neon-c);margin-top:4px;font-weight:700;}
+.dc-btn{display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:.62rem;font-weight:700;
+  margin-top:12px;padding:9px 18px;background:var(--neon-e);color:#000;border-radius:9px;text-decoration:none;
+  transition:opacity .14s;}
+.dc-btn:hover{opacity:.85;}
+.dc-claimed{opacity:.6;}
+.dc-countdown{font-family:var(--font-mono);font-size:.52rem;color:var(--muted);margin-top:6px;}
+/* Quick actions grid */
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+@media(min-width:520px){.qa-grid{grid-template-columns:repeat(8,1fr);}}
+.qa-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 6px 9px;
+  background:var(--card-bg);border:1px solid var(--line2);border-radius:12px;
+  cursor:pointer;text-decoration:none;transition:all .14s;position:relative;-webkit-tap-highlight-color:transparent;}
+.qa-item:hover,.qa-item:active{border-color:var(--lc,var(--neon-a));
+  background:color-mix(in srgb,var(--lc,var(--neon-a)) 7%,var(--card-bg));transform:scale(.96);}
+.qa-icon{font-size:1.45rem;line-height:1;}
+.qa-label{font-family:var(--font-mono);font-size:.46rem;font-weight:700;color:var(--muted);letter-spacing:.05em;}
+.qa-badge{position:absolute;top:4px;right:4px;background:var(--neon-b);color:#000;
+  font-family:var(--font-mono);font-size:.42rem;font-weight:900;width:13px;height:13px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;}
+/* Hub stats */
+.hub-stats{display:flex;gap:0;justify-content:center;
+  background:color-mix(in srgb,var(--text) 4%,transparent);
+  border:1px solid var(--line2);border-radius:14px;overflow:hidden;max-width:360px;margin:18px auto 0;}
+.hub-stat{flex:1;padding:13px 8px 11px;text-align:center;border-right:1px solid var(--line2);}
+.hub-stat:last-child{border-right:none;}
+.hs-val{font-family:var(--font-display);font-size:clamp(1.1rem,5vw,1.6rem);color:var(--neon-c);line-height:1;}
+.hs-lbl{font-family:var(--font-mono);font-size:.44rem;color:var(--muted);letter-spacing:.08em;margin-top:3px;}
 </style>
 </head>
 <body>
 <div class="grid-bg"></div>
+
+<!-- NAV -->
 <nav class="nav" id="main-nav">
   <div class="nav-logo">ARCADE<em>ZONE</em></div>
   <div class="nav-sep"></div>
   <a class="coin-nav" href="wallet.html"><span>🪙</span><span class="az-bal">0</span></a>
-  <a id="auth-nav-btn" href="login.html" style="font-family:var(--font-mono);font-size:.56rem;padding:5px 9px;border-radius:8px;border:1px solid var(--line2);color:var(--muted);text-decoration:none;white-space:nowrap;transition:all .14s;flex-shrink:0;">SIGN IN</a>
+  <a id="auth-nav-btn" href="login.html" style="font-family:var(--font-mono);font-size:.56rem;padding:5px 9px;border-radius:8px;border:1px solid var(--line2);color:var(--muted);text-decoration:none;white-space:nowrap;flex-shrink:0;">SIGN IN</a>
   <button class="theme-btn" id="theme-btn">🌙</button>
 </nav>
 
-<!-- ═══ HUB HERO ═══════════════════════════════════════════════ -->
+<!-- HERO -->
 <div class="hub-hero">
   <div class="hub-hero-bg"></div>
-
-  <!-- Greeting + Logo -->
-  <div class="hub-greeting" id="hub-greeting">Good morning 👋</div>
+  <div id="hub-greeting" style="font-family:var(--font-mono);font-size:.68rem;color:var(--text2);margin-bottom:8px;opacity:.8;">Good morning 👋</div>
   <div class="hub-headline"><span class="a">ARCADE</span><span class="b">ZONE</span></div>
   <p class="hub-tagline">14 GAMES · NO ADS · FREE FOREVER</p>
-
-  <!-- XP progress -->
-  <div class="hero-xp-wrap">
-    <div class="hero-xp-bar-bg">
-      <div class="hero-xp-bar-fill az-xp-bar" style="width:0%"></div>
-    </div>
-    <div class="hero-xp-label">
-      <span class="az-level">Lv.1</span>
-      <span id="xp-to-next" style="color:var(--muted)">0 XP to next</span>
-    </div>
+  <div class="xp-hero-bar"><div class="xp-hero-fill az-xp-bar" style="width:0%"></div></div>
+  <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;width:min(320px,88vw);margin-left:auto;margin-right:auto;">
+    <span class="az-level">Lv.1</span><span id="xp-to-next">0 XP to next</span>
   </div>
-
-  <!-- Stats pills -->
   <div class="hub-stats">
-    <div class="hub-stat">
-      <div class="hs-val az-bal">0</div>
-      <div class="hs-lbl">🪙 COINS</div>
-    </div>
-    <div class="hub-stat">
-      <div class="hs-val" id="s-played">0</div>
-      <div class="hs-lbl">🎮 PLAYED</div>
-    </div>
-    <div class="hub-stat">
-      <div class="hs-val" id="s-wins">0</div>
-      <div class="hs-lbl">🏆 WINS</div>
-    </div>
-    <div class="hub-stat">
-      <div class="hs-val" id="hero-streak">0</div>
-      <div class="hs-lbl">🔥 STREAK</div>
-    </div>
+    <div class="hub-stat"><div class="hs-val az-bal">0</div><div class="hs-lbl">🪙 COINS</div></div>
+    <div class="hub-stat"><div class="hs-val" id="s-played">0</div><div class="hs-lbl">🎮 PLAYED</div></div>
+    <div class="hub-stat"><div class="hs-val" id="s-wins">0</div><div class="hs-lbl">🏆 WINS</div></div>
+    <div class="hub-stat"><div class="hs-val" id="hero-streak">0</div><div class="hs-lbl">🔥 STREAK</div></div>
   </div>
 </div>
 
-<!-- ═══ MAIN CONTENT ════════════════════════════════════════════ -->
+<!-- MAIN -->
 <main>
 <div class="hub-inner">
 
-  <!-- ── Daily Challenge ──────────────────────────────────── -->
+  <!-- Daily Challenge -->
   <div id="daily-challenge-wrap"></div>
 
-  <!-- ── Streak Card (moved out of hero, sits here as a card) -->
+  <!-- Streak Card -->
   <div class="streak-card" id="streak-card">
     <div class="streak-card-header">
-      <div class="streak-card-title">
-        <span class="streak-fire-anim" id="streak-fire">🔥</span>
-        <span id="streak-track-text">0 day streak</span>
-      </div>
-      <span class="streak-card-best" id="streak-track-best"></span>
+      <div class="streak-card-title">🔥 <span id="streak-text">0 day streak</span></div>
+      <span class="streak-card-best" id="streak-best"></span>
     </div>
     <div class="streak-dots" id="streak-dots"></div>
-    <div class="streak-card-tip" id="streak-tip">Play any game today to keep your streak!</div>
+    <div class="streak-tip" id="streak-tip">Play any game today to start your streak!</div>
   </div>
 
-  <!-- ── Quick Actions ── -->
+  <!-- Quick Actions -->
   <div class="hub-stitle">⚡ QUICK ACTIONS</div>
-  <div class="quick-actions-grid">
-    <a class="qa-item" href="spin.html" style="--lc:var(--neon-e)" id="ql-spin">
-      <div class="qa-icon">🎡</div><div class="qa-label">SPIN</div>
-    </a>
-    <a class="qa-item" href="wallet.html" style="--lc:var(--neon-c)">
-      <div class="qa-icon">🪙</div><div class="qa-label">WALLET</div>
-    </a>
-    <a class="qa-item" href="battle.html" style="--lc:var(--neon-b)">
-      <div class="qa-icon">⚔️</div><div class="qa-label">BATTLE</div>
-    </a>
-    <a class="qa-item" href="leaderboard.html" style="--lc:var(--neon-c)">
-      <div class="qa-icon">🏆</div><div class="qa-label">RANKS</div>
-    </a>
-    <a class="qa-item" href="casino.html" style="--lc:var(--neon-b)">
-      <div class="qa-icon">🎰</div><div class="qa-label">CASINO</div>
-    </a>
-    <a class="qa-item" href="shop.html" style="--lc:var(--neon-f)">
-      <div class="qa-icon">🛍️</div><div class="qa-label">SHOP</div>
-    </a>
-    <a class="qa-item" href="profile.html" style="--lc:var(--neon-e)">
-      <div class="qa-icon">👤</div><div class="qa-label">PROFILE</div>
-    </a>
-    <a class="qa-item" href="settings.html" style="--lc:var(--muted)">
-      <div class="qa-icon">⚙️</div><div class="qa-label">SETTINGS</div>
-    </a>
+  <div class="qa-grid">
+    <a class="qa-item" href="spin.html"        style="--lc:var(--neon-e)" id="qa-spin"><div class="qa-icon">🎡</div><div class="qa-label">SPIN</div></a>
+    <a class="qa-item" href="wallet.html"       style="--lc:var(--neon-c)"><div class="qa-icon">🪙</div><div class="qa-label">WALLET</div></a>
+    <a class="qa-item" href="battle.html"       style="--lc:var(--neon-b)"><div class="qa-icon">⚔️</div><div class="qa-label">BATTLE</div></a>
+    <a class="qa-item" href="leaderboard.html"  style="--lc:var(--neon-c)"><div class="qa-icon">🏆</div><div class="qa-label">RANKS</div></a>
+    <a class="qa-item" href="casino.html"       style="--lc:var(--neon-b)"><div class="qa-icon">🎰</div><div class="qa-label">CASINO</div></a>
+    <a class="qa-item" href="shop.html"         style="--lc:var(--neon-f)"><div class="qa-icon">🛍️</div><div class="qa-label">SHOP</div></a>
+    <a class="qa-item" href="profile.html"      style="--lc:var(--neon-e)"><div class="qa-icon">👤</div><div class="qa-label">PROFILE</div></a>
+    <a class="qa-item" href="settings.html"     style="--lc:var(--muted)"><div class="qa-icon">⚙️</div><div class="qa-label">SETTINGS</div></a>
   </div>
 
-
+  <!-- Games -->
   <div class="hub-stitle">🎮 GAMES</div>
+  <div class="device-banner" id="device-banner" style="display:none;"></div>
 
-  <!-- Device banner (shown based on detected device) -->
-  <div class="device-banner" id="device-banner" style="display:none"></div>
-
-  <!-- Search + filters -->
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input class="search-input" id="search-input" type="text"
-      placeholder="Search games…" oninput="filterGames(this.value)" autocomplete="off">
+    <input class="search-input" id="search-input" type="text" placeholder="Search games…"
+      autocomplete="off" oninput="filterGames(this.value)">
   </div>
 
   <div class="filter-row" style="margin-top:10px;">
@@ -252,19 +219,19 @@
     <button class="cat-btn" onclick="setCat('puzzle',this)">🧩 Puzzle</button>
     <button class="cat-btn" onclick="setCat('board',this)">🎲 Board</button>
     <button class="cat-btn" onclick="setCat('skill',this)">⚡ Skill</button>
-    <button class="device-filter-btn" id="dev-filter-btn" onclick="toggleDeviceFilter()" title="Filter for your device">
-      <span id="dev-filter-icon">📱</span> <span id="dev-filter-label">My Device</span>
+    <button class="device-filter-btn" id="dev-filter-btn" onclick="toggleDeviceFilter()">
+      <span id="dev-filter-icon">📱</span><span id="dev-filter-label">My Device</span>
     </button>
   </div>
 
-  <div id="games-section" style="margin-top:14px;">
+  <div style="margin-top:12px;">
     <div class="games-grid" id="main-grid"></div>
-    <div id="no-results" class="no-results" style="display:none">
+    <div class="no-results" id="no-results" style="display:none;">
       No games found for "<span id="search-term" style="color:var(--neon-a)"></span>"
     </div>
   </div>
 
-  <div id="activity-section" style="display:none">
+  <div id="activity-section" style="display:none;">
     <div class="hub-stitle">📜 RECENT ACTIVITY</div>
     <div id="activity-feed"></div>
   </div>
@@ -275,111 +242,120 @@
 <footer class="hub-footer">
   ARCADE ZONE © 2026 &nbsp;·&nbsp; NO ADS &nbsp;·&nbsp; NO TRACKING &nbsp;·&nbsp; JUST FUN<br>
   <a href="https://buymeacoffee.com/arcadezone" target="_blank" rel="noopener"
-     style="display:inline-flex;align-items:center;gap:6px;background:#FFDD00;color:#1a1000;font-family:var(--font-mono);font-weight:800;font-size:.65rem;padding:8px 16px;border-radius:8px;text-decoration:none;margin-top:10px;box-shadow:0 2px 12px rgba(255,221,0,.3);">
+     style="display:inline-flex;align-items:center;gap:6px;background:#FFDD00;color:#1a1000;font-family:var(--font-mono);font-weight:800;font-size:.65rem;padding:8px 16px;border-radius:8px;text-decoration:none;margin-top:10px;">
     ☕ Buy Me a Coffee
   </a>
 </footer>
 
 <script>
-/* ── Device Detection ── */
-var IS_MOBILE = (function(){
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-    || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
-})();
-
-/* Show device banner */
-(function(){
-  var banner = document.getElementById('device-banner');
-  if (IS_MOBILE) {
-    banner.style.display = 'flex';
-    banner.innerHTML = '📱 <span><b>Mobile detected</b> — touch-friendly games highlighted. Tap "My Device" to filter.</span>';
-  } else {
-    banner.style.display = 'flex';
-    banner.innerHTML = '💻 <span><b>Desktop detected</b> — keyboard & mouse games highlighted. Click "My Device" to filter.</span>';
-  }
-})();
-
-/* ── Game Database ── */
-/* device: 'both' | 'mobile' | 'desktop' */
+/* ── GAMES DATABASE ── */
 var GAMES = [
-  /* ARCADE */
-  {id:'tetris',    icon:'🟦', name:'Tetris',        desc:'Stack blocks, clear lines.',              tag:'ARCADE', cat:'arcade', diff:2, ca:'var(--neon-a)', cost:10, device:'both'},
-  {id:'breakout',  icon:'🟠', name:'Breakout',       desc:'Smash every brick with your paddle.',     tag:'ARCADE', cat:'arcade', diff:2, ca:'var(--neon-f)', cost:10, device:'both'},
-  {id:'flappy',    icon:'🐦', name:'Flappy Bird',    desc:'Tap to fly, dodge the pipes.',            tag:'ARCADE', cat:'arcade', diff:3, ca:'var(--neon-d)', cost:10, device:'both'},
-  /* PUZZLE */
-  {id:'2048',      icon:'🔢', name:'2048',           desc:'Merge tiles, reach 2048.',                tag:'PUZZLE', cat:'puzzle', diff:2, ca:'var(--neon-c)', cost:10, device:'both'},
-  {id:'sudoku',    icon:'🔷', name:'Sudoku',         desc:'Fill the 9×9 grid. 3 difficulties.',     tag:'LOGIC',  cat:'puzzle', diff:2, ca:'var(--neon-c)', cost:0,  device:'both'},
-  {id:'wordguess', icon:'📝', name:'Word Guess',     desc:'Guess the 5-letter word in 6 tries.',    tag:'WORD',   cat:'puzzle', diff:2, ca:'var(--neon-a)', cost:0,  device:'both'},
-  {id:'minesweeper',icon:'💣',name:'Minesweeper',    desc:'Flag mines, clear the board.',            tag:'LOGIC',  cat:'puzzle', diff:2, ca:'var(--neon-d)', cost:0,  device:'desktop'},
-  {id:'memory',    icon:'🃏', name:'Memory Match',   desc:'Flip cards, find all pairs.',             tag:'MEMORY', cat:'puzzle', diff:1, ca:'var(--neon-e)', cost:5,  device:'both'},
-  /* BOARD */
-  {id:'tictactoe', icon:'❎', name:'Tic Tac Toe',    desc:'Beat the minimax AI.',                    tag:'BOARD',  cat:'board',  diff:1, ca:'var(--neon-b)', cost:0,  device:'both'},
-  {id:'connect4',  icon:'🟡', name:'Connect Four',   desc:'Drop pieces, get 4 in a row.',            tag:'BOARD',  cat:'board',  diff:2, ca:'var(--neon-f)', cost:5,  device:'both'},
-  /* SKILL */
-  {id:'speedmath', icon:'🧮', name:'Speed Math',     desc:'60s rapid-fire arithmetic.',              tag:'BRAIN',  cat:'skill',  diff:2, ca:'var(--neon-c)', cost:0,  device:'both'},
-  {id:'mole',      icon:'🦔', name:'Whack-a-Mole',  desc:'30 seconds of mole-smashing.',            tag:'REFLEX', cat:'skill',  diff:1, ca:'var(--neon-c)', cost:5,  device:'mobile'},
-  {id:'reaction',  icon:'⚡', name:'Reaction Test',  desc:'Click the instant it turns green.',       tag:'SPEED',  cat:'skill',  diff:1, ca:'var(--neon-b)', cost:0,  device:'both'},
-  {id:'simon',     icon:'🔴', name:'Simon Says',     desc:'Watch and copy the colour pattern.',      tag:'MEMORY', cat:'skill',  diff:2, ca:'var(--neon-b)', cost:5,  device:'both'},
+  {id:'tetris',     icon:'🟦', name:'Tetris',        desc:'Stack blocks, clear lines.',           tag:'ARCADE', cat:'arcade', diff:2, ca:'var(--neon-a)', cost:10, device:'both'},
+  {id:'breakout',   icon:'🟠', name:'Breakout',       desc:'Smash every brick.',                   tag:'ARCADE', cat:'arcade', diff:2, ca:'var(--neon-f)', cost:10, device:'both'},
+  {id:'flappy',     icon:'🐦', name:'Flappy Bird',    desc:'Tap to fly, dodge the pipes.',         tag:'ARCADE', cat:'arcade', diff:3, ca:'var(--neon-d)', cost:10, device:'both'},
+  {id:'2048',       icon:'🔢', name:'2048',           desc:'Merge tiles, reach 2048.',             tag:'PUZZLE', cat:'puzzle', diff:2, ca:'var(--neon-c)', cost:10, device:'both'},
+  {id:'sudoku',     icon:'🔷', name:'Sudoku',         desc:'Fill the 9x9 grid.',                   tag:'LOGIC',  cat:'puzzle', diff:2, ca:'var(--neon-c)', cost:0,  device:'both'},
+  {id:'wordguess',  icon:'📝', name:'Word Guess',     desc:'Guess the 5-letter word in 6 tries.',  tag:'WORD',   cat:'puzzle', diff:2, ca:'var(--neon-a)', cost:0,  device:'both'},
+  {id:'minesweeper',icon:'💣', name:'Minesweeper',    desc:'Flag mines, clear the board.',         tag:'LOGIC',  cat:'puzzle', diff:2, ca:'var(--neon-d)', cost:0,  device:'desktop'},
+  {id:'memory',     icon:'🃏', name:'Memory Match',   desc:'Flip cards, find all pairs.',          tag:'MEMORY', cat:'puzzle', diff:1, ca:'var(--neon-e)', cost:5,  device:'both'},
+  {id:'tictactoe',  icon:'❎', name:'Tic Tac Toe',    desc:'Beat the minimax AI.',                 tag:'BOARD',  cat:'board',  diff:1, ca:'var(--neon-b)', cost:0,  device:'both'},
+  {id:'connect4',   icon:'🟡', name:'Connect Four',   desc:'Drop pieces, get 4 in a row.',         tag:'BOARD',  cat:'board',  diff:2, ca:'var(--neon-f)', cost:5,  device:'both'},
+  {id:'speedmath',  icon:'🧮', name:'Speed Math',     desc:'60s rapid-fire arithmetic.',           tag:'BRAIN',  cat:'skill',  diff:2, ca:'var(--neon-c)', cost:0,  device:'both'},
+  {id:'mole',       icon:'🦔', name:'Whack-a-Mole',  desc:'30 seconds of mole-smashing.',         tag:'REFLEX', cat:'skill',  diff:1, ca:'var(--neon-c)', cost:5,  device:'mobile'},
+  {id:'reaction',   icon:'⚡', name:'Reaction Test',  desc:'Click the instant it turns green.',    tag:'SPEED',  cat:'skill',  diff:1, ca:'var(--neon-b)', cost:0,  device:'both'},
+  {id:'simon',      icon:'🔴', name:'Simon Says',     desc:'Watch and copy the colour pattern.',   tag:'MEMORY', cat:'skill',  diff:2, ca:'var(--neon-b)', cost:5,  device:'both'}
 ];
 
+var IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
 var activeCat = 'all';
 var searchVal = '';
-var deviceFilter = false; /* whether "My Device" filter is active */
+var deviceFilter = false;
 
-/* ── Game of the day ── */
-function getGotd(){
-  var ids = GAMES.map(function(g){ return g.id; });
+/* ── Game of the Day ── */
+function getGotd() {
   var d = new Date();
-  var seed = d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
-  return ids[seed % ids.length];
+  var seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  return GAMES[seed % GAMES.length].id;
 }
 var GOTD = getGotd();
 
 /* ── Helpers ── */
-function dots(n){
-  return [1,2,3].map(function(i){
-    return '<span class="' + (i<=n?'on':'') + '"></span>';
+function dots(n) {
+  return [1,2,3].map(function(i) {
+    return '<span class="' + (i <= n ? 'on' : '') + '"></span>';
   }).join('');
 }
-function costBadge(c){
-  return c===0
+function costBadge(c) {
+  return c === 0
     ? '<span class="cost-badge free">FREE</span>'
-    : '<span class="cost-badge">🪙 '+c+'</span>';
+    : '<span class="cost-badge">🪙 ' + c + '</span>';
 }
-function devBadge(device){
+function devBadge(device) {
   if (device === 'mobile')  return '<span class="dev-badge mob">📱</span>';
   if (device === 'desktop') return '<span class="dev-badge pc">💻</span>';
   return '';
 }
 
-/* ── Build card HTML ── */
-function buildCard(g, isGotd){
-  var stats = (CoinEngine.getStats()||{})[g.id] || {};
+/* ── Build card ── */
+function buildCard(g, isGotd) {
+  var stats = (CoinEngine.getStats() || {})[g.id] || {};
   var plays = stats.plays || 0;
-  var devB = devBadge(g.device);
-  return '<a class="game-card" href="'+g.id+'.html" style="--ca:'+g.ca+(isGotd?';box-shadow:0 0 0 2px var(--neon-c),0 6px 28px color-mix(in srgb,var(--neon-c) 20%,transparent)':'')+'">'
+  return '<a class="game-card" href="' + g.id + '.html" style="--ca:' + g.ca + (isGotd ? ';outline:2px solid var(--neon-c);' : '') + '">'
     + (isGotd ? '<div class="gotd-badge">⭐ TODAY</div>' : '')
-    + '<div class="card-top"><span class="card-icon">'+g.icon+'</span><span class="card-tag">'+g.tag+devB+'</span></div>'
-    + '<div class="card-name">'+g.name+'</div>'
-    + '<div class="card-desc">'+g.desc+'</div>'
+    + '<div class="card-top"><span class="card-icon">' + g.icon + '</span>'
+    + '<span class="card-tag">' + g.tag + devBadge(g.device) + '</span></div>'
+    + '<div class="card-name">' + g.name + '</div>'
+    + '<div class="card-desc">' + g.desc + '</div>'
     + '<div class="card-footer"><span class="card-play">PLAY</span>'
-    + '<div style="display:flex;align-items:center;gap:7px;">'+costBadge(g.cost)+'<span class="card-diff">'+dots(g.diff)+'</span></div>'
-    + '</div>'
-    + (plays > 0 ? '<div class="play-count">'+plays+'× played</div>' : '')
+    + '<div style="display:flex;align-items:center;gap:6px;">' + costBadge(g.cost)
+    + '<span class="card-diff">' + dots(g.diff) + '</span></div></div>'
+    + (plays > 0 ? '<div class="play-count">' + plays + '× played</div>' : '')
     + '</a>';
 }
 
-/* ── Filter ── */
-function setCat(cat, el){
+/* ── Render games ── */
+function renderAll() {
+  var grid = document.getElementById('main-grid');
+  var nr   = document.getElementById('no-results');
+  if (!grid) return;
+
+  var list = GAMES.filter(function(g) {
+    if (activeCat !== 'all' && g.cat !== activeCat) return false;
+    if (deviceFilter) {
+      var myDev = IS_MOBILE ? 'mobile' : 'desktop';
+      if (g.device !== 'both' && g.device !== myDev) return false;
+    }
+    if (searchVal) {
+      return (g.name + g.tag + g.desc + g.id).toLowerCase().indexOf(searchVal) >= 0;
+    }
+    return true;
+  });
+
+  if (!list.length) {
+    grid.innerHTML = '';
+    if (nr) { nr.style.display = 'block'; document.getElementById('search-term').textContent = searchVal || activeCat; }
+    return;
+  }
+  if (nr) nr.style.display = 'none';
+  grid.innerHTML = list.map(function(g) { return buildCard(g, g.id === GOTD && !searchVal); }).join('');
+}
+
+/* ── Filters ── */
+function setCat(cat, el) {
   activeCat = cat;
-  document.querySelectorAll('.cat-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.cat-btn').forEach(function(b) { b.classList.remove('active'); });
   if (el) el.classList.add('active');
   renderAll();
 }
 
-function toggleDeviceFilter(){
+function filterGames(v) {
+  searchVal = v.toLowerCase().trim();
+  renderAll();
+}
+
+function toggleDeviceFilter() {
   deviceFilter = !deviceFilter;
-  var btn = document.getElementById('dev-filter-btn');
+  var btn  = document.getElementById('dev-filter-btn');
   var icon = document.getElementById('dev-filter-icon');
   var lbl  = document.getElementById('dev-filter-label');
   if (deviceFilter) {
@@ -387,150 +363,148 @@ function toggleDeviceFilter(){
     icon.textContent = IS_MOBILE ? '📱' : '💻';
     lbl.textContent  = IS_MOBILE ? 'Mobile' : 'Desktop';
   } else {
-    btn.classList.remove('mobile-on','desktop-on');
-    icon.textContent = IS_MOBILE ? '📱' : '💻';
-    lbl.textContent  = 'My Device';
+    btn.classList.remove('mobile-on', 'desktop-on');
+    lbl.textContent = 'My Device';
   }
   renderAll();
 }
 
-function filterGames(v){ searchVal = v.toLowerCase().trim(); renderAll(); }
-
-function renderAll(){
-  var grid = document.getElementById('main-grid');
-  var list = GAMES.filter(function(g){
-    /* Category filter */
-    if (activeCat !== 'all' && g.cat !== activeCat) return false;
-    /* Device filter */
-    if (deviceFilter) {
-      var myDevice = IS_MOBILE ? 'mobile' : 'desktop';
-      if (g.device !== 'both' && g.device !== myDevice) return false;
-    }
-    /* Search filter */
-    if (searchVal) {
-      return (g.name+g.tag+g.desc+g.id).toLowerCase().indexOf(searchVal) >= 0;
-    }
-    return true;
-  });
-
-  var nr = document.getElementById('no-results');
-  if (!list.length) {
-    grid.innerHTML = '';
-    nr.style.display = 'block';
-    document.getElementById('search-term').textContent = searchVal || (activeCat !== 'all' ? activeCat : 'this filter');
-    return;
-  }
-  nr.style.display = 'none';
-  grid.innerHTML = list.map(function(g){ return buildCard(g, g.id === GOTD && !searchVal); }).join('');
-}
+/* ── Device banner ── */
+(function() {
+  var b = document.getElementById('device-banner');
+  if (!b) return;
+  b.style.display = 'flex';
+  b.innerHTML = IS_MOBILE
+    ? '📱 <span><b>Mobile</b> — touch-friendly games highlighted. Tap "My Device" to filter.</span>'
+    : '💻 <span><b>Desktop</b> — keyboard games highlighted. Click "My Device" to filter.</span>';
+})();
 
 /* ── Streak ── */
-function renderStreak(){
-  var s = CoinEngine.getStreak ? CoinEngine.getStreak() : {current:0,best:0};
+function renderStreak() {
+  var s   = CoinEngine.getStreak ? CoinEngine.getStreak() : { current: 0, best: 0 };
   var cur = s.current || 0;
   var best = s.best || 0;
 
-  /* Hero stat */
   var heroEl = document.getElementById('hero-streak');
   if (heroEl) heroEl.textContent = cur;
 
-  /* Streak card title */
-  var trackText = document.getElementById('streak-track-text');
-  if (trackText) {
-    if (cur === 0) trackText.textContent = 'No streak yet';
-    else if (cur === 1) trackText.textContent = '1 day streak — keep it up!';
-    else trackText.textContent = cur + ' day streak 🔥';
-  }
-  var bestEl = document.getElementById('streak-track-best');
-  if (bestEl) bestEl.textContent = best > 1 ? 'Best: ' + best + ' days' : '';
+  var textEl = document.getElementById('streak-text');
+  if (textEl) textEl.textContent = cur === 0 ? '0 day streak' : cur === 1 ? '1 day streak' : cur + ' day streak 🔥';
 
-  /* Tip line */
+  var bestEl = document.getElementById('streak-best');
+  if (bestEl) bestEl.textContent = best > 1 ? 'Best: ' + best : '';
+
   var tipEl = document.getElementById('streak-tip');
-  if (tipEl) {
-    if (cur >= 7)       tipEl.textContent = '🌟 Amazing! 7+ day streak!';
-    else if (cur >= 3)  tipEl.textContent = '🔥 You're on a roll! Don't break it.';
-    else if (cur === 1) tipEl.textContent = 'Play again tomorrow to build your streak.';
-    else                tipEl.textContent = 'Play any game today to start your streak!';
-  }
+  if (tipEl) tipEl.textContent = cur >= 7 ? '🌟 Amazing! 7+ day streak!'
+    : cur >= 3 ? "You're on a roll! Don't break it."
+    : cur === 1 ? 'Play again tomorrow to keep it going.'
+    : 'Play any game today to start your streak!';
 
-  /* 7-day dots */
   var dotsEl = document.getElementById('streak-dots');
   if (!dotsEl) return;
-  var today = new Date().getDay();
+  var today  = new Date().getDay();
   var labels = ['S','M','T','W','T','F','S'];
   var html = '';
   for (var i = 0; i < 7; i++) {
-    var dayLabel = labels[i];
-    var isToday  = (i === today);
-    var daysAgo  = (today - i + 7) % 7;
-    var active   = daysAgo < cur;
-    html += '<div class="sd' + (active?' sd-on':'') + (isToday?' sd-today':'') + '">'
-          + '<div class="sd-icon">' + (active ? (isToday?'🔥':'✓') : (isToday?'○':'·')) + '</div>'
-          + '<div class="sd-label">' + dayLabel + '</div>'
-          + '</div>';
+    var daysAgo = (today - i + 7) % 7;
+    var active  = daysAgo < cur;
+    var isToday = i === today;
+    html += '<div class="sd' + (active ? ' sd-on' : '') + (isToday ? ' sd-today' : '') + '">'
+      + '<div class="sd-icon">' + (active ? (isToday ? '🔥' : '✓') : (isToday ? '○' : '·')) + '</div>'
+      + '<div class="sd-label">' + labels[i] + '</div>'
+      + '</div>';
   }
   dotsEl.innerHTML = html;
+}
 
-  /* Update streak fire animation speed based on streak length */
-  var fire = document.getElementById('streak-fire');
-  if (fire) {
-    fire.style.display = cur === 0 ? 'none' : '';
-    fire.style.animation = cur >= 7 ? 'fireBlaze .5s ease infinite alternate' : '';
+/* ── Daily Challenge ── */
+function renderDailyChallenge() {
+  var wrap = document.getElementById('daily-challenge-wrap');
+  if (!wrap) return;
+  var game = null;
+  for (var i = 0; i < GAMES.length; i++) { if (GAMES[i].id === GOTD) { game = GAMES[i]; break; } }
+  if (!game) return;
+
+  var today   = new Date().toISOString().slice(0, 10);
+  var claimed = false;
+  try { claimed = localStorage.getItem('az_dc_' + today) === '1'; } catch(_) {}
+  var bonus = 30;
+
+  var div = document.createElement('div');
+  div.className = 'dc-card' + (claimed ? ' dc-claimed' : '');
+  div.innerHTML =
+    '<div class="dc-badge">⭐ DAILY CHALLENGE</div>'
+    + '<div class="dc-content">'
+    + '<div class="dc-game-icon">' + game.icon + '</div>'
+    + '<div class="dc-info">'
+    + '<div class="dc-game-name">' + game.name + '</div>'
+    + '<div class="dc-desc">' + game.desc + '</div>'
+    + '<div class="dc-reward">' + (claimed ? '✅ Bonus claimed today!' : '🪙 +' + bonus + ' bonus coins') + '</div>'
+    + '</div></div>'
+    + '<div class="dc-countdown" id="dc-countdown"></div>'
+    + (claimed ? '' : '<a class="dc-btn" href="' + game.id + '.html" id="dc-btn">PLAY NOW →</a>');
+
+  if (!claimed) {
+    var btn = div.querySelector('#dc-btn');
+    if (btn) btn.addEventListener('click', function() {
+      try { localStorage.setItem('az_dc_' + today, '1'); } catch(_) {}
+      CoinEngine.add(bonus, 'Daily Challenge bonus', '⭐');
+      CoinEngine.toast('+' + bonus + ' 🪙 Daily bonus!', 'coin');
+    });
   }
+  wrap.innerHTML = '';
+  wrap.appendChild(div);
+
+  /* Countdown */
+  (function() {
+    function tick() {
+      var el = document.getElementById('dc-countdown'); if (!el) return;
+      var now = new Date(), midnight = new Date(now); midnight.setHours(24,0,0,0);
+      var diff = midnight - now;
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      el.textContent = 'Resets in ' + h + 'h ' + (m < 10 ? '0' : '') + m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
 }
 
 /* ── Activity ── */
-function renderActivity(){
+function renderActivity() {
   var hist = CoinEngine.getHistory ? CoinEngine.getHistory() : [];
-  var sec = document.getElementById('activity-section');
-  if (!hist || !hist.length) { sec.style.display = 'none'; return; }
-  sec.style.display = '';
+  var sec  = document.getElementById('activity-section');
+  if (!hist || !hist.length) { if (sec) sec.style.display = 'none'; return; }
+  if (sec) sec.style.display = '';
   var recent = hist.slice(-7).reverse();
-  document.getElementById('activity-feed').innerHTML = recent.map(function(h){
-    var time = h.ts ? new Date(h.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+  document.getElementById('activity-feed').innerHTML = recent.map(function(h) {
+    var t   = h.ts ? new Date(h.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     var col = h.amount > 0 ? 'color:var(--neon-d)' : 'color:var(--neon-b)';
-    return '<div class="activity-row"><span style="font-size:1rem;flex-shrink:0">'+(h.icon||'🪙')+'</span>'
-      + '<span style="flex:1">'+h.label+'</span>'
-      + '<span style="'+col+';font-weight:700">'+(h.amount>0?'+':'')+h.amount+' 🪙</span>'
-      + '<span class="act-time">'+time+'</span></div>';
+    return '<div class="activity-row"><span style="font-size:1rem;flex-shrink:0">' + (h.icon || '🪙') + '</span>'
+      + '<span style="flex:1">' + h.label + '</span>'
+      + '<span style="' + col + ';font-weight:700">' + (h.amount > 0 ? '+' : '') + h.amount + ' 🪙</span>'
+      + '<span class="act-time">' + t + '</span></div>';
   }).join('');
 }
 
-/* ── Stats refresh ── */
-function refreshStats(){
+/* ── Stats ── */
+function refreshStats() {
   var stats = CoinEngine.getStats() || {};
   var tp = 0, tw = 0;
-  Object.keys(stats).forEach(function(k){ tp += (stats[k].plays||0); tw += (stats[k].wins||0); });
+  Object.keys(stats).forEach(function(k) { tp += (stats[k].plays || 0); tw += (stats[k].wins || 0); });
   var pe = document.getElementById('s-played'); if (pe) pe.textContent = tp;
   var we = document.getElementById('s-wins');   if (we) we.textContent = tw;
-  var xd = CoinEngine.getXPData ? CoinEngine.getXPData() : {xp:0,level:1,xp_next:500};
-  /* XP bar */
-  var xpPerLv = 500; /* approximate */
-  var xpInLevel = xd.xp % xpPerLv;
-  var pct = Math.min(100, (xpInLevel / xpPerLv * 100)).toFixed(1);
-  document.querySelectorAll('.hero-xp-bar-fill,.az-xp-bar').forEach(function(e){ e.style.width = pct+'%'; });
-  document.querySelectorAll('.az-level').forEach(function(e){ e.textContent = 'Lv.'+xd.level; });
-  var xpLeft = document.getElementById('xp-to-next');
-  if (xpLeft) xpLeft.textContent = (xpPerLv - xpInLevel) + ' XP to next level';
-  var st = CoinEngine.getStreak ? CoinEngine.getStreak() : {current:0};
-  document.querySelectorAll('.az-streak').forEach(function(e){ e.textContent = st.current; });
-  /* Greeting */
-  renderGreeting();
-  renderStreak();
-}
 
-/* ── Greeting ── */
-function renderGreeting(){
-  var el = document.getElementById('hub-greeting'); if (!el) return;
-  var hour = new Date().getHours();
-  var time = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  var user = window.AZAuth && window.AZAuth.getUser();
-  var name = user
-    ? ((user.user_metadata && user.user_metadata.full_name)
-       ? user.user_metadata.full_name.split(' ')[0]
-       : user.email.split('@')[0])
-    : localStorage.getItem('az_mp_name') || null;
-  el.textContent = name ? time + ', ' + name + '!' : time + ' 👋';
+  var xd      = CoinEngine.getXPData ? CoinEngine.getXPData() : { xp: 0, level: 1 };
+  var xpPerLv = 500;
+  var xpInLv  = xd.xp % xpPerLv;
+  var pct     = Math.min(100, (xpInLv / xpPerLv * 100)).toFixed(1);
+  document.querySelectorAll('.az-xp-bar').forEach(function(e) { e.style.width = pct + '%'; });
+  document.querySelectorAll('.az-level').forEach(function(e) { e.textContent = 'Lv.' + xd.level; });
+  var xn = document.getElementById('xp-to-next'); if (xn) xn.textContent = (xpPerLv - xpInLv) + ' XP to next';
+
+  renderStreak();
 }
 
 document.addEventListener('az:balance', refreshStats);
@@ -538,22 +512,21 @@ document.addEventListener('az:xp', refreshStats);
 
 /* ── Theme ── */
 var tb = document.getElementById('theme-btn');
-tb.addEventListener('click', function(){
+tb.addEventListener('click', function() {
   CoinEngine.toggleTheme();
   tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
 });
 tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
 
-/* Auth nav button */
-(function(){
+/* ── Auth nav ── */
+(function() {
   var btn = document.getElementById('auth-nav-btn');
   if (!btn) return;
-  function updateAuthNav() {
+  function update() {
     var user = window.AZAuth && window.AZAuth.getUser();
     if (user) {
       var name = (user.user_metadata && user.user_metadata.full_name)
-                 ? user.user_metadata.full_name.split(' ')[0]
-                 : user.email.split('@')[0];
+        ? user.user_metadata.full_name.split(' ')[0] : user.email.split('@')[0];
       btn.textContent = '👤 ' + name;
       btn.href = 'profile.html';
     } else {
@@ -561,130 +534,68 @@ tb.textContent = CoinEngine.getTheme() === 'dark' ? '☀️' : '🌙';
       btn.href = 'login.html';
     }
   }
-  updateAuthNav();
-  document.addEventListener('az:auth',  updateAuthNav);
-  document.addEventListener('az:logout', updateAuthNav);
+  update();
+  document.addEventListener('az:auth',   update);
+  document.addEventListener('az:logout', update);
 })();
 
-/* ── Daily spin badge ── */
-(function(){
-  var el = document.getElementById('ql-spin'); if (!el) return;
+/* ── Greeting ── */
+(function() {
+  var el = document.getElementById('hub-greeting'); if (!el) return;
+  var h = new Date().getHours();
+  var t = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  var user = window.AZAuth && window.AZAuth.getUser();
+  var name = user
+    ? ((user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name.split(' ')[0] : user.email.split('@')[0])
+    : localStorage.getItem('az_mp_name');
+  el.textContent = name ? t + ', ' + name + '!' : t + ' 👋';
+})();
+
+/* ── Spin badge ── */
+(function() {
+  var el = document.getElementById('qa-spin'); if (!el) return;
   if (!CoinEngine.canSpin || !CoinEngine.canSpin()) return;
-  /* Add notification badge to new qa-item structure */
   var badge = document.createElement('div');
   badge.className = 'qa-badge';
   badge.textContent = '!';
   el.appendChild(badge);
 })();
 
-/* ── Daily Challenge ── */
-function renderDailyChallenge(){
-  var wrap = document.getElementById('daily-challenge-wrap');
-  if (!wrap) return;
-  var GOTD_game = null;
-  for (var gi = 0; gi < GAMES.length; gi++) {
-    if (GAMES[gi].id === GOTD) { GOTD_game = GAMES[gi]; break; }
-  }
-  if (!GOTD_game) return;
-
-  var today = new Date().toISOString().slice(0, 10);
-  var claimed = false;
-  try { claimed = localStorage.getItem('az_dc_' + today) === '1'; } catch(_) {}
-
-  var bonus = 30;
-  var div = document.createElement('div');
-  div.className = 'daily-challenge-card' + (claimed ? ' dc-claimed' : '');
-  div.id = 'dc-card';
-
-  var badge = '<div class="dc-badge">⭐ DAILY CHALLENGE</div>';
-  var content = '<div class="dc-content">'
-    + '<div class="dc-game-icon">' + GOTD_game.icon + '</div>'
-    + '<div class="dc-info">'
-    + '<div class="dc-game-name">' + GOTD_game.name + '</div>'
-    + '<div class="dc-desc">' + GOTD_game.desc + '</div>'
-    + '<div class="dc-reward">' + (claimed ? '✅ Bonus claimed today!' : '🪙 +' + bonus + ' bonus coins for playing today') + '</div>'
-    + '</div></div>';
-  var countdown = '<div class="dc-countdown" id="dc-countdown"></div>';
-  var btn = claimed ? '' : '<a class="dc-btn" href="' + GOTD_game.id + '.html" id="dc-play-btn">PLAY NOW →</a>';
-
-  div.innerHTML = badge + content + countdown + btn;
-
-  /* Wire onclick safely — no inline quote escaping needed */
-  if (!claimed) {
-    var playBtn = div.querySelector('#dc-play-btn');
-    if (playBtn) {
-      playBtn.addEventListener('click', function() {
-        claimDailyChallenge(today, bonus);
-      });
-    }
-  }
-
-  wrap.innerHTML = '';
-  wrap.appendChild(div);
-}
-
-
-function claimDailyChallenge(today, bonus){
-  try { localStorage.setItem('az_dc_' + today, '1'); } catch(_){}
-  CoinEngine.add(bonus, 'Daily Challenge bonus', '⭐');
-  CoinEngine.toast('+' + bonus + ' 🪙 Daily challenge bonus!', 'coin');
-}
-
-/* ── Daily countdown timer ── */
-function startDailyCountdown(){
-  function tick(){
-    var el = document.getElementById('dc-countdown'); if (!el) return;
-    var now  = new Date();
-    var midnight = new Date(now); midnight.setHours(24,0,0,0);
-    var diff = midnight - now;
-    var h = Math.floor(diff/3600000);
-    var m = Math.floor((diff%3600000)/60000);
-    var s = Math.floor((diff%60000)/1000);
-    el.textContent = 'Resets in ' + h + 'h ' + (m<10?'0':'') + m + 'm ' + (s<10?'0':'') + s + 's';
-  }
-  tick();
-  setInterval(tick, 1000);
-}
-
-/* ── Init ── */
-if (CoinEngine.checkStreak) CoinEngine.checkStreak();
-refreshStats();
-renderActivity();
-renderDailyChallenge();
+/* ══ INIT ══ */
+try { if (CoinEngine.checkStreak) CoinEngine.checkStreak(); } catch(e) {}
+try { refreshStats(); }         catch(e) { console.warn('refreshStats:', e); }
+try { renderActivity(); }       catch(e) { console.warn('renderActivity:', e); }
+try { renderDailyChallenge(); } catch(e) { console.warn('renderDailyChallenge:', e); }
 renderAll();
 </script>
 
 <script>
-/* ── Starfield (dark mode only) ── */
-(function(){
-  if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
-  var cv = document.createElement('canvas');
-  cv.id = 'az-stars';
-  cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;';
-  document.body.insertBefore(cv, document.body.firstChild);
-  var ctx = cv.getContext('2d');
-  var stars = [];
-  function resize(){ cv.width = window.innerWidth; cv.height = window.innerHeight; }
-  resize(); window.addEventListener('resize', resize);
-  for (var i = 0; i < 100; i++) {
-    stars.push({x:Math.random()*9999,y:Math.random()*9999,r:Math.random()*.7+.2,s:Math.random()*.35+.05,o:Math.random()*.5+.1,d:Math.random()*Math.PI*2});
-  }
-  function tick(){
-    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    if (!isDark){ ctx.clearRect(0,0,cv.width,cv.height); requestAnimationFrame(tick); return; }
-    ctx.clearRect(0,0,cv.width,cv.height);
-    var t = Date.now()/1000;
-    stars.forEach(function(s){
-      s.y -= s.s; if (s.y < -4){ s.y = cv.height+4; s.x = Math.random()*cv.width; }
-      if (s.x > cv.width) s.x = Math.random()*cv.width;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,'+(s.o*(0.4+0.6*Math.abs(Math.sin(t*0.8+s.d))))  +')';
-      ctx.fill();
-    });
-    requestAnimationFrame(tick);
-  }
-  tick();
+/* Starfield */
+(function() {
+  try {
+    if (window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    var cv = document.createElement('canvas');
+    cv.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;';
+    document.body.insertBefore(cv, document.body.firstChild);
+    var ctx = cv.getContext('2d'), stars = [];
+    function resize() { cv.width = window.innerWidth; cv.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    for (var i = 0; i < 80; i++) stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.2 + .3, s: Math.random() * .4 + .1 });
+    function draw() {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.fillStyle = '#fff';
+      stars.forEach(function(s) {
+        s.y -= s.s / cv.height;
+        if (s.y < 0) { s.y = 1; s.x = Math.random(); }
+        ctx.beginPath();
+        ctx.arc(s.x * cv.width, s.y * cv.height, s.r, 0, 6.28);
+        ctx.fill();
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+  } catch(e) {}
 })();
 </script>
 </body>
